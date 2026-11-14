@@ -1,0 +1,1141 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { api } from '../api';
+import { ClientThread, AIAnalysisResult, Equipment, SparePart } from '../types';
+import {
+  Search,
+  Plus,
+  Radio,
+  Mail,
+  Phone,
+  MessageSquare,
+  Sparkles,
+  Send,
+  RotateCcw,
+  AlertCircle,
+  CheckCircle2,
+  ShieldAlert,
+  Package,
+  Wrench,
+  ArrowRight,
+  Truck,
+  HelpCircle,
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Minus,
+  Trash2,
+  RefreshCw,
+  Bot,
+  Zap,
+  UserCheck
+} from 'lucide-react';
+
+interface DispatcherDashboardProps {
+  onOpenOrderModal: (thread?: ClientThread, aiData?: AIAnalysisResult | null) => void;
+  onOpenSimulatorModal: () => void;
+  threads: ClientThread[];
+  onRefreshThreads: () => void;
+  allEquipment: Equipment[];
+  allParts: SparePart[];
+}
+
+export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
+  onOpenOrderModal,
+  onOpenSimulatorModal,
+  threads,
+  onRefreshThreads,
+  allEquipment,
+  allParts,
+}) => {
+  const [selectedThreadId, setSelectedThreadId] = useState<number | null>(null);
+  const [dispatcherChatTab, setDispatcherChatTab] = useState<'client' | 'engineer'>('client');
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisResult | null>(null);
+  const [aiLoading, setAiLoading] = useState<boolean>(false);
+  const [inputText, setInputText] = useState<string>('');
+  const [sendingMsg, setSendingMsg] = useState<boolean>(false);
+  const [isAiSuggestionCollapsed, setIsAiSuggestionCollapsed] = useState<boolean>(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll chat to bottom when messages change
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [selectedThreadId, threads]);
+
+  // Periodic polling to receive new client messages in real-time
+  useEffect(() => {
+    const interval = setInterval(() => {
+      onRefreshThreads();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const [autoReplyEnabled, setAutoReplyEnabled] = useState<boolean>(true);
+
+  useEffect(() => {
+    api.getAutoReplySetting()
+      .then((res) => setAutoReplyEnabled(res.auto_reply_enabled))
+      .catch((err) => console.error('Failed to load auto-reply setting:', err));
+  }, []);
+
+  const handleToggleAutoReply = async () => {
+    const nextVal = !autoReplyEnabled;
+    setAutoReplyEnabled(nextVal);
+    try {
+      await api.setAutoReplySetting(nextVal);
+    } catch (err) {
+      console.error('Failed to update auto-reply setting:', err);
+    }
+  };
+
+  // Auto-select first thread if none selected
+  useEffect(() => {
+    if (threads.length > 0 && selectedThreadId === null) {
+      setSelectedThreadId(threads[0].id);
+    }
+  }, [threads, selectedThreadId]);
+
+  const selectedThread = threads.find((t) => t.id === selectedThreadId);
+
+  // Trigger AI analysis when selected thread changes
+  useEffect(() => {
+    if (selectedThreadId) {
+      loadAiAnalysis(selectedThreadId);
+    }
+  }, [selectedThreadId]);
+
+  const loadAiAnalysis = async (threadId: number) => {
+    setAiLoading(true);
+    try {
+      const res = await api.analyzeThread(threadId);
+      setAiAnalysis(res);
+    } catch (err) {
+      console.error('Failed to load AI analysis:', err);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  // Editable parts state for dispatcher to review, modify qty, remove, or manually add parts
+  const [editedParts, setEditedParts] = useState<{
+    code: string;
+    name: string;
+    quantity: number;
+    status_note?: string;
+    diagnostic_reason?: string | null;
+    local_free?: number;
+    transfer_required?: boolean;
+    is_compatible?: boolean;
+  }[]>([]);
+  const [isManualAddOpen, setIsManualAddOpen] = useState(false);
+  const [selectedPartCodeToAdd, setSelectedPartCodeToAdd] = useState('');
+
+  // Sync parts when AI analysis is loaded or updated
+  useEffect(() => {
+    if (aiAnalysis?.recommended_parts && aiAnalysis.recommended_parts.length > 0) {
+      setEditedParts(
+        aiAnalysis.recommended_parts.map((p) => ({
+          code: p.code,
+          name: p.name,
+          quantity: 1,
+          status_note: p.status_note,
+          diagnostic_reason: p.diagnostic_reason,
+          local_free: p.local_free,
+          transfer_required: p.transfer_required,
+          is_compatible: p.is_compatible,
+        }))
+      );
+    } else {
+      setEditedParts([]);
+    }
+  }, [aiAnalysis]);
+
+  const handleRemovePart = (code: string) => {
+    setEditedParts((prev) => prev.filter((p) => p.code !== code));
+  };
+
+  const handleUpdateQty = (code: string, delta: number) => {
+    setEditedParts((prev) =>
+      prev.map((p) => {
+        if (p.code === code) {
+          const newQty = Math.max(1, p.quantity + delta);
+          return { ...p, quantity: newQty };
+        }
+        return p;
+      })
+    );
+  };
+
+  const handleAddManualPart = () => {
+    if (!selectedPartCodeToAdd) return;
+    const part = allParts.find((p) => p.code === selectedPartCodeToAdd);
+    if (!part) return;
+
+    if (editedParts.some((p) => p.code === part.code)) {
+      handleUpdateQty(part.code, 1);
+    } else {
+      const targetCity = selectedThread?.equipment?.city || 'Москва';
+      const localStock = targetCity === 'Москва' ? part.moscow_stock : part.tula_stock;
+      const localRes = targetCity === 'Москва' ? part.moscow_reserved : part.tula_reserved;
+      const localFree = Math.max(0, localStock - localRes);
+      const otherFree = targetCity === 'Москва' ? part.tula_free : part.moscow_free;
+      const transferReq = localFree === 0 && otherFree > 0;
+
+      setEditedParts((prev) => [
+        ...prev,
+        {
+          code: part.code,
+          name: part.name,
+          quantity: 1,
+          status_note: localFree > 0 ? `В наличии на складе (${localFree} шт.)` : transferReq ? 'Перевозка со склада др. города (+1 день)' : 'Нет остатка',
+          diagnostic_reason: 'Выбрано диспетчером вручную',
+          local_free: localFree,
+          transfer_required: transferReq,
+          is_compatible: true,
+        },
+      ]);
+    }
+    setSelectedPartCodeToAdd('');
+    setIsManualAddOpen(false);
+  };
+
+  const handleCreateOrderWithAiParts = () => {
+    if (!selectedThread) return;
+    const customAiData: AIAnalysisResult = aiAnalysis
+      ? {
+          ...aiAnalysis,
+          recommended_parts: editedParts.map((p) => ({
+            code: p.code,
+            name: p.name,
+            is_compatible: p.is_compatible ?? true,
+            local_stock: p.local_free ?? 1,
+            local_reserved: 0,
+            local_free: p.local_free ?? 1,
+            other_city_free: 0,
+            transfer_required: p.transfer_required ?? false,
+            status_note: p.status_note || 'В наличии на складе',
+            diagnostic_reason: p.diagnostic_reason || 'Рекомендация по заявке',
+          })),
+        }
+      : {
+          detected_equipment_code: selectedThread.equipment_code,
+          detected_model: selectedThread.equipment?.model,
+          detected_serial: selectedThread.equipment?.serial_number,
+          equipment_reasoning: 'Оборудование из обращения',
+          is_unregistered_machine: selectedThread.is_unregistered,
+          is_ambiguous_machine: false,
+          is_warranty: selectedThread.is_warranty,
+          warranty_reason: selectedThread.warranty_reason,
+          draft_symptom: selectedThread.messages?.[0]?.content || 'Диагностика кофемашины',
+          client_assumption: null,
+          reply_to_client: '',
+          missing_questions: [],
+          recommended_parts: editedParts.map((p) => ({
+            code: p.code,
+            name: p.name,
+            is_compatible: p.is_compatible ?? true,
+            local_stock: p.local_free ?? 1,
+            local_reserved: 0,
+            local_free: p.local_free ?? 1,
+            other_city_free: 0,
+            transfer_required: p.transfer_required ?? false,
+            status_note: p.status_note || 'В наличии на складе',
+            diagnostic_reason: p.diagnostic_reason || 'Ручной выбор диспетчера',
+          })),
+          rules_applied: ['П-7', 'П-8'],
+        };
+
+    onOpenOrderModal(selectedThread, customAiData);
+  };
+
+  const handleSendMessage = async (customText?: string) => {
+    const textToSend = customText || inputText;
+    if (!textToSend.trim() || !selectedThread) return;
+
+    setSendingMsg(true);
+    const targetChatType = dispatcherChatTab === 'client' ? 'client_dispatcher' : 'dispatcher_engineer';
+    try {
+      await api.sendMessage(
+        selectedThread.id,
+        textToSend.trim(),
+        selectedThread.channel,
+        'dispatcher',
+        'Диспетчер ServFlow',
+        targetChatType
+      );
+      setInputText('');
+      await onRefreshThreads();
+      if (dispatcherChatTab === 'client') {
+        loadAiAnalysis(selectedThread.id);
+      }
+    } catch (err: any) {
+      alert(err.message || 'Ошибка отправки сообщения');
+    } finally {
+      setSendingMsg(false);
+    }
+  };
+
+  // Filter threads
+  const filteredThreads = threads.filter((t) => {
+    if (activeFilter === 'needs_clarification' && t.status !== 'needs_clarification') return false;
+    if (activeFilter === 'ready_for_order' && t.status !== 'ready_for_order') return false;
+    if (activeFilter === 'warranty' && !t.is_warranty) return false;
+    if (activeFilter === 'unregistered' && !t.is_unregistered) return false;
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchesClient = t.client_name.toLowerCase().includes(q);
+      const matchesCode = t.equipment_code?.toLowerCase().includes(q);
+      const matchesMsg = t.messages.some((m) => m.content.toLowerCase().includes(q));
+      if (!matchesClient && !matchesCode && !matchesMsg) return false;
+    }
+    return true;
+  });
+
+  const getChannelIcon = (ch: string) => {
+    if (ch === 'Почта') return <Mail className="w-3.5 h-3.5 text-blue-400" />;
+    if (ch === 'Звонок') return <Phone className="w-3.5 h-3.5 text-green-400" />;
+    return <MessageSquare className="w-3.5 h-3.5 text-purple-400" />;
+  };
+
+  return (
+    <div className="h-[calc(100vh-4rem)] flex flex-col p-4 sm:p-6 max-w-[1700px] mx-auto w-full text-[#F0F5F2]">
+      {/* 3-Column Grid */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-0">
+        {/* ================= COLUMN 1 (LEFT): THREADS LIST ================= */}
+        <div className="lg:col-span-3 bg-[#17231D] rounded-2xl border border-white/[0.08] shadow-apple flex flex-col min-h-0 overflow-hidden">
+          {/* Top Actions */}
+          <div className="p-3.5 border-b border-white/[0.06] space-y-2.5">
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => onOpenOrderModal()}
+                className="w-full py-2.5 px-3 rounded-xl bg-[#4A6751] hover:bg-[#3D5643] text-white text-xs font-semibold flex items-center justify-center space-x-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ Новая заявка в 1 клик</span>
+              </button>
+            </div>
+
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-[#8E9E94] absolute left-3 top-2.5" />
+              <input
+                type="text"
+                placeholder="Поиск по клиенту или тексту..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-white/[0.08] bg-[#1D2E24] text-white placeholder-[#8E9E94] focus:border-[#6E9078] outline-none transition-all"
+              />
+            </div>
+
+            {/* Filter Pills */}
+            <div className="flex flex-wrap gap-1">
+              {[
+                { id: 'all', label: 'Все' },
+                { id: 'needs_clarification', label: 'Уточнить' },
+                { id: 'ready_for_order', label: 'Готовы' },
+                { id: 'warranty', label: 'Гарантия' },
+                { id: 'unregistered', label: 'Вне договора' },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setActiveFilter(f.id)}
+                  className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                    activeFilter === f.id
+                      ? 'bg-[#4A6751] text-white shadow-sm'
+                      : 'bg-white/[0.05] text-[#8E9E94] hover:text-white hover:bg-white/[0.08]'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Threads Scrollable List */}
+          <div className="flex-1 overflow-y-auto divide-y divide-white/[0.04]">
+            {filteredThreads.map((t) => {
+              const isSelected = t.id === selectedThreadId;
+              const lastMsg = t.messages[t.messages.length - 1];
+
+              return (
+                <div
+                  key={t.id}
+                  onClick={() => setSelectedThreadId(t.id)}
+                  className={`p-3.5 cursor-pointer transition-all ${
+                    isSelected
+                      ? 'bg-[#4A6751]/15 border-l-4 border-[#4A6751]'
+                      : 'hover:bg-white/[0.03]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center space-x-1.5 min-w-0">
+                      {getChannelIcon(t.channel)}
+                      <span className="font-semibold text-xs text-white truncate">
+                        {t.client_name}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-[#8E9E94] flex-shrink-0">
+                      #{t.thread_number}
+                    </span>
+                  </div>
+
+                  {/* Badges row */}
+                  <div className="flex flex-wrap items-center gap-1 my-1.5">
+                    {t.equipment_code && (
+                      <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-white/[0.08] text-white">
+                        {t.equipment_code}
+                      </span>
+                    )}
+                    {t.is_warranty && (
+                      <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-[#FF453A]/15 text-[#FF453A]">
+                        Гарантия
+                      </span>
+                    )}
+                    {t.is_unregistered && (
+                      <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-[#FF9F0A]/15 text-[#FF9F0A]">
+                        Вне договора
+                      </span>
+                    )}
+                    {t.status === 'order_created' && (
+                      <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-[#30D158]/15 text-[#30D158]">
+                        Заявка создана
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Last message preview */}
+                  <p className="text-[11px] text-[#8E9E94] line-clamp-2">
+                    {lastMsg ? lastMsg.content : 'Нет сообщений'}
+                  </p>
+                </div>
+              );
+            })}
+
+            {filteredThreads.length === 0 && (
+              <div className="p-8 text-center text-xs text-[#8E9E94]">
+                Обращения по выбранному фильтру не найдены
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ================= COLUMN 2 (CENTER): CHAT & AI ASSISTANT ================= */}
+        <div className="lg:col-span-5 bg-[#17231D] rounded-2xl border border-white/[0.08] shadow-apple flex flex-col min-h-0 overflow-hidden">
+          {selectedThread ? (
+            <>
+              {/* Header */}
+              <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <h2 className="font-bold text-sm text-white">
+                      {selectedThread.client_name}
+                    </h2>
+                    <span className="text-xs text-[#8E9E94]">
+                      (Ветка #{selectedThread.thread_number})
+                    </span>
+                  </div>
+                  <div className="flex items-center space-x-2 mt-0.5 text-xs text-[#8E9E94]">
+                    <span>Канал: {selectedThread.channel}</span>
+                    <span>·</span>
+                    <span>
+                      {selectedThread.equipment_code
+                        ? `Оборудование: ${selectedThread.equipment_code}`
+                        : selectedThread.is_unregistered
+                        ? 'Вне договора'
+                        : 'Оборудование не указано'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  {/* AI Auto-Reply Toggle Switch */}
+                  <button
+                    type="button"
+                    onClick={handleToggleAutoReply}
+                    className={`flex items-center space-x-2 px-2.5 py-1 rounded-xl border text-xs font-semibold transition-all cursor-pointer shadow-sm active:scale-95 ${
+                      autoReplyEnabled
+                        ? 'bg-[#30D158]/15 border-[#30D158]/35 text-[#30D158] hover:bg-[#30D158]/25'
+                        : 'bg-white/[0.04] border-white/[0.08] text-[#8E9E94] hover:bg-white/[0.08]'
+                    }`}
+                    title="Автоответ ИИ: бот автоматически задаёт клиенту уточняющие вопросы (симптомы, ошибки, шильдик) и отвечает в чате"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Автоответ:</span>
+                    <span className="font-bold">{autoReplyEnabled ? 'ВКЛ' : 'ВЫКЛ'}</span>
+                    <span
+                      className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors ${
+                        autoReplyEnabled ? 'bg-[#30D158]' : 'bg-[#2A3B31]'
+                      }`}
+                    >
+                      <span
+                        className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform ${
+                          autoReplyEnabled ? 'translate-x-3' : 'translate-x-0'
+                        }`}
+                      />
+                    </span>
+                  </button>
+
+                  <span
+                    className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                      selectedThread.status === 'ready_for_order'
+                        ? 'bg-[#30D158]/15 text-[#30D158]'
+                        : selectedThread.status === 'sales_transfer'
+                        ? 'bg-[#FF9F0A]/15 text-[#FF9F0A]'
+                        : selectedThread.status === 'order_created'
+                        ? 'bg-[#4A6751]/15 text-[#6E9078]'
+                        : 'bg-white/[0.06] text-[#8E9E94]'
+                    }`}
+                  >
+                    {selectedThread.status === 'ready_for_order'
+                      ? 'Готов к выезду'
+                      : selectedThread.status === 'sales_transfer'
+                      ? 'Передать в продажи'
+                      : selectedThread.status === 'order_created'
+                      ? 'Оформлен'
+                      : 'Требует уточнения'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Sub-tabs: Client chat vs Engineer internal chat */}
+              <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.06] bg-[#141B17]">
+                <div className="flex items-center space-x-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setDispatcherChatTab('client')}
+                    className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
+                      dispatcherChatTab === 'client'
+                        ? 'bg-[#4A6751] text-white shadow-sm'
+                        : 'text-[#8E9E94] hover:text-white'
+                    }`}
+                  >
+                    <UserCheck className="w-3.5 h-3.5" />
+                    <span>Чат с клиентом</span>
+                    {(selectedThread.messages || []).filter(m => m.chat_type !== 'dispatcher_engineer').length > 0 && (
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-white font-bold">
+                        {(selectedThread.messages || []).filter(m => m.chat_type !== 'dispatcher_engineer').length}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDispatcherChatTab('engineer')}
+                    className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
+                      dispatcherChatTab === 'engineer'
+                        ? 'bg-[#30D158] text-black shadow-sm font-bold'
+                        : 'text-[#8E9E94] hover:text-white'
+                    }`}
+                  >
+                    <Wrench className="w-3.5 h-3.5" />
+                    <span>Чат с инженером</span>
+                    {(selectedThread.messages || []).filter(m => m.chat_type === 'dispatcher_engineer').length > 0 && (
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/30 text-black font-bold">
+                        {(selectedThread.messages || []).filter(m => m.chat_type === 'dispatcher_engineer').length}
+                      </span>
+                    )}
+                  </button>
+                </div>
+
+                <span className="text-[10px] text-[#8E9E94] hidden sm:inline">
+                  {dispatcherChatTab === 'client'
+                    ? 'Диалог с клиентом'
+                    : '🔒 Служебный канал с инженером (скрыт от клиента)'}
+                </span>
+              </div>
+
+              {/* Messages feed */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#111614]/40">
+                {(() => {
+                  const visibleMessages = (selectedThread.messages || []).filter(m => {
+                    if (dispatcherChatTab === 'client') {
+                      return m.chat_type !== 'dispatcher_engineer';
+                    } else {
+                      return m.chat_type === 'dispatcher_engineer';
+                    }
+                  });
+
+                  if (visibleMessages.length === 0) {
+                    return (
+                      <div className="h-full flex flex-col items-center justify-center text-xs text-[#8E9E94] space-y-1 py-12">
+                        <MessageSquare className="w-8 h-8 opacity-25 mb-1" />
+                        <p>
+                          {dispatcherChatTab === 'client'
+                            ? 'В диалоге с клиентом нет сообщений'
+                            : 'В чате с инженером пока нет сообщений'}
+                        </p>
+                        <p className="text-[11px] text-[#6E9078]">
+                          {dispatcherChatTab === 'client'
+                            ? 'Напишите клиенту или дождитесь входящего обращения.'
+                            : 'Здесь вы можете передать инженеру коды доступа, согласования или служебные инструкции.'}
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return visibleMessages.map((m) => {
+                    const isDispatcher = m.sender_type === 'dispatcher';
+                    const isEngineer = m.sender_type === 'engineer';
+
+                    return (
+                      <div
+                        key={m.id}
+                        className={`flex flex-col ${isDispatcher ? 'items-end' : 'items-start'}`}
+                      >
+                        <div className="flex items-center space-x-1.5 mb-1 text-[11px] text-[#8E9E94]">
+                          <span>{m.sender_name}</span>
+                          {isEngineer && (
+                            <span className="px-1.5 py-0.2 rounded-full bg-[#30D158]/20 text-[#30D158] border border-[#30D158]/30 font-semibold text-[9px] flex items-center space-x-0.5">
+                              <Wrench className="w-2.5 h-2.5" />
+                              <span>Инженер на выезде</span>
+                            </span>
+                          )}
+                          {m.sender_name.includes('ИИ') && (
+                            <span className="px-1.5 py-0.2 rounded-full bg-[#30D158]/20 text-[#30D158] border border-[#30D158]/30 font-semibold text-[9px] flex items-center space-x-0.5">
+                              <Zap className="w-2.5 h-2.5" />
+                              <span>Автоответ</span>
+                            </span>
+                          )}
+                          {m.request_code && (
+                            <span className="px-1.5 py-0.2 rounded bg-white/[0.08] font-mono text-[10px] text-white">
+                              {m.request_code}
+                            </span>
+                          )}
+                          <span>·</span>
+                          <span>{new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+
+                        <div
+                          className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed ${
+                            isDispatcher
+                              ? 'bg-[#4A6751] text-white rounded-tr-sm shadow-sm'
+                              : isEngineer
+                              ? 'bg-[#18392B] text-white border border-[#30D158]/40 rounded-tl-sm shadow-sm ring-1 ring-[#30D158]/20'
+                              : 'bg-[#1D2E24] text-white border border-white/[0.08] rounded-tl-sm shadow-sm'
+                          }`}
+                        >
+                          {m.content}
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Chat Bottom Controls */}
+              <div className="p-3 border-t border-white/[0.06] bg-[#4A6751]/[0.03]">
+                {dispatcherChatTab === 'client' ? (
+                  /* Gemini AI Assistant Block above input (collapsible) */
+                  <div className="rounded-xl border border-[#6E9078]/25 bg-[#16221B] shadow-sm overflow-hidden transition-all duration-200">
+                    {/* Collapsible Header */}
+                    <div
+                      onClick={() => setIsAiSuggestionCollapsed(!isAiSuggestionCollapsed)}
+                      className="p-2.5 sm:p-3 flex items-center justify-between gap-2 bg-[#16221B] cursor-pointer select-none hover:bg-white/[0.02] transition-colors"
+                    >
+                      <div className="flex items-center space-x-2 flex-1 min-w-0">
+                        <div className="p-1 rounded-lg bg-[#4A6751]/15 text-[#6E9078] flex-shrink-0">
+                          <Sparkles className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs font-semibold text-white">
+                              ИИ-Ассистент Gemini
+                            </span>
+                            {isAiSuggestionCollapsed && (
+                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/[0.08] text-[#8E9E94] hidden sm:inline">
+                                свернуто
+                              </span>
+                            )}
+                          </div>
+                          {isAiSuggestionCollapsed && aiAnalysis?.reply_to_client && (
+                            <p className="text-[11px] text-[#8E9E94] truncate max-w-sm sm:max-w-md mt-0.5">
+                              {aiAnalysis.reply_to_client}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-1.5 flex-shrink-0">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            loadAiAnalysis(selectedThread.id);
+                          }}
+                          disabled={aiLoading}
+                          title="Перегенерировать анализ"
+                          className="p-1.5 rounded-lg hover:bg-white/[0.08] text-[#8E9E94] hover:text-white transition-colors"
+                        >
+                          <RotateCcw className={`w-3.5 h-3.5 ${aiLoading ? 'animate-spin' : ''}`} />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsAiSuggestionCollapsed(!isAiSuggestionCollapsed);
+                          }}
+                          title={isAiSuggestionCollapsed ? "Развернуть блок предложений" : "Свернуть блок предложений"}
+                          className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-[#4A6751]/10 hover:bg-[#4A6751]/20 text-[#6E9078] border border-[#6E9078]/30 transition-all text-xs font-medium cursor-pointer shadow-sm active:scale-95"
+                        >
+                          {isAiSuggestionCollapsed ? (
+                            <>
+                              <span>Развернуть</span>
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            </>
+                          ) : (
+                            <>
+                              <span>Свернуть</span>
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Body (visible when not collapsed) */}
+                    {!isAiSuggestionCollapsed && (
+                      <div className="px-3 pb-3 pt-0 space-y-2.5 border-t border-white/[0.04]">
+                        {aiAnalysis ? (
+                          <>
+                            <div className="text-xs text-white bg-black/30 p-2.5 rounded-lg border border-white/[0.06] leading-relaxed whitespace-pre-line mt-2.5">
+                              {aiAnalysis.reply_to_client}
+                            </div>
+
+                            <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
+                              <div className="flex items-center space-x-1">
+                                <button
+                                  onClick={() => setInputText(aiAnalysis.reply_to_client)}
+                                  className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-white/[0.08] hover:bg-white/[0.12] text-white transition-colors cursor-pointer"
+                                >
+                                  Вставить в поле ввода
+                                </button>
+                                <button
+                                  onClick={() => handleSendMessage(aiAnalysis.reply_to_client)}
+                                  disabled={sendingMsg}
+                                  className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-[#4A6751] hover:bg-[#3D5643] text-white transition-colors flex items-center space-x-1 cursor-pointer"
+                                >
+                                  <span>Отправить клиенту</span>
+                                  <ArrowRight className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-xs text-[#8E9E94] py-2 flex items-center justify-center space-x-2 mt-2">
+                            <Sparkles className="w-3.5 h-3.5 animate-spin text-[#6E9078]" />
+                            <span>Анализ контекста обращения...</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  /* Quick prompts for Dispatcher to Engineer */
+                  <div className="p-2.5 rounded-xl border border-white/[0.08] bg-[#16221B] space-y-2">
+                    <div className="text-[10px] text-[#8E9E94] uppercase tracking-wider font-semibold">
+                      Быстрые указания инженеру на выезде:
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        '✅ Согласовано, производите замену узла из резерва',
+                        '🔑 Код от домофона: 421, спросить управляющего на баре',
+                        '⚠️ Выезд по гарантии (правило П-9), работы без оплаты',
+                        '📞 Связался с клиентом, вас уже встречают на месте'
+                      ].map((prompt, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => handleSendMessage(prompt)}
+                          disabled={sendingMsg}
+                          className="px-2.5 py-1 text-[11px] rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-[#F0F5F2] border border-white/[0.08] transition-colors text-left cursor-pointer disabled:opacity-50"
+                        >
+                          {prompt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Manual Message Input */}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }}
+                  className="flex items-center space-x-2 mt-2.5"
+                >
+                  <input
+                    type="text"
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    placeholder={
+                      dispatcherChatTab === 'client'
+                        ? 'Напишите ответ клиенту или уточнение...'
+                        : 'Служебная инструкция или ответ инженеру...'
+                    }
+                    className="flex-1 px-3 py-2 text-xs rounded-xl border border-white/[0.08] bg-[#1D2E24] text-white placeholder-[#8E9E94] focus:border-[#6E9078] outline-none transition-all"
+                  />
+                  <button
+                    type="submit"
+                    disabled={sendingMsg || !inputText.trim()}
+                    className={`p-2 rounded-xl disabled:opacity-40 transition-colors cursor-pointer ${
+                      dispatcherChatTab === 'client'
+                        ? 'bg-[#4A6751] hover:bg-[#3D5643] text-white'
+                        : 'bg-[#30D158] hover:bg-[#28B84B] text-black font-bold'
+                    }`}
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </form>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-[#8E9E94] text-xs">
+              <MessageSquare className="w-8 h-8 text-white/[0.1] mb-2" />
+              <span>Выберите обращение из списка слева</span>
+            </div>
+          )}
+        </div>
+
+        {/* ================= COLUMN 3 (RIGHT): PROACTIVE AI EQUIPMENT & SPARE PARTS ================= */}
+        <div className="lg:col-span-4 bg-[#17231D] rounded-2xl border border-white/[0.08] shadow-apple flex flex-col min-h-0 overflow-hidden">
+          <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
+            <h2 className="font-bold text-sm text-white flex items-center space-x-1.5">
+              <Sparkles className="w-4 h-4 text-[#6E9078]" />
+              <span>Диагностика и запчасти</span>
+            </h2>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {/* 1. Proactive AI Equipment Resolution */}
+            <div className="p-3.5 rounded-xl border border-white/[0.08] bg-black/20 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-white">
+                  Оборудование
+                </span>
+                {aiAnalysis?.detected_equipment_code && (
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#4A6751]/20 text-[#6E9078]">
+                    {aiAnalysis.detected_equipment_code}
+                  </span>
+                )}
+              </div>
+
+              {aiAnalysis?.is_unregistered_machine ? (
+                <div className="p-2.5 rounded-lg bg-[#FF9F0A]/15 border border-[#FF9F0A]/25 text-xs text-[#FF9F0A] space-y-1">
+                  <div className="font-semibold flex items-center space-x-1.5">
+                    <ShieldAlert className="w-3.5 h-3.5" />
+                    <span>Машина вне реестра договора</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed">
+                    {aiAnalysis.equipment_reasoning ||
+                      'Выезд инженера не назначается. Обращение передаётся менеджеру по продажам с указанием модели и серийного номера.'}
+                  </p>
+                </div>
+              ) : aiAnalysis?.is_ambiguous_machine ? (
+                <div className="p-2.5 rounded-lg bg-[#FF9F0A]/15 border border-[#FF9F0A]/25 text-xs text-[#FF9F0A] space-y-1">
+                  <div className="font-semibold flex items-center space-x-1.5">
+                    <AlertCircle className="w-3.5 h-3.5" />
+                    <span>Требуется уточнить кофемашину</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed">
+                    {aiAnalysis.ambiguity_explanation || aiAnalysis.equipment_reasoning}
+                  </p>
+                </div>
+              ) : selectedThread?.equipment ? (
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-[#8E9E94]">Модель:</span>
+                    <span className="font-semibold text-white">{selectedThread.equipment.model}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#8E9E94]">Серийный номер:</span>
+                    <span className="font-mono font-bold text-[#6E9078]">
+                      {selectedThread.equipment.serial_number}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#8E9E94]">Адрес:</span>
+                    <span className="text-white text-right max-w-[200px] truncate">
+                      {selectedThread.equipment.address}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-[#8E9E94]">Город склада:</span>
+                    <span className="text-white">{selectedThread.equipment.city}</span>
+                  </div>
+
+                  {aiAnalysis?.equipment_reasoning && (
+                    <div className="mt-2 pt-2 border-t border-white/[0.06] text-[11px] text-[#6E9078]">
+                      <span className="font-medium text-white">Вывод ИИ:</span> {aiAnalysis.equipment_reasoning}
+                    </div>
+                  )}
+
+                  {selectedThread.equipment.last_visit_result && (
+                    <div className="mt-1 text-[11px] text-[#8E9E94]">
+                      <span className="font-medium text-white">Прошлый визит:</span>{' '}
+                      {selectedThread.equipment.last_visit_result}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-[#8E9E94]">
+                  Машина ещё не привязана.
+                </p>
+              )}
+            </div>
+
+            {/* 2. Warranty Status */}
+            <div className="p-3.5 rounded-xl border border-white/[0.08] bg-black/20 space-y-1.5">
+              <span className="text-xs font-semibold text-white">
+                Статус гарантии
+              </span>
+
+              {aiAnalysis?.is_warranty ? (
+                <div className="p-2.5 rounded-lg bg-[#FF453A]/15 border border-[#FF453A]/25 text-xs text-[#FF453A] space-y-1">
+                  <div className="font-bold flex items-center space-x-1.5">
+                    <ShieldAlert className="w-4 h-4 flex-shrink-0" />
+                    <span>Гарантийный случай (повторный ремонт в течение 30 дней)</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed">
+                    {aiAnalysis.warranty_reason}
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-1.5 text-xs text-[#30D158]">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  <span>Стандартный платный визит</span>
+                </div>
+              )}
+            </div>
+
+            {/* 3. Error Code Interpretation */}
+            {aiAnalysis?.error_code && (
+              <div className="p-3.5 rounded-xl border border-white/[0.08] bg-black/20 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-white">
+                    Код ошибки
+                  </span>
+                  <span className="text-xs font-mono font-bold text-[#6E9078] px-2 py-0.5 rounded bg-[#4A6751]/20">
+                    {aiAnalysis.error_code}
+                  </span>
+                </div>
+                <p className="text-xs text-white font-medium">
+                  {aiAnalysis.error_explanation}
+                </p>
+                <p className="text-[10px] text-[#8E9E94]">
+                  Код указывает на сработавшую проверку системы, окончательную причину определяет инженер на месте.
+                </p>
+              </div>
+            )}
+
+            {/* 4. Missing Clarification Questions */}
+            {aiAnalysis?.missing_questions && aiAnalysis.missing_questions.length > 0 && (
+              <div className="p-3.5 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] space-y-2">
+                <span className="text-xs font-semibold text-[#FF9F0A] flex items-center space-x-1.5">
+                  <HelpCircle className="w-3.5 h-3.5" />
+                  <span>Рекомендуется уточнить у клиента</span>
+                </span>
+                <ul className="space-y-1">
+                  {aiAnalysis.missing_questions.map((q, idx) => (
+                    <li key={idx} className="text-[11px] text-[#F0F5F2] flex items-start space-x-1.5">
+                      <span className="text-[#FF9F0A] font-bold">·</span>
+                      <span>{q}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* 5. Recommended Spare Parts (Rule П-7 & П-8) - Interactive & Editable */}
+            <div className="p-3.5 rounded-xl border border-white/[0.08] bg-black/20 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-white flex items-center space-x-1.5">
+                  <Package className="w-3.5 h-3.5 text-[#6E9078]" />
+                  <span>Рекомендуемые запчасти</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => selectedThreadId && loadAiAnalysis(selectedThreadId)}
+                  disabled={aiLoading}
+                  title="Запустить повторный подбор деталей через ИИ по контексту и истории из БД"
+                  className="px-2.5 py-1 rounded-lg bg-[#4A6751]/25 hover:bg-[#4A6751]/40 text-[#6E9078] border border-[#6E9078]/30 text-[11px] font-semibold flex items-center space-x-1 transition-all active:scale-95 cursor-pointer"
+                >
+                  <Sparkles className={`w-3.5 h-3.5 ${aiLoading ? 'animate-spin' : ''}`} />
+                  <span>{aiLoading ? 'ИИ анализ...' : 'ИИ-Подбор'}</span>
+                </button>
+              </div>
+
+              {editedParts.length > 0 ? (
+                <div className="space-y-2">
+                  {editedParts.map((p) => (
+                    <div
+                      key={p.code}
+                      className="p-2.5 rounded-xl bg-[#1D2E24] border border-white/[0.08] flex flex-col space-y-1.5 text-xs transition-all"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-1.5 min-w-0">
+                          <span className="font-semibold text-white truncate">
+                            {p.code} · {p.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center space-x-1.5 flex-shrink-0">
+                          <span
+                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                              (p.local_free ?? 0) > 0
+                                ? 'bg-[#30D158]/15 text-[#30D158]'
+                                : p.transfer_required
+                                ? 'bg-[#FF9F0A]/15 text-[#FF9F0A]'
+                                : 'bg-white/[0.06] text-[#8E9E94]'
+                            }`}
+                          >
+                            {(p.local_free ?? 0) > 0
+                              ? `Свободно: ${p.local_free} шт.`
+                              : p.transfer_required
+                              ? 'Склад 0 (есть в др. городе)'
+                              : 'Нет остатка'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePart(p.code)}
+                            title="Удалить деталь из заявки"
+                            className="p-1 rounded-md text-[#8E9E94] hover:text-[#FF453A] hover:bg-white/[0.05] transition-colors"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Diagnostic reason from AI / DB history */}
+                      {p.diagnostic_reason && (
+                        <div className="text-[11px] text-[#8E9E94] leading-relaxed">
+                          <span className="text-[#6E9078] font-medium">Диагностика:</span> {p.diagnostic_reason}
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between pt-1 border-t border-white/[0.04]">
+                        <div className="flex items-center space-x-1.5">
+                          <span className="text-[10px] text-[#8E9E94]">Кол-во:</span>
+                          <div className="flex items-center space-x-1 bg-black/30 rounded-lg p-0.5 border border-white/[0.06]">
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateQty(p.code, -1)}
+                              className="w-5 h-5 flex items-center justify-center rounded text-[#8E9E94] hover:text-white hover:bg-white/10"
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <span className="font-mono font-bold text-white px-1 text-[11px]">
+                              {p.quantity}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleUpdateQty(p.code, 1)}
+                              className="w-5 h-5 flex items-center justify-center rounded text-[#8E9E94] hover:text-white hover:bg-white/10"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {p.transfer_required && (
+                          <span className="flex items-center space-x-1 text-[10px] text-[#FF9F0A] font-medium">
+                            <Truck className="w-3 h-3" />
+                            <span>+1 раб. день</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] text-center text-xs text-[#8E9E94]">
+                  <span>Детали пока не предложены. Нажмите «ИИ-Подбор» или добавьте деталь вручную.</span>
+                </div>
+              )}
+
+              {/* Manual Add Trigger */}
+              <div className="pt-1">
+                {isManualAddOpen ? (
+                  <div className="p-2.5 rounded-xl bg-[#1D2E24] border border-white/[0.08] space-y-2">
+                    <label className="block text-[11px] font-semibold text-white">
+                      Выберите запчасть со склада:
+                    </label>
+                    <select
+                      value={selectedPartCodeToAdd}
+                      onChange={(e) => setSelectedPartCodeToAdd(e.target.value)}
+                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-white/[0.1] bg-[#16221B] text-white outline-none focus:border-[#6E9078]"
+                    >
+                      <option value="">-- Выберите деталь --</option>
+                      {allParts.map((part) => (
+                        <option key={part.code} value={part.code}>
+                          {part.code} · {part.name} (для {part.compatible_models.join(', ')})
+                        </option>
+                      ))}
+                    </select>
+                    <div className="flex items-center justify-end space-x-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsManualAddOpen(false);
+                          setSelectedPartCodeToAdd('');
+                        }}
+                        className="px-2.5 py-1 rounded-lg text-xs text-[#8E9E94] hover:text-white"
+                      >
+                        Отмена
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!selectedPartCodeToAdd}
+                        onClick={handleAddManualPart}
+                        className="px-3 py-1 rounded-lg bg-[#4A6751] hover:bg-[#3D5643] disabled:opacity-40 text-white text-xs font-semibold"
+                      >
+                        Добавить в заявку
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setIsManualAddOpen(true)}
+                    className="w-full py-1.5 rounded-xl border border-dashed border-white/[0.15] hover:border-[#6E9078] hover:bg-white/[0.02] text-[#8E9E94] hover:text-white text-xs font-medium flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>Добавить деталь вручную</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* 6. Technical Symptom vs Client Guess (Rule П-4) */}
+            <div className="p-3.5 rounded-xl border border-white/[0.08] bg-black/20 space-y-1.5 text-xs">
+              <span className="font-semibold text-white">
+                Симптом для заявки (Правило П-4)
+              </span>
+              <p className="text-xs text-white bg-[#1D2E24] p-2.5 rounded-lg border border-white/[0.06]">
+                {aiAnalysis?.draft_symptom || 'Симптом формируется...'}
+              </p>
+              {aiAnalysis?.client_assumption && (
+                <p className="text-[11px] text-[#8E9E94]">
+                  <span className="font-medium text-white">Догадка клиента (отдельно):</span>{' '}
+                  {aiAnalysis.client_assumption}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Bottom Action CTA */}
+          <div className="p-4 border-t border-white/[0.06] bg-[#17231D]">
+            <button
+              onClick={handleCreateOrderWithAiParts}
+              className="w-full py-3 rounded-xl bg-[#4A6751] hover:bg-[#3D5643] text-white text-xs font-semibold flex items-center justify-center space-x-2 shadow-sm transition-all cursor-pointer"
+            >
+              <Wrench className="w-4 h-4" />
+              <span>Оформить заявку на выезд с деталями ИИ</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
