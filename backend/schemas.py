@@ -126,7 +126,7 @@ class SparePartResponse(BaseModel):
 
 class ReservedPartItem(BaseModel):
     code: str = Field(max_length=50)
-    name: str = Field(max_length=255)
+    name: Optional[str] = Field(default=None, max_length=255)
     quantity: int = Field(default=1, ge=1, le=10)
     source_city: Literal["Москва", "Тула"]
     transfer_required: bool = False

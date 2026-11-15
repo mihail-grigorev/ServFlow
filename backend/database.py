@@ -88,3 +88,15 @@ def init_db():
                         pass
     except Exception as e:
         logger.debug(f"Migration note: {e}")
+
+    try:
+        with engine.begin() as conn:
+            from sqlalchemy import text
+            index_stmt = (
+                "CREATE UNIQUE INDEX IF NOT EXISTS uq_orders_active_thread "
+                "ON service_orders(thread_id) "
+                "WHERE status NOT IN ('Отменен', 'Отменён') AND thread_id IS NOT NULL;"
+            )
+            conn.execute(text(index_stmt))
+    except Exception as ex:
+        logger.debug(f"Index creation note: {ex}")

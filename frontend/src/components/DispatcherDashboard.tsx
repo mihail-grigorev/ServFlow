@@ -4,7 +4,8 @@ import {
   ClientThread,
   Equipment,
   SparePart,
-  AIAnalysisResult
+  AIAnalysisResult,
+  ServiceOrder
 } from '../types';
 import {
   Mail,
@@ -37,6 +38,7 @@ interface DispatcherDashboardProps {
   allEquipment: Equipment[];
   allParts: SparePart[];
   autoReplyEnabled?: boolean;
+  onNavigateToOrders?: (orderId?: number) => void;
 }
 
 export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
@@ -45,6 +47,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
   onRefreshThreads,
   allEquipment,
   allParts,
+  onNavigateToOrders,
 }) => {
   const [selectedThreadId, setSelectedThreadId] = useState<number | null>(null);
   const [dispatcherChatTab, setDispatcherChatTab] = useState<'client' | 'engineer'>('client');
@@ -56,8 +59,22 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
   const [sendingMsg, setSendingMsg] = useState<boolean>(false);
   const [isAiSuggestionCollapsed, setIsAiSuggestionCollapsed] = useState<boolean>(false);
   const [newThreadIds, setNewThreadIds] = useState<Set<number>>(new Set());
+  const [orders, setOrders] = useState<ServiceOrder[]>([]);
   const initialThreadIdsRef = useRef<Set<number> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const loadOrders = async () => {
+    try {
+      const ords = await api.getOrders();
+      setOrders(ords);
+    } catch (err) {
+      console.error('Failed to load orders in DispatcherDashboard:', err);
+    }
+  };
+
+  useEffect(() => {
+    loadOrders();
+  }, [threads]);
 
   // Track newly arrived threads during live demo
   useEffect(() => {
@@ -103,6 +120,10 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
   }, [threads, selectedThreadId]);
 
   const selectedThread = threads.find((t) => t.id === selectedThreadId);
+
+  const activeOrderForThread = orders.find(
+    (o) => o.thread_id === selectedThreadId && o.status !== 'Отменен' && o.status !== 'Отменён'
+  );
 
   // Trigger AI analysis when selected thread changes
   useEffect(() => {
@@ -791,17 +812,129 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
           )}
         </div>
 
-        {/* ================= COLUMN 3 (RIGHT): PROACTIVE AI EQUIPMENT & SPARE PARTS ================= */}
+        {/* ================= COLUMN 3 (RIGHT): PROACTIVE AI EQUIPMENT & SPARE PARTS OR ACTIVE ORDER ================= */}
         <div className="lg:col-span-4 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex flex-col min-h-0 overflow-hidden">
           <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
             <h2 className="font-bold text-sm text-white flex items-center space-x-1.5">
               <Sparkles className="w-4 h-4 text-white/70" />
-              <span>Диагностика и запчасти</span>
+              <span>{activeOrderForThread ? 'Сформированная заявка' : 'Диагностика и запчасти'}</span>
             </h2>
+            {activeOrderForThread && (
+              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/10 text-neutral-300 border border-white/20">
+                Заявка активна
+              </span>
+            )}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {/* 1. Proactive AI Equipment Resolution */}
+          {activeOrderForThread ? (
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 flex flex-col justify-between">
+              <div className="space-y-4">
+                <div className="p-4 rounded-xl border border-white/15 bg-white/[0.04] space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <CheckCircle2 className="w-4 h-4 text-white" />
+                    <span className="text-xs font-bold text-white tracking-wide uppercase">
+                      Заявка сформирована · Инженер отправлен
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-white/[0.08] text-xs">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#9CA3AF]">Номер заявки:</span>
+                      <span className="font-mono font-bold text-white">
+                        {activeOrderForThread.order_number}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#9CA3AF]">Статус выезда:</span>
+                      <span className="px-2 py-0.5 rounded-md bg-white/10 text-white font-medium border border-white/20">
+                        {activeOrderForThread.status}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#9CA3AF]">Назначенный инженер:</span>
+                      <span className="font-semibold text-white">
+                        {activeOrderForThread.engineer?.full_name || 'Инженер назначен'}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#9CA3AF]">Адрес клиента:</span>
+                      <span className="text-white text-right max-w-[200px] truncate" title={activeOrderForThread.address}>
+                        {activeOrderForThread.address}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="text-[#9CA3AF]">Оборудование:</span>
+                      <span className="text-white font-mono">
+                        {activeOrderForThread.model} ({activeOrderForThread.serial_number})
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Reserved Parts Summary */}
+                <div className="p-3.5 rounded-xl border border-white/[0.08] bg-[#1F2026] space-y-2 text-xs">
+                  <div className="font-semibold text-white flex items-center justify-between">
+                    <span>Зарезервированные детали:</span>
+                    <span className="text-[11px] text-[#9CA3AF] font-mono">
+                      {activeOrderForThread.reserved_parts?.length || 0} поз.
+                    </span>
+                  </div>
+
+                  {activeOrderForThread.reserved_parts && activeOrderForThread.reserved_parts.length > 0 ? (
+                    <div className="space-y-1.5 pt-1">
+                      {activeOrderForThread.reserved_parts.map((p, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between p-2 rounded-lg bg-black/40 border border-white/[0.06] text-xs"
+                        >
+                          <div>
+                            <div className="font-medium text-white">{p.name || p.code}</div>
+                            <div className="text-[10px] text-[#9CA3AF]">
+                              {p.code} · Склад: {p.source_city}
+                            </div>
+                          </div>
+                          <span className="font-mono font-bold text-white">
+                            {p.quantity} шт.
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-[#9CA3AF] italic py-1">
+                      Детали не резервировались
+                    </div>
+                  )}
+                </div>
+
+                {/* Diagnostic symptom recorded */}
+                <div className="p-3.5 rounded-xl border border-white/[0.08] bg-[#1F2026] space-y-1 text-xs">
+                  <span className="font-semibold text-white">Зафиксированный симптом:</span>
+                  <p className="text-xs text-neutral-300 bg-[#16171B] p-2 rounded-lg border border-white/[0.06]">
+                    {activeOrderForThread.symptom}
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Button */}
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => onNavigateToOrders && onNavigateToOrders(activeOrderForThread.id)}
+                  className="w-full py-3 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-semibold flex items-center justify-center space-x-2 shadow-lg transition-all cursor-pointer"
+                >
+                  <span>Перейти к заявке</span>
+                  <ArrowRight className="w-4 h-4 text-black" />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {/* 1. Proactive AI Equipment Resolution */}
             <div className="p-3.5 rounded-xl border border-white/[0.08] bg-[#1F2026] space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-white">
@@ -1126,7 +1259,9 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
               <span>Оформить заявку на выезд с деталями ИИ</span>
             </button>
           </div>
-        </div>
+        </>
+      )}
+    </div>
       </div>
     </div>
   );

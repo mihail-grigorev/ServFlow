@@ -61,6 +61,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [selectedParts, setSelectedParts] = useState<{ [code: string]: number }>({});
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [conflictError, setConflictError] = useState<{ message: string } | null>(null);
 
   // Sync selected equipment
   useEffect(() => {
@@ -241,7 +242,13 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       onOrderCreated();
       onClose();
     } catch (err: any) {
-      setError(err.message || 'Ошибка оформления заявки');
+      const msg = err.message || 'Ошибка оформления заявки';
+      if (msg.includes('уже сформирована заявка') || msg.includes('409')) {
+        setConflictError({ message: msg });
+        onOrderCreated();
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -277,6 +284,30 @@ export const OrderModal: React.FC<OrderModalProps> = ({
           <div className="mx-5 mt-4 p-3 rounded-xl bg-[#FF453A]/15 border border-[#FF453A]/25 flex items-center space-x-2 text-xs text-[#FF453A]">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{error}</span>
+          </div>
+        )}
+
+        {conflictError && (
+          <div className="mx-5 mt-4 p-4 rounded-xl bg-white/[0.06] border border-white/20 flex flex-col space-y-2 text-xs text-white">
+            <div className="flex items-center space-x-2">
+              <AlertCircle className="w-4 h-4 text-white flex-shrink-0" />
+              <span className="font-semibold text-white">Заявка уже была создана другим диспетчером</span>
+            </div>
+            <p className="text-neutral-300 text-[11px] leading-relaxed">
+              {conflictError.message}
+            </p>
+            <div className="flex justify-end pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  onOrderCreated();
+                  onClose();
+                }}
+                className="px-3.5 py-1.5 rounded-lg bg-white hover:bg-neutral-200 text-black text-xs font-semibold transition-colors"
+              >
+                Открыть существующую заявку
+              </button>
+            </div>
           </div>
         )}
 
