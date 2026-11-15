@@ -200,6 +200,7 @@ class ServiceOrderCreate(BaseModel):
     is_sales_transfer: bool = False
     engineer_id: Optional[int] = None
     reserved_parts: List[ReservedPartItem] = Field(default_factory=list)
+    created_at: Optional[datetime] = None
 
 class ServiceOrderStatusUpdate(BaseModel):
     status: str  # Назначен, В пути, На месте, Выполнен, Отменен

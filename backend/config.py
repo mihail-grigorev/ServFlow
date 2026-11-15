@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     
     # Google Gemini API key
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
-    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    GEMINI_MODEL: str = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
     
     # Auth JWT
     JWT_SECRET: str = os.getenv("JWT_SECRET", "super-secret-kofeservice-jwt-key-2026")

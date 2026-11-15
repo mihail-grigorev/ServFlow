@@ -178,10 +178,10 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0C0D0F] text-[#F3F4F6] flex flex-col font-sans relative overflow-x-hidden selection:bg-blue-600/30 selection:text-white">
-      {/* Background ambient dark glows in neutral graphite and subtle slate */}
+    <div className="min-h-screen bg-[#0C0D0F] text-[#F3F4F6] flex flex-col font-sans relative overflow-x-hidden selection:bg-[#30D158]/30 selection:text-white">
+      {/* Background ambient dark glows in neutral graphite and subtle emerald */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute -top-[120px] left-[10%] w-[580px] h-[580px] bg-gradient-to-br from-blue-900/10 via-neutral-800/10 to-transparent rounded-full blur-[140px]" />
+        <div className="absolute -top-[120px] left-[10%] w-[580px] h-[580px] bg-gradient-to-br from-[#30D158]/5 via-neutral-800/10 to-transparent rounded-full blur-[140px]" />
         <div className="absolute top-[10%] -right-[100px] w-[620px] h-[620px] bg-gradient-to-bl from-neutral-800/15 via-slate-900/10 to-transparent rounded-full blur-[150px]" />
         <div className="absolute -bottom-[180px] left-[30%] w-[720px] h-[720px] bg-gradient-to-tr from-slate-950/20 via-neutral-900/15 to-transparent rounded-full blur-[160px]" />
       </div>

@@ -110,6 +110,45 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const currentEq = allEquipment.find((e) => e.code === selectedEqCode);
   const targetCity = currentEq?.city || 'Москва';
 
+  // 40-Day Warranty Auto-Check (Rule П-9)
+  const [warrantyNotice, setWarrantyNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!currentEq) {
+      setWarrantyNotice(null);
+      return;
+    }
+    const refDate = new Date('2026-11-16T11:30:00Z');
+    let isW = false;
+    let reason = '';
+
+    if (currentEq.installation_date) {
+      const d = new Date(currentEq.installation_date);
+      const diffDays = Math.floor((refDate.getTime() - d.getTime()) / (1000 * 3600 * 24));
+      if (diffDays >= 0 && diffDays <= 40) {
+        isW = true;
+        reason = `Машина установлена ${diffDays} дн. назад (норматив до 40 дней, ввод в эксплуатацию ${d.toLocaleDateString()}). Предлагается оформить по гарантии без оплаты за работы.`;
+      }
+    }
+
+    if (!isW && currentEq.last_visit_date) {
+      const d = new Date(currentEq.last_visit_date);
+      const diffDays = Math.floor((refDate.getTime() - d.getTime()) / (1000 * 3600 * 24));
+      if (diffDays >= 0 && diffDays <= 40) {
+        isW = true;
+        reason = `С момента прошлого обслуживания от ${d.toLocaleDateString()} прошло ${diffDays} дн. (норматив до 40 дней). Случай гарантийный, работы производятся бесплатно.`;
+      }
+    }
+
+    if (isW) {
+      setWarrantyNotice(reason);
+      setIsWarranty(true);
+      setWarrantyReason(reason);
+    } else {
+      setWarrantyNotice(null);
+    }
+  }, [selectedEqCode, allEquipment, currentEq]);
+
   // Compatible parts for model (Rule П-7)
   const compatibleParts = allParts.filter((p) => {
     if (!model) return true;
@@ -196,6 +235,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         is_sales_transfer: isSalesTransfer,
         engineer_id: isSalesTransfer ? null : selectedEngineerId,
         reserved_parts: reservedList,
+        created_at: new Date().toISOString(),
       });
 
       onOrderCreated();
@@ -346,12 +386,22 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               </label>
             </div>
 
+            {warrantyNotice && (
+              <div className="p-3 rounded-xl bg-[#30D158]/15 border border-[#30D158]/30 text-[#30D158] flex items-start space-x-2">
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#30D158]" />
+                <div>
+                  <span className="font-bold">Рекомендация: случай гарантийный (правило 40 дней): </span>
+                  <p className="text-[#D8F3E5] mt-0.5">{warrantyNotice}</p>
+                </div>
+              </div>
+            )}
+
             {isWarranty && (
-              <div className="p-3 rounded-xl bg-[#FF453A]/15 border border-[#FF453A]/25 text-[#FF453A] flex items-start space-x-2">
+              <div className="p-3 rounded-xl bg-[#30D158]/15 border border-[#30D158]/30 text-[#30D158] flex items-start space-x-2">
                 <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold">Основание гарантии (Правило П-9): </span>
-                  <span>{warrantyReason || 'Обращение в течение 30 дней после ремонта / установки'}</span>
+                  <span className="text-[#D8F3E5]">{warrantyReason || 'Обращение в течение 40 дней после ремонта / установки'}</span>
                 </div>
               </div>
             )}
@@ -426,7 +476,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => {}}
-                        className="mt-0.5 rounded text-blue-500 focus:ring-blue-600 bg-[#16171B]"
+                        className="mt-0.5 rounded accent-[#30D158] text-[#30D158] focus:ring-[#30D158] bg-[#16171B]"
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
@@ -555,10 +605,10 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2.5 font-semibold rounded-xl bg-[#4A6751] hover:bg-[#3D5643] text-white shadow-sm transition-all flex items-center space-x-1.5"
+              className="px-5 py-2.5 font-bold rounded-xl bg-[#30D158] hover:bg-[#28B84B] text-black shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer"
             >
               <span>{loading ? 'Сохранение...' : 'Подтвердить и назначить инженера'}</span>
-              <CheckCircle2 className="w-4 h-4" />
+              <CheckCircle2 className="w-4 h-4 text-black" />
             </button>
           </div>
         </form>

@@ -247,7 +247,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
       case 'ready_for_order':
         return <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#30D158]/20 text-[#30D158] border border-[#30D158]/30">Готово к выезду</span>;
       case 'order_created':
-        return <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-600/20 text-blue-400 border border-blue-500/30">Заявка создана</span>;
+        return <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#30D158]/20 text-[#30D158] border border-[#30D158]/30">Заявка создана</span>;
       case 'needs_clarification':
         return <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#FF9F0A]/20 text-[#FF9F0A] border border-[#FF9F0A]/30">Требует ответа</span>;
       case 'sales_transfer':
@@ -274,7 +274,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
       {/* Top Banner: Company Info & Action */}
       <div className="bg-[#16171B] p-5 rounded-2xl border border-white/[0.08] shadow-apple flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center space-x-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-blue-600/20 border border-blue-500/30 flex items-center justify-center text-blue-400">
+          <div className="w-12 h-12 rounded-2xl bg-[#30D158]/20 border border-[#30D158]/30 flex items-center justify-center text-[#30D158]">
             <Building className="w-6 h-6" />
           </div>
           <div>
@@ -282,13 +282,13 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
               <h1 className="text-xl font-bold tracking-tight text-white">
                 {currentUser.full_name}
               </h1>
-              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-600/20 text-blue-400 border border-blue-500/30">
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#30D158]/20 text-[#30D158] border border-[#30D158]/30">
                 Кабинет партнёра
               </span>
             </div>
             <p className="text-xs text-[#9CA3AF] mt-0.5 flex items-center space-x-2">
               <span className="flex items-center space-x-1">
-                <MapPin className="w-3.5 h-3.5 text-blue-400" />
+                <MapPin className="w-3.5 h-3.5 text-[#30D158]" />
                 <span>{currentUser.city || 'Москва'}</span>
               </span>
               <span>•</span>
@@ -303,7 +303,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
             title="Обновить переписку"
             className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-[#9CA3AF] hover:text-white transition-all cursor-pointer"
           >
-            <RotateCcw className={`w-4 h-4 ${loading ? 'animate-spin text-blue-400' : ''}`} />
+            <RotateCcw className={`w-4 h-4 ${loading ? 'animate-spin text-[#30D158]' : ''}`} />
           </button>
 
           <button
@@ -311,9 +311,9 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
               setCreateError(null);
               setIsNewTicketOpen(true);
             }}
-            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer active:scale-95"
+            className="px-4 py-2 rounded-xl bg-[#30D158] hover:bg-[#28B84B] text-black text-xs font-bold shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer active:scale-95"
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="w-4 h-4 text-black" />
             <span>Новое обращение / вызов мастера</span>
           </button>
         </div>
@@ -343,7 +343,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
           <div className="bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple overflow-hidden">
             <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <MessageSquare className="w-4 h-4 text-blue-400" />
+                <MessageSquare className="w-4 h-4 text-[#30D158]" />
                 <h2 className="text-sm font-bold text-white">
                   Ваши обращения в сервис
                 </h2>
@@ -367,7 +367,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
                       onClick={() => setSelectedThreadId(th.id)}
                       className={`p-3.5 cursor-pointer transition-all ${
                         isSelected
-                          ? 'bg-white/[0.08] border-l-4 border-l-blue-500'
+                          ? 'bg-white/[0.08] border-l-4 border-l-[#30D158]'
                           : 'hover:bg-white/[0.03]'
                       }`}
                     >
@@ -377,7 +377,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
                             Обращение #{th.thread_number}
                           </span>
                           {th.linked_order_number && (
-                            <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-blue-600/20 text-blue-400 font-bold border border-blue-500/30">
+                            <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[#30D158]/20 text-[#30D158] font-bold border border-[#30D158]/30">
                               {th.linked_order_number}
                             </span>
                           )}
@@ -391,7 +391,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
                       </div>
 
                       {th.assigned_engineer_name && (
-                        <div className="text-[11px] text-blue-400 font-medium flex items-center space-x-1 mb-1">
+                        <div className="text-[11px] text-[#30D158] font-medium flex items-center space-x-1 mb-1">
                           <Wrench className="w-3 h-3 flex-shrink-0" />
                           <span>Назначен мастер: {th.assigned_engineer_name}</span>
                         </div>
@@ -427,7 +427,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
                   <p>У вас пока нет активных обращений.</p>
                   <button
                     onClick={() => setIsNewTicketOpen(true)}
-                    className="mt-3 text-blue-400 hover:underline font-medium"
+                    className="mt-3 text-[#30D158] hover:underline font-medium"
                   >
                     + Создать первое обращение
                   </button>
@@ -440,7 +440,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
           <div className="bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple p-4 space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <Wrench className="w-4 h-4 text-blue-400" />
+                <Wrench className="w-4 h-4 text-[#30D158]" />
                 <h2 className="text-sm font-bold text-white">
                   Ваши кофемашины на обслуживании
                 </h2>
@@ -454,10 +454,10 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
                     setAddEqError(null);
                     setIsAddEquipmentOpen(true);
                   }}
-                  className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-blue-600 hover:bg-blue-500 text-white flex items-center space-x-1 transition-all shadow-sm cursor-pointer"
+                  className="px-2.5 py-1 text-[11px] font-bold rounded-lg bg-[#30D158] hover:bg-[#28B84B] text-black flex items-center space-x-1 transition-all shadow-sm cursor-pointer"
                   title="Добавить новую кофемашину в договор"
                 >
-                  <Plus className="w-3.5 h-3.5" />
+                  <Plus className="w-3.5 h-3.5 text-black" />
                   <span>Добавить</span>
                 </button>
               </div>
@@ -472,7 +472,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
                   >
                     <div className="min-w-0 pr-2">
                       <div className="flex items-center space-x-2 flex-wrap">
-                        <span className="font-mono font-bold text-blue-400">{eq.code}</span>
+                        <span className="font-mono font-bold text-[#30D158]">{eq.code}</span>
                         <span className="font-semibold text-white">Модель {eq.model}</span>
                         <span className="text-[#9CA3AF] text-[11px]">s/n {eq.serial_number}</span>
                       </div>
@@ -508,7 +508,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
                       setAddEqError(null);
                       setIsAddEquipmentOpen(true);
                     }}
-                    className="text-blue-400 hover:underline font-medium cursor-pointer"
+                    className="text-[#30D158] hover:underline font-medium cursor-pointer"
                   >
                     + Добавить кофемашину в реестр
                   </button>
@@ -530,7 +530,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
                       Обращение #{selectedThread.thread_number}
                     </h2>
                     {selectedThread.equipment_code && (
-                      <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-blue-600/20 text-blue-400 font-semibold">
+                      <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-[#30D158]/20 text-[#30D158] font-semibold">
                         Кофемашина {selectedThread.equipment_code}
                       </span>
                     )}
@@ -544,14 +544,16 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
                       onClick={() => setClientChatTab('dispatcher')}
                       className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
                         clientChatTab === 'dispatcher'
-                          ? 'bg-blue-600 text-white shadow-sm font-semibold'
+                          ? 'bg-[#30D158] text-black shadow-sm font-bold'
                           : 'text-[#9CA3AF] hover:text-white'
                       }`}
                     >
                       <UserCheck className="w-3.5 h-3.5" />
                       <span>Чат с диспетчером</span>
                       {clientDispatcherMsgCount > 0 && (
-                        <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-white font-bold">
+                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                          clientChatTab === 'dispatcher' ? 'bg-black/30 text-black' : 'bg-white/20 text-white'
+                        }`}>
                           {clientDispatcherMsgCount}
                         </span>
                       )}
@@ -562,7 +564,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
                       onClick={() => setClientChatTab('engineer')}
                       className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
                         clientChatTab === 'engineer'
-                          ? 'bg-blue-600 text-white shadow-sm font-bold'
+                          ? 'bg-[#30D158] text-black shadow-sm font-bold'
                           : 'text-[#9CA3AF] hover:text-white'
                       }`}
                     >
@@ -639,8 +641,8 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
                           {isClient ? (
                             <span>Вы</span>
                           ) : isEngineer ? (
-                            <span className="text-blue-400 font-semibold flex items-center space-x-1 bg-blue-600/20 px-1.5 py-0.5 rounded border border-blue-500/30">
-                              <Wrench className="w-2.5 h-2.5 text-blue-400" />
+                            <span className="text-[#30D158] font-semibold flex items-center space-x-1 bg-[#30D158]/20 px-1.5 py-0.5 rounded border border-[#30D158]/30">
+                              <Wrench className="w-2.5 h-2.5 text-[#30D158]" />
                               <span>{m.sender_name || 'Сервисный инженер'}</span>
                             </span>
                           ) : (
@@ -650,9 +652,9 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
                         <div
                           className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-xs leading-relaxed shadow-sm ${
                             isClient
-                              ? 'bg-blue-600 text-white rounded-tr-none'
+                              ? 'bg-[#2D4536] text-white border border-[#30D158]/30 rounded-tr-none'
                               : isEngineer
-                              ? 'bg-[#1E222D] text-white border border-blue-500/30 rounded-tl-none ring-1 ring-blue-500/20'
+                              ? 'bg-[#16271D] text-white border border-[#30D158]/40 rounded-tl-none ring-1 ring-[#30D158]/20'
                               : 'bg-[#1F2026] text-white border border-white/[0.08] rounded-tl-none'
                           }`}
                         >
@@ -714,10 +716,10 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
                   <button
                     type="submit"
                     disabled={sendingMsg || !inputText.trim()}
-                    className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-xs font-semibold shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer text-white"
+                    className="px-4 py-2.5 rounded-xl bg-[#30D158] hover:bg-[#28B84B] disabled:opacity-50 text-xs font-bold shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer text-black"
                   >
                     <span>{sendingMsg ? 'Отправка...' : 'Отправить'}</span>
-                    <Send className="w-3.5 h-3.5" />
+                    <Send className="w-3.5 h-3.5 text-black" />
                   </button>
                 </form>
               </div>
@@ -737,7 +739,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
           <div className="bg-[#16171B] w-full max-w-lg rounded-2xl border border-white/[0.1] shadow-2xl p-6 text-[#F3F4F6] animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-3 border-b border-white/[0.08] mb-4">
               <div className="flex items-center space-x-2">
-                <Sparkles className="w-5 h-5 text-blue-400" />
+                <Sparkles className="w-5 h-5 text-[#30D158]" />
                 <h3 className="text-base font-bold text-white">
                   Новое обращение в сервис
                 </h3>
@@ -768,6 +770,38 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
                     </option>
                   ))}
                 </select>
+                {(() => {
+                  const selEq = companyEquipment.find((e) => e.code === newEqCode);
+                  if (!selEq) return null;
+                  const refDate = new Date('2026-11-16T11:30:00Z');
+                  let is40Days = false;
+                  let infoText = '';
+                  if (selEq.installation_date) {
+                    const d = new Date(selEq.installation_date);
+                    const diff = Math.floor((refDate.getTime() - d.getTime()) / (1000 * 3600 * 24));
+                    if (diff >= 0 && diff <= 40) {
+                      is40Days = true;
+                      infoText = `Введена в эксплуатацию ${diff} дн. назад. По правилу П-9 (до 40 дней) случай гарантийный — выезд и работы бесплатны.`;
+                    }
+                  }
+                  if (!is40Days && selEq.last_visit_date) {
+                    const d = new Date(selEq.last_visit_date);
+                    const diff = Math.floor((refDate.getTime() - d.getTime()) / (1000 * 3600 * 24));
+                    if (diff >= 0 && diff <= 40) {
+                      is40Days = true;
+                      infoText = `Предыдущий выезд был ${diff} дн. назад. В пределах 40 дней случай гарантийный — работы бесплатны.`;
+                    }
+                  }
+                  if (is40Days) {
+                    return (
+                      <div className="mt-2 p-2.5 rounded-xl bg-[#30D158]/15 border border-[#30D158]/30 text-[#30D158] text-[11px] flex items-center space-x-2">
+                        <ShieldCheck className="w-4 h-4 flex-shrink-0 text-[#30D158]" />
+                        <span>{infoText}</span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               {/* Problem Description */}
@@ -811,14 +845,14 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsNewTicketOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-medium text-[#9CA3AF] hover:text-white transition-colors"
+                  className="px-4 py-2 rounded-xl text-xs font-medium text-[#9CA3AF] hover:text-white transition-colors cursor-pointer"
                 >
                   Отмена
                 </button>
                 <button
                   type="submit"
                   disabled={creatingTicket || !newProblemText.trim()}
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold shadow-sm transition-all"
+                  className="px-4 py-2 rounded-xl bg-[#30D158] hover:bg-[#28B84B] disabled:opacity-50 text-black text-xs font-bold shadow-sm transition-all cursor-pointer"
                 >
                   {creatingTicket ? 'Регистрация...' : 'Отправить в диспетчерскую'}
                 </button>
@@ -834,7 +868,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
           <div className="bg-[#16171B] w-full max-w-md rounded-2xl border border-white/[0.1] shadow-2xl p-6 text-[#F3F4F6] animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-3 border-b border-white/[0.08] mb-4">
               <div className="flex items-center space-x-2">
-                <Wrench className="w-5 h-5 text-blue-400" />
+                <Wrench className="w-5 h-5 text-[#30D158]" />
                 <h3 className="text-base font-bold text-white">
                   Добавление кофемашины в реестр
                 </h3>
@@ -926,7 +960,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
                 <button
                   type="submit"
                   disabled={submittingEq || !eqFormSerial.trim() || !eqFormAddress.trim()}
-                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold shadow-sm transition-all"
+                  className="px-4 py-2 rounded-xl bg-[#30D158] hover:bg-[#28B84B] disabled:opacity-50 text-black text-xs font-bold shadow-sm transition-all cursor-pointer"
                 >
                   {submittingEq ? 'Сохранение...' : 'Зарегистрировать машину'}
                 </button>

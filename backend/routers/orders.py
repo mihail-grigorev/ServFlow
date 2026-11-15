@@ -237,6 +237,23 @@ def create_order(
             ServiceOrder.status.in_(["Новая", "Создана", "Вне договора"])
         ).first()
 
+    # Automatic 40-day warranty verification (Rule П-9)
+    order_is_warranty = order_in.is_warranty
+    order_warranty_reason = order_in.warranty_reason
+    if not order_is_warranty and equipment:
+        from backend.rules_engine import RulesEngine
+        is_warr, warr_reason = RulesEngine.check_warranty(
+            equipment.installation_date,
+            equipment.last_visit_date,
+            equipment.last_visit_result,
+            order_in.symptom
+        )
+        if is_warr:
+            order_is_warranty = True
+            order_warranty_reason = warr_reason
+
+    order_created_at = order_in.created_at or datetime.utcnow()
+
     if existing_order:
         existing_order.client_name = order_in.client_name
         existing_order.equipment_id = equipment.id if equipment else existing_order.equipment_id
@@ -246,8 +263,8 @@ def create_order(
         existing_order.serial_number = order_in.serial_number or existing_order.serial_number
         existing_order.symptom = order_in.symptom or existing_order.symptom
         existing_order.client_assumption = order_in.client_assumption
-        existing_order.is_warranty = order_in.is_warranty
-        existing_order.warranty_reason = order_in.warranty_reason
+        existing_order.is_warranty = order_is_warranty
+        existing_order.warranty_reason = order_warranty_reason
         existing_order.is_sales_transfer = order_in.is_sales_transfer
         existing_order.status = "Назначен" if order_in.engineer_id else ("В работе" if existing_order.status == "В работе" else "Создана")
         existing_order.engineer_id = order_in.engineer_id
@@ -270,14 +287,14 @@ def create_order(
             serial_number=order_in.serial_number,
             symptom=order_in.symptom,
             client_assumption=order_in.client_assumption,
-            is_warranty=order_in.is_warranty,
-            warranty_reason=order_in.warranty_reason,
+            is_warranty=order_is_warranty,
+            warranty_reason=order_warranty_reason,
             is_sales_transfer=order_in.is_sales_transfer,
             status="Назначен" if order_in.engineer_id else "Создана",
             engineer_id=order_in.engineer_id,
             reserved_parts=reserved_parts_json,
             created_by_id=current_user.id,
-            created_at=datetime.utcnow()
+            created_at=order_created_at
         )
         db.add(order)
 

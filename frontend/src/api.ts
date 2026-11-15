@@ -303,6 +303,7 @@ export const api = {
     is_sales_transfer: boolean;
     engineer_id?: number | null;
     reserved_parts: ReservedPartItem[];
+    created_at?: string;
   }): Promise<ServiceOrder> => {
     return request<ServiceOrder>('/orders', {
       method: 'POST',

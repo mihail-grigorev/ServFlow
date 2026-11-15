@@ -159,7 +159,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
       {/* Engineer Profile Banner */}
       <div className="bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center space-x-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-blue-600/20 border border-blue-500/30 text-blue-400 flex items-center justify-center overflow-hidden flex-shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-[#30D158]/20 border border-[#30D158]/30 text-[#30D158] flex items-center justify-center overflow-hidden flex-shrink-0">
             {currentUser.avatar_url ? (
               <img
                 src={currentUser.avatar_url}
@@ -178,13 +178,13 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
               <h1 className="text-base font-bold text-white">
                 {currentUser.full_name}
               </h1>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-600/20 text-blue-400 border border-blue-500/30">
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#30D158]/20 text-[#30D158] border border-[#30D158]/30">
                 Сервисный инженер
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-[#9CA3AF]">
               <span className="flex items-center space-x-1">
-                <MapPin className="w-3.5 h-3.5 text-blue-400" />
+                <MapPin className="w-3.5 h-3.5 text-[#30D158]" />
                 <span>Базирование: {currentUser.city || 'Москва'}</span>
               </span>
               <span>·</span>
@@ -232,7 +232,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                   onClick={() => setActiveStatusFilter(f.id)}
                   className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
                     activeStatusFilter === f.id
-                      ? 'bg-blue-600 text-white shadow-sm font-semibold'
+                      ? 'bg-[#30D158] text-black shadow-sm font-bold'
                       : 'text-[#9CA3AF] hover:text-white'
                   }`}
                 >
@@ -252,7 +252,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                   onClick={() => setSelectedOrder(o)}
                   className={`p-3.5 cursor-pointer transition-all ${
                     isSelected
-                      ? 'bg-white/[0.08] border-l-4 border-blue-500'
+                      ? 'bg-white/[0.08] border-l-4 border-[#30D158]'
                       : 'hover:bg-white/[0.02]'
                   }`}
                 >
@@ -264,7 +264,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                           ? 'bg-[#30D158]/15 text-[#30D158] border-[#30D158]/25'
                           : o.status === 'На месте'
                           ? 'bg-[#FF9F0A]/15 text-[#FF9F0A] border-[#FF9F0A]/25'
-                          : 'bg-blue-600/15 text-blue-400 border-blue-500/25'
+                          : 'bg-[#30D158]/15 text-[#30D158] border-[#30D158]/25'
                       }`}
                     >
                       {o.status}
@@ -308,7 +308,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                     onClick={() => setActiveView('details')}
                     className={`px-3.5 py-1.5 text-xs font-semibold rounded-xl flex items-center space-x-2 transition-all ${
                       activeView === 'details'
-                        ? 'bg-blue-600 text-white shadow-sm'
+                        ? 'bg-[#30D158] text-black shadow-sm font-bold'
                         : 'text-[#9CA3AF] hover:text-white hover:bg-white/[0.04]'
                     }`}
                   >
@@ -319,14 +319,14 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                     onClick={() => setActiveView('chat')}
                     className={`px-3.5 py-1.5 text-xs font-semibold rounded-xl flex items-center space-x-2 transition-all relative ${
                       activeView === 'chat'
-                        ? 'bg-blue-600 text-white shadow-sm'
+                        ? 'bg-[#30D158] text-black shadow-sm font-bold'
                         : 'text-[#9CA3AF] hover:text-white hover:bg-white/[0.04]'
                     }`}
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
                     <span>Чат по заявке</span>
                     {orderThread && orderThread.messages.length > 0 && (
-                      <span className="ml-1 px-1.5 py-0.2 text-[10px] bg-white/20 text-white rounded-full font-bold">
+                      <span className="ml-1 px-1.5 py-0.2 text-[10px] bg-black/20 text-black rounded-full font-bold">
                         {orderThread.messages.length}
                       </span>
                     )}
@@ -351,8 +351,8 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                           Карточка подготовки выезда: {selectedOrder.order_number}
                         </h2>
                         {selectedOrder.is_warranty && (
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#FF453A]/15 text-[#FF453A] border border-[#FF453A]/20">
-                            Гарантия
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-[#30D158]/20 text-[#30D158] border border-[#30D158]/30">
+                            Гарантия (40 дней)
                           </span>
                         )}
                       </div>
@@ -369,7 +369,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                           onClick={() => handleStatusChange(selectedOrder.id, st)}
                           className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
                             selectedOrder.status === st
-                              ? 'bg-blue-600 text-white shadow-sm'
+                              ? 'bg-[#30D158] text-black shadow-sm font-bold'
                               : 'text-[#9CA3AF] hover:text-white hover:bg-white/[0.05]'
                           }`}
                         >
@@ -387,7 +387,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                       </div>
                       <div className="text-sm font-bold text-white">{selectedOrder.client_name}</div>
                       <div className="text-xs text-[#9CA3AF] flex items-start space-x-1.5">
-                        <MapPin className="w-3.5 h-3.5 text-blue-400 flex-shrink-0 mt-0.5" />
+                        <MapPin className="w-3.5 h-3.5 text-[#30D158] flex-shrink-0 mt-0.5" />
                         <span>{selectedOrder.address}</span>
                       </div>
                     </div>
@@ -397,7 +397,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                         Оборудование из реестра
                       </div>
                       <div className="text-sm font-bold text-white">
-                        {selectedOrder.model} <span className="font-mono text-blue-400">№{selectedOrder.serial_number}</span>
+                        {selectedOrder.model} <span className="font-mono text-[#30D158]">№{selectedOrder.serial_number}</span>
                       </div>
                       <div className="text-xs text-[#9CA3AF]">
                         Код в реестре: <span className="text-white font-mono">{selectedOrder.equipment_code || '—'}</span>
@@ -419,7 +419,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                       </div>
                     )}
                     {selectedOrder.warranty_reason && (
-                      <div className="p-2.5 rounded-lg bg-[#FF453A]/15 border border-[#FF453A]/25 text-xs text-[#FF453A] flex items-start space-x-2">
+                      <div className="p-2.5 rounded-lg bg-[#30D158]/15 border border-[#30D158]/25 text-xs text-[#30D158] flex items-start space-x-2">
                         <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5" />
                         <div>
                           <span className="font-bold">Гарантийный случай:</span> {selectedOrder.warranty_reason}
@@ -432,7 +432,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                   <div className="bg-[#1F2026] p-4 rounded-xl border border-white/[0.06] space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wider flex items-center space-x-1.5">
-                        <Package className="w-3.5 h-3.5 text-blue-400" />
+                        <Package className="w-3.5 h-3.5 text-[#30D158]" />
                         <span>Зарезервированные детали для выезда со склада</span>
                       </div>
                     </div>
@@ -445,7 +445,9 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                             className="flex items-center justify-between p-2.5 rounded-lg bg-black/30 border border-white/[0.06] text-xs"
                           >
                             <div className="flex items-center space-x-2">
-                              <span className="font-mono font-bold text-blue-400">{part.code}</span>
+                              <span className="font-mono font-bold text-[#30D158]">{part.code}</span>
+                              <span className="text-white font-medium">{part.name}</span>
+                              <span className="text-[#9CA3AF]">x{part.quantity} шт.</span>
                               <span className="text-white font-medium">{part.name}</span>
                               <span className="text-[#9CA3AF]">x{part.quantity} шт.</span>
                             </div>
@@ -471,7 +473,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                   {/* Section 4: Engineer Inspection Report Form */}
                   <form onSubmit={handleSubmitReport} className="bg-[#1F2026] p-4 rounded-xl border border-white/[0.06] space-y-3">
                     <div className="text-[11px] font-bold text-[#9CA3AF] uppercase tracking-wider flex items-center space-x-1.5">
-                      <FileText className="w-3.5 h-3.5 text-blue-400" />
+                      <FileText className="w-3.5 h-3.5 text-[#30D158]" />
                       <span>Итоговый отчёт инженера о выполненных работах</span>
                     </div>
 
@@ -498,9 +500,9 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                           <button
                             type="submit"
                             disabled={submittingReport || !reportText.trim()}
-                            className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-semibold flex items-center space-x-1.5 shadow-sm transition-all cursor-pointer"
+                            className="px-4 py-2 rounded-xl bg-[#30D158] hover:bg-[#28B84B] disabled:opacity-40 text-black text-xs font-bold flex items-center space-x-1.5 shadow-sm transition-all cursor-pointer"
                           >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <CheckCircle2 className="w-3.5 h-3.5 text-black" />
                             <span>{submittingReport ? 'Сохранение...' : 'Завершить выезд и сохранить отчёт'}</span>
                           </button>
                         </div>
@@ -520,14 +522,16 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                           onClick={() => setEngineerChatTab('dispatcher')}
                           className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
                             engineerChatTab === 'dispatcher'
-                              ? 'bg-blue-600 text-white shadow-sm font-semibold'
+                              ? 'bg-[#30D158] text-black shadow-sm font-bold'
                               : 'text-[#9CA3AF] hover:text-white'
                           }`}
                         >
                           <UserCheck className="w-3.5 h-3.5" />
                           <span>Чат с диспетчером</span>
                           {dispatcherMsgCount > 0 && (
-                            <span className="px-1.5 py-0.2 text-[10px] bg-white/20 text-white rounded-full font-bold">
+                            <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-bold ${
+                              engineerChatTab === 'dispatcher' ? 'bg-black/30 text-black' : 'bg-white/20 text-white'
+                            }`}>
                               {dispatcherMsgCount}
                             </span>
                           )}
@@ -538,14 +542,16 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                           onClick={() => setEngineerChatTab('client')}
                           className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
                             engineerChatTab === 'client'
-                              ? 'bg-blue-600 text-white shadow-sm font-bold'
+                              ? 'bg-[#30D158] text-black shadow-sm font-bold'
                               : 'text-[#9CA3AF] hover:text-white'
                           }`}
                         >
                           <Building className="w-3.5 h-3.5" />
                           <span>Чат с клиентом</span>
                           {clientMsgCount > 0 && (
-                            <span className="px-1.5 py-0.2 text-[10px] bg-white/20 text-white rounded-full font-bold">
+                            <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-bold ${
+                              engineerChatTab === 'client' ? 'bg-black/30 text-black' : 'bg-white/20 text-white'
+                            }`}>
                               {clientMsgCount}
                             </span>
                           )}
@@ -612,8 +618,8 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                             <div className="flex items-center space-x-1.5 mb-1 px-1 text-[11px]">
                               {isEngineer && (
                                 <>
-                                  <span className="font-semibold text-blue-400 flex items-center space-x-1 bg-blue-600/20 px-2 py-0.5 rounded-full border border-blue-500/30">
-                                    <Wrench className="w-3 h-3" />
+                                  <span className="font-semibold text-[#30D158] flex items-center space-x-1 bg-[#30D158]/20 px-2 py-0.5 rounded-full border border-[#30D158]/30">
+                                    <Wrench className="w-3 h-3 text-[#30D158]" />
                                     <span>{m.sender_name || `Инженер ${currentUser.full_name}`} (Вы)</span>
                                   </span>
                                   <span className="text-[#9CA3AF] text-[10px]">
@@ -657,7 +663,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                             <div
                               className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed shadow-sm ${
                                 isEngineer
-                                  ? 'bg-blue-600 text-white rounded-tr-sm'
+                                  ? 'bg-[#2D4536] text-white border border-[#30D158]/30 rounded-tr-sm'
                                   : isClient
                                   ? 'bg-[#1F2026] text-white border border-white/[0.08] rounded-tl-sm'
                                   : 'bg-[#1E222D] text-white border border-indigo-500/30 rounded-tl-sm'
@@ -729,9 +735,9 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                       <button
                         type="submit"
                         disabled={sendingMessage || !chatMessage.trim()}
-                        className="px-4 py-2 text-xs font-semibold rounded-xl bg-blue-600 hover:bg-blue-500 disabled:opacity-40 transition-colors flex items-center space-x-1.5 shadow-sm cursor-pointer text-white"
+                        className="px-4 py-2 text-xs font-bold rounded-xl bg-[#30D158] hover:bg-[#28B84B] disabled:opacity-40 transition-colors flex items-center space-x-1.5 shadow-sm cursor-pointer text-black"
                       >
-                        <Send className="w-3.5 h-3.5" />
+                        <Send className="w-3.5 h-3.5 text-black" />
                         <span>{sendingMessage ? 'Отправка...' : 'Отправить'}</span>
                       </button>
                     </form>

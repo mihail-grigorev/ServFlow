@@ -1,16 +1,20 @@
 from datetime import datetime, timedelta
 from typing import Optional
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from backend.config import settings
 from backend.database import get_db
-from backend.models import ClientThread, Message, Equipment, User, ServiceOrder
+from backend.models import ClientThread, Message, Equipment, User, ServiceOrder, SparePart
 from backend.schemas import (
     ClientThreadResponse, MessageCreate, MessageResponse, SimulateCustomerMessageRequest, CreateThreadRequest
 )
 from backend.auth import get_current_user
 from backend.rules_engine import RulesEngine
+from backend.ai_service import AIService
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/threads", tags=["Обращения и переписка"])
 
@@ -28,7 +32,7 @@ def set_auto_reply_setting(payload: dict):
     return {"auto_reply_enabled": AUTO_REPLY_ENABLED}
 
 @router.post("/auto-reply-all")
-def auto_reply_all_threads(
+async def auto_reply_all_threads(
     db: Session = Depends(get_db)
 ):
     """
@@ -41,6 +45,7 @@ def auto_reply_all_threads(
         ClientThread.status.in_(["needs_clarification", "ready_for_order", "new"])
     ).all()
     all_eq = db.query(Equipment).all()
+    all_parts = db.query(SparePart).all()
     
     replied_count = 0
     now = datetime.utcnow()
@@ -86,14 +91,32 @@ def auto_reply_all_threads(
                 thread.is_warranty = is_warranty
                 thread.warranty_reason = warranty_reason
             
-            ai_reply = RulesEngine.generate_conversational_reply(
-                messages_history=all_thread_msgs,
-                client_name=thread.client_name,
-                equipment_info=eq_info,
-                is_warranty=is_warranty,
-                warranty_reason=warranty_reason,
-                all_equipment=all_eq
-            )
+            ai_reply = None
+            try:
+                messages_context = "\n".join([f"[{m.channel}] {m.sender_name}: {m.content}" for m in all_thread_msgs])
+                analysis = await AIService.analyze_thread(
+                    client_name=thread.client_name,
+                    messages_text=messages_context,
+                    all_equipments=all_eq,
+                    all_parts=all_parts,
+                    thread_channel=thread.channel
+                )
+                ai_reply = analysis.reply_to_client
+                if analysis.is_warranty and not thread.is_warranty:
+                    thread.is_warranty = True
+                    thread.warranty_reason = analysis.warranty_reason
+            except Exception as e:
+                logger.warning(f"Live Gemini auto-reply failed, falling back: {e}")
+
+            if not ai_reply:
+                ai_reply = RulesEngine.generate_conversational_reply(
+                    messages_history=all_thread_msgs,
+                    client_name=thread.client_name,
+                    equipment_info=eq_info,
+                    is_warranty=is_warranty,
+                    warranty_reason=warranty_reason,
+                    all_equipment=all_eq
+                )
             
             if ai_reply:
                 msg_time = (last_msg.created_at + timedelta(minutes=1)) if (last_msg and last_msg.created_at) else now
@@ -324,7 +347,7 @@ def get_thread(
     return resp
 
 @router.post("/{thread_id}/messages", response_model=MessageResponse)
-def add_message(
+async def add_message(
     thread_id: int,
     msg_in: MessageCreate,
     current_user: User = Depends(get_current_user),
@@ -378,6 +401,7 @@ def add_message(
     # Auto-Reply by AI if customer sent message in client_dispatcher channel and feature is enabled
     if sender_type == "client" and chat_type == "client_dispatcher" and AUTO_REPLY_ENABLED:
         all_eq = db.query(Equipment).all()
+        all_parts = db.query(SparePart).all()
         all_thread_msgs = db.query(Message).filter(Message.thread_id == thread.id).order_by(Message.id.asc()).all()
         full_client_text = " ".join([m.content for m in all_thread_msgs if m.sender_type == "client"])
 
@@ -417,15 +441,33 @@ def add_message(
             thread.is_warranty = is_warranty
             thread.warranty_reason = warranty_reason
 
-        # Balanced Conversational Reply (remembers previous answers across dialog, avoids rigid template greetings)
-        ai_reply = RulesEngine.generate_conversational_reply(
-            messages_history=all_thread_msgs,
-            client_name=thread.client_name,
-            equipment_info=eq_info,
-            is_warranty=is_warranty,
-            warranty_reason=warranty_reason,
-            all_equipment=all_eq
-        )
+        # Dynamic live AI reasoning via Gemini 3 Flash
+        ai_reply = None
+        try:
+            messages_context = "\n".join([f"[{m.channel}] {m.sender_name}: {m.content}" for m in all_thread_msgs])
+            analysis = await AIService.analyze_thread(
+                client_name=thread.client_name,
+                messages_text=messages_context,
+                all_equipments=all_eq,
+                all_parts=all_parts,
+                thread_channel=thread.channel
+            )
+            ai_reply = analysis.reply_to_client
+            if analysis.is_warranty and not thread.is_warranty:
+                thread.is_warranty = True
+                thread.warranty_reason = analysis.warranty_reason
+        except Exception as e:
+            logger.warning(f"Live Gemini reasoning failed, using fallback: {e}")
+
+        if not ai_reply:
+            ai_reply = RulesEngine.generate_conversational_reply(
+                messages_history=all_thread_msgs,
+                client_name=thread.client_name,
+                equipment_info=eq_info,
+                is_warranty=is_warranty,
+                warranty_reason=warranty_reason,
+                all_equipment=all_eq
+            )
 
         if ai_reply:
             auto_msg = Message(

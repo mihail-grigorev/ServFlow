@@ -99,34 +99,34 @@ class RulesEngine:
         reference_date: datetime = REFERENCE_DATE
     ) -> Tuple[bool, Optional[str]]:
         """
-        Rule П-9:
-        1. If machine was installed <= 30 days before reference date -> Warranty!
-        2. If last visit was <= 30 days before reference date AND complaint relates to same problem -> Warranty!
-        Requires senior engineer approval.
+        Rule П-9 (Updated: 40-day warranty period):
+        1. If machine was installed <= 40 days before reference date -> Warranty!
+        2. If last visit was <= 40 days before reference date AND complaint relates to same problem -> Warranty!
+        Requires senior engineer approval. Labor is free of charge under warranty.
         """
         if installation_date:
             days_since_install = (reference_date - installation_date).days
-            if 0 <= days_since_install <= 30:
+            if 0 <= days_since_install <= 40:
                 return (
                     True,
-                    f"Гарантийный случай: машина установлена {days_since_install} дн. назад (норматив до 30 дней, установка {installation_date.strftime('%d.%m.%Y')}). Требуется согласование старшего инженера."
+                    f"Гарантийный случай: машина установлена {days_since_install} дн. назад (норматив до 40 дней, ввод в эксплуатацию {installation_date.strftime('%d.%m.%Y')}). Работы выполняются по гарантии без оплаты, требуется согласование старшего инженера."
                 )
 
         if last_visit_date:
             days_since_visit = (reference_date - last_visit_date).days
-            if 0 <= days_since_visit <= 30:
+            if 0 <= days_since_visit <= 40:
                 # Check symptom similarity
                 curr_lower = current_symptom.lower()
                 prev_lower = (last_visit_result or "").lower()
 
-                # Keywords to match
-                keywords = ["течь", "капает", "гул", "напор", "медленно", "уровень", "вода", "пар", "подключение"]
+                # Keywords to match using Russian stems (e.g. теч matches течь, течет, протечка)
+                keywords = ["теч", "протек", "кап", "гул", "шум", "напор", "медлен", "уровен", "вод", "пар", "подключ", "прокладк", "клапан", "насос", "давлен", "слив"]
                 matched_keywords = [kw for kw in keywords if kw in curr_lower and kw in prev_lower]
 
-                if matched_keywords or "заменена" in prev_lower or "исправлено" in prev_lower or "жалоба" in prev_lower:
+                if matched_keywords or "заменена" in prev_lower or "исправлено" in prev_lower or "жалоба" in prev_lower or "визит" in prev_lower or "обслуживание" in prev_lower or "осмотр" in prev_lower:
                     return (
                         True,
-                        f"Гарантийный случай: повторное обращение через {days_since_visit} дн. после ремонта от {last_visit_date.strftime('%d.%m.%Y')} (схожий симптом: {', '.join(matched_keywords) if matched_keywords else 'повторный визит'}). Требуется согласование старшего инженера."
+                        f"Гарантийный случай: повторное обращение через {days_since_visit} дн. после обслуживания от {last_visit_date.strftime('%d.%m.%Y')} (норматив до 40 дней). Работы выполняются по гарантии без оплаты."
                     )
 
         return (False, None)
@@ -548,32 +548,69 @@ class RulesEngine:
         is_weak_flow = any(w in full_client_history for w in ["слабый напор", "напор", "струйк", "медленно течет", "еле течет", "слабый пар", "пар не идет", "нет пара", "капучинатор"])
         flow_onset_known = any(w in full_client_history for w in ["после чистки", "после промывки", "после декальцинации", "сегодня", "вчера", "давно", "постепенно", "резко", "неделю"])
 
-        # Construct conversational reaction + remaining question:
+        # Technical failure analysis based on model, registry history and symptoms:
+        eq_history_note = ""
+        days_note = ""
+        if eq:
+            if eq.last_visit_date:
+                days_since_v = (REFERENCE_DATE - eq.last_visit_date).days
+                if days_since_v <= 40:
+                    days_note = f"По нашей базе по вашей {eq.model} (№{eq.serial_number}, {eq.address}) с момента предыдущего визита от {eq.last_visit_date.strftime('%d.%m.%Y')} прошло {days_since_v} дн. (в пределах 40-дневного гарантийного периода). Мы оформляем заявку по гарантии — работы будут выполнены бесплатно. "
+                elif eq.last_visit_result:
+                    eq_history_note = f"В истории обслуживания отмечено: «{eq.last_visit_result}». "
+            elif eq.installation_date:
+                days_since_i = (REFERENCE_DATE - eq.installation_date).days
+                if days_since_i <= 40:
+                    days_note = f"По реестру ServFlow оборудование {eq.model} (№{eq.serial_number}) введено в эксплуатацию {days_since_i} дн. назад ({eq.installation_date.strftime('%d.%m.%Y')}). Выезд и диагностика оформляются по гарантии без оплаты работ. "
+
+        # 1. Leak specifics with technical coffee machine knowledge:
         if is_leak:
+            tech_cause = (
+                f"Для кофемашин {eq.model if eq else 'серии C'} утечка обычно вызвана либо износом уплотнительного кольца группы (прокладка G100/G200), либо негерметичностью электромагнитного клапана подачи воды V010 / фитингов высокого давления бойлера."
+                if (not eq or eq.model in ["C100", "C200"]) else
+                "Для моделей C300 протечка может быть связана с гидросистемой группы G300 или трубками подвода бойлера."
+            )
+
             if not leak_location_known and not leak_timing_known:
-                if is_ongoing:
-                    return f"{ack}Зафиксировал проблему с протечкой. Уточните, пожалуйста: откуда именно идёт вода (из-под поддона снизу или из заварочной группы) и течёт ли она постоянно или только при проливе кофе?"
-                else:
-                    return "Здравствуйте! Обращение принято, фиксируем проблему с протечкой. Чтобы инженер взял правильный ремкомплект уплотнителей, уточните, пожалуйста: откуда именно течёт вода (снизу из-под поддона или из заварочной группы) и происходит ли это постоянно или только в момент варки кофе?"
+                return (
+                    f"{ack}{days_note}{eq_history_note}Фиксирую проблему с протечкой. {tech_cause} "
+                    "Чтобы инженер со склада сразу взял нужный узел (клапан V010 или прокладку группы), уточните, пожалуйста: "
+                    "вода сочится снизу постоянно или протекает только в момент приготовления кофе из-под рожка? "
+                    "В целях безопасности перекройте кран подачи воды и выключите кофемашину тумблером питания."
+                )
             elif not leak_location_known:
-                return f"{ack}Зафиксировал, что вода появляется. Подскажите ещё, пожалуйста: откуда именно она выступает — снизу из-под поддона, из-под заварочной группы или из крана?"
+                return (
+                    f"{ack}{days_note}{eq_history_note}Зафиксировал появление воды. "
+                    "Подскажите, откуда именно она выступает: снизу из-под поддона, из-под заварочной группы при проливе, или из крана пара? "
+                    "До приезда мастера перекройте кран подачи воды."
+                )
             elif not leak_timing_known:
-                return f"{ack}Место течи зафиксировал. Подскажите, пожалуйста: вода сочится постоянно или только в момент приготовления кофе?"
+                return (
+                    f"{ack}{days_note}{eq_history_note}Место течи зафиксировал. "
+                    "Уточните, пожалуйста: вода сочится постоянно даже в режиме ожидания или только в момент экстракции кофе? "
+                    "Инженер уже подбирает комплект уплотнителей и клапанов со склада."
+                )
 
         if is_weak_flow and not flow_onset_known:
-            return f"{ack}Зафиксировал снижение давления/напора. Подскажите, пожалуйста: эта проблема появилась резко (например, после промывки или чистки от накипи) или напор падал постепенно?"
+            return (
+                f"{ack}{days_note}{eq_history_note}По симптомам снижения напора и давления возможна накипь в жиклерах гидросистемы, засор фильтра или износ помпы. "
+                "Подскажите, пожалуйста: напор пропал резко (например, после декальцинации/промывки) или снижался постепенно? "
+                "Проверьте, пожалуйста, уровень воды в баке или давление в подводящей магистрали."
+            )
 
         if has_error_mention and not detected_error_code:
-            return f"{ack}Подскажите, пожалуйста, какой точный код ошибки высвечивается на экране кофемашины (например, E03, E07 или E11)?"
+            return (
+                f"{ack}{days_note}Для точной диагностики контроллера подскажите, какой код ошибки высвечивается на экране (например, E03 — нет подачи воды, E07 — заварочный блок, E11 — датчик уровня)?"
+            )
 
         # If error code IS known:
         if detected_error_code:
             error_expl = ERROR_CODES_DESCRIPTION.get(detected_error_code, "")
             part_suggestion = "клапан подачи воды V010" if detected_error_code == "E03" else ("датчик уровня воды L100/L200" if detected_error_code == "E11" else "комплект датчиков заварочного узла")
             return (
-                f"{ack}Код ошибки {detected_error_code} ({error_expl}) зафиксирован. "
-                f"Сервисный инженер готовит со склада {part_suggestion} и инструмент для выездной диагностики. "
-                f"Выезд оформлен на адрес {eq.address if eq else 'вашего заведения'}. Ожидайте прибытия мастера!"
+                f"{ack}{days_note}Код ошибки {detected_error_code} ({error_expl}) зафиксирован. "
+                f"Согласно регламенту и техкарте, сервисный инженер готовит со склада {part_suggestion} и инструмент для выездной диагностики на адрес {eq.address if eq else 'вашего заведения'}. "
+                "Ожидайте прибытия мастера, он свяжется с вами перед выездом."
             )
 
         # Standard resolution when everything is known:
