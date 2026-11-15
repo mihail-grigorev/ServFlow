@@ -102,3 +102,45 @@ def init_db():
             conn.execute(text(index_stmt))
     except Exception as ex:
         logger.debug(f"Index creation note: {ex}")
+
+    # Ensure test Administrator and Engineer exist with password 1997
+    try:
+        from backend.models import User
+        from backend.auth import get_password_hash
+        session = SessionLocal()
+        try:
+            admin_user = session.query(User).filter(User.email == "admin@kofeservice.ru").first()
+            if not admin_user:
+                admin_user = User(
+                    email="admin@kofeservice.ru",
+                    full_name="Администратор системы",
+                    role="dispatcher",
+                    city="Москва",
+                    is_demo=True,
+                    is_senior=True,
+                    qualifications=["C100", "C200", "C300"],
+                    avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Admin1997",
+                    hashed_password=get_password_hash("1997")
+                )
+                session.add(admin_user)
+
+            eng_user = session.query(User).filter(User.email == "engineer@kofeservice.ru").first()
+            if not eng_user:
+                eng_user = User(
+                    email="engineer@kofeservice.ru",
+                    full_name="Дежурный инженер",
+                    role="engineer",
+                    city="Москва",
+                    is_demo=True,
+                    is_senior=True,
+                    qualifications=["C100", "C200", "C300"],
+                    avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Engineer1997",
+                    hashed_password=get_password_hash("1997")
+                )
+                session.add(eng_user)
+
+            session.commit()
+        finally:
+            session.close()
+    except Exception as e:
+        logger.debug(f"Test users initialization note: {e}")

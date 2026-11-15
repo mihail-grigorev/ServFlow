@@ -68,8 +68,8 @@ export const ExcelResetModal: React.FC<ExcelResetModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md">
-      <div className="bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-2xl max-w-md w-full flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/70 backdrop-blur-md">
+      <div className="bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-2xl max-w-md w-full max-h-[94vh] flex flex-col overflow-y-auto animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="p-5 border-b border-white/[0.08] flex items-center justify-between">
           <div className="flex items-center space-x-2.5">

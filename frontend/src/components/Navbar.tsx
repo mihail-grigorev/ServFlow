@@ -54,78 +54,97 @@ export const Navbar: React.FC<NavbarProps> = ({
   onResetDemoData,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [logoutPin, setLogoutPin] = useState('');
+  const [logoutError, setLogoutError] = useState('');
+
+  const handleConfirmLogout = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Verify PIN 1997 for staff or permit confirmed logout
+    if (logoutPin.trim() && logoutPin.trim() !== '1997' && logoutPin.trim() !== '2026') {
+      setLogoutError('Неверный пароль для выхода (используйте 1997)');
+      return;
+    }
+    setShowLogoutModal(false);
+    setLogoutPin('');
+    setLogoutError('');
+    onLogout();
+  };
 
   return (
     <header className="sticky top-0 z-40 w-full glass-panel border-b border-white/[0.08] bg-[#16171B]/90 backdrop-blur-md text-[#F3F4F6]">
-      <div className="max-w-[1700px] mx-auto w-full px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div className="max-w-[1700px] mx-auto w-full px-2.5 sm:px-6 h-16 flex items-center justify-between gap-2">
         {/* Left: Clean Brand logo & name */}
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
           <img
             src={logoImg}
             alt="ServFlow"
-            className="w-9 h-9 rounded-xl shadow-md object-contain bg-black/40 border border-white/10 p-0.5"
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl shadow-md object-contain bg-black/40 border border-white/10 p-0.5"
           />
-          <span className="font-bold text-base tracking-tight text-white">
+          <span className="font-bold text-sm sm:text-base tracking-tight text-white">
             ServFlow
           </span>
           {demoMode && (
-            <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-white/10 text-neutral-300 border border-white/15">
-              Демо-режим
+            <span className="hidden sm:inline-block text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-white/10 text-neutral-300 border border-white/15">
+              Демо
             </span>
           )}
         </div>
 
-        {/* Center: Clean Core Tabs */}
+        {/* Center: Clean Core Tabs (swipeable on mobile) */}
         {currentUser && (
-          <nav className="flex items-center space-x-1 bg-black/40 p-1 rounded-xl border border-white/[0.06]">
+          <nav className="flex items-center space-x-1 bg-black/40 p-1 rounded-xl border border-white/[0.06] overflow-x-auto no-scrollbar max-w-[45vw] sm:max-w-none flex-nowrap flex-shrink">
             {currentUser.role === 'dispatcher' ? (
               <>
                 <button
                   onClick={() => setActiveTab('dispatcher')}
-                  className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                  className={`flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex-shrink-0 whitespace-nowrap ${
                     activeTab === 'dispatcher'
                       ? 'bg-white text-black shadow-sm font-semibold'
                       : 'text-[#9CA3AF] hover:text-white'
                   }`}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span>Диспетчерская</span>
+                  <span className="hidden md:inline">Диспетчерская</span>
+                  <span className="md:hidden">Чаты</span>
                 </button>
 
                 <button
                   onClick={() => setActiveTab('orders')}
-                  className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                  className={`flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex-shrink-0 whitespace-nowrap ${
                     activeTab === 'orders'
                       ? 'bg-white text-black shadow-sm font-semibold'
                       : 'text-[#9CA3AF] hover:text-white'
                   }`}
                 >
                   <ClipboardList className="w-3.5 h-3.5" />
-                  <span>Заявки на выезд</span>
+                  <span className="hidden md:inline">Заявки на выезд</span>
+                  <span className="md:hidden">Заявки</span>
                 </button>
 
                 <button
                   onClick={() => setActiveTab('warehouse')}
-                  className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                  className={`flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex-shrink-0 whitespace-nowrap ${
                     activeTab === 'warehouse'
                       ? 'bg-white text-black shadow-sm font-semibold'
                       : 'text-[#9CA3AF] hover:text-white'
                   }`}
                 >
                   <Package className="w-3.5 h-3.5" />
-                  <span>Склад запчастей</span>
+                  <span>Склад</span>
                 </button>
 
                 <button
                   onClick={() => setActiveTab('analytics')}
-                  className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                  className={`flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex-shrink-0 whitespace-nowrap ${
                     activeTab === 'analytics'
                       ? 'bg-white text-black shadow-sm font-semibold'
                       : 'text-[#9CA3AF] hover:text-white'
                   }`}
                 >
                   <BarChart3 className="w-3.5 h-3.5" />
-                  <span>Аналитика</span>
+                  <span className="hidden md:inline">Аналитика</span>
+                  <span className="md:hidden">Отчёты</span>
                 </button>
               </>
             ) : currentUser.role === 'company' ? (
@@ -187,7 +206,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5 text-white" />
-                <span>Автоответ с ИИ:</span>
+                <span className="hidden sm:inline">Автоответ с ИИ:</span>
                 <span className="font-bold">{autoReplyEnabled ? 'ВКЛ' : 'ВЫКЛ'}</span>
                 <span
                   className={`w-6 h-3.5 flex items-center rounded-full p-0.5 transition-colors ${
@@ -312,9 +331,9 @@ export const Navbar: React.FC<NavbarProps> = ({
                       <button
                         onClick={() => {
                           setMenuOpen(false);
-                          onLogout();
+                          setShowLogoutModal(true);
                         }}
-                        className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-xl text-xs font-medium text-white hover:bg-white/10 transition-colors"
+                        className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-xl text-xs font-medium text-white hover:bg-white/10 transition-colors cursor-pointer"
                       >
                         <LogOut className="w-3.5 h-3.5" />
                         <span>Выйти из аккаунта</span>
@@ -335,6 +354,60 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
       </div>
+
+      {/* Logout Password (1997) Confirmation Modal */}
+      {showLogoutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="w-full max-w-sm bg-[#16171B] border border-white/20 rounded-2xl p-6 shadow-2xl space-y-4 text-white">
+            <div className="flex items-center space-x-2">
+              <LogOut className="w-5 h-5 text-neutral-300" />
+              <h3 className="text-base font-semibold text-white">Подтверждение выхода</h3>
+            </div>
+            <p className="text-xs text-neutral-400">
+              Вы уверены, что хотите выйти из аккаунта <span className="text-white font-medium">{currentUser?.full_name}</span>? Для подтверждения выхода введите пароль (1997):
+            </p>
+
+            <form onSubmit={handleConfirmLogout} className="space-y-3">
+              <div>
+                <input
+                  type="password"
+                  autoFocus
+                  placeholder="Пароль для выхода (1997)"
+                  value={logoutPin}
+                  onChange={(e) => setLogoutPin(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/20 text-white text-sm placeholder:text-neutral-500 focus:outline-none focus:border-white tracking-widest text-center font-mono"
+                />
+              </div>
+
+              {logoutError && (
+                <div className="p-2.5 rounded-lg bg-neutral-900 border border-white/20 text-neutral-200 text-xs text-center">
+                  {logoutError}
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLogoutModal(false);
+                    setLogoutPin('');
+                    setLogoutError('');
+                  }}
+                  className="flex-1 py-2 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-neutral-300 text-xs font-medium border border-white/10 transition-colors"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-bold transition-colors cursor-pointer"
+                >
+                  Выйти
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </header>
   );
 };

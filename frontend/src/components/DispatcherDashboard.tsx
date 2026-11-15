@@ -59,6 +59,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
   const [sendingMsg, setSendingMsg] = useState<boolean>(false);
   const [isAiSuggestionCollapsed, setIsAiSuggestionCollapsed] = useState<boolean>(false);
   const [newThreadIds, setNewThreadIds] = useState<Set<number>>(new Set());
+  const [mobileTab, setMobileTab] = useState<'threads' | 'chat' | 'ai'>('threads');
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
   const initialThreadIdsRef = useRef<Set<number> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -329,10 +330,38 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
   ).length;
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col p-4 sm:p-6 max-w-[1700px] mx-auto w-full text-[#F3F4F6]">
+    <div className="h-[calc(100vh-4rem)] flex flex-col p-2.5 sm:p-6 max-w-[1700px] mx-auto w-full text-[#F3F4F6]">
+      {/* Mobile Column View Switcher */}
+      <div className="lg:hidden flex bg-[#16171B] p-1 rounded-xl border border-white/[0.08] mb-2.5 text-xs">
+        <button
+          onClick={() => setMobileTab('threads')}
+          className={`flex-1 py-1.5 rounded-lg font-medium transition-all ${
+            mobileTab === 'threads' ? 'bg-white text-black font-semibold' : 'text-neutral-400'
+          }`}
+        >
+          Обращения ({sortedThreads.length})
+        </button>
+        <button
+          onClick={() => setMobileTab('chat')}
+          className={`flex-1 py-1.5 rounded-lg font-medium transition-all ${
+            mobileTab === 'chat' ? 'bg-white text-black font-semibold' : 'text-neutral-400'
+          }`}
+        >
+          Чат {selectedThread ? `(#${selectedThread.id})` : ''}
+        </button>
+        <button
+          onClick={() => setMobileTab('ai')}
+          className={`flex-1 py-1.5 rounded-lg font-medium transition-all ${
+            mobileTab === 'ai' ? 'bg-white text-black font-semibold' : 'text-neutral-400'
+          }`}
+        >
+          ИИ & Заявка
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-0">
         {/* ================= COLUMN 1 (LEFT): THREADS & QUICK ORDER ================= */}
-        <div className="lg:col-span-3 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex flex-col min-h-0 overflow-hidden">
+        <div className={`${mobileTab === 'threads' ? 'flex' : 'hidden'} lg:flex lg:col-span-3 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex-col min-h-0 overflow-hidden`}>
           <div className="p-3.5 border-b border-white/[0.06] space-y-2.5">
             <div className="flex items-center space-x-2">
               <button
@@ -395,7 +424,10 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
               return (
                 <div
                   key={t.id}
-                  onClick={() => setSelectedThreadId(t.id)}
+                  onClick={() => {
+                    setSelectedThreadId(t.id);
+                    setMobileTab('chat');
+                  }}
                   className={`p-3.5 cursor-pointer transition-all ${
                     isBrandNew
                       ? 'bg-white/10 ring-1 ring-white/30 border-l-4 border-white'
@@ -464,7 +496,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
         </div>
 
         {/* ================= COLUMN 2 (CENTER): CHAT & AI ASSISTANT ================= */}
-        <div className="lg:col-span-5 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex flex-col min-h-0 overflow-hidden">
+        <div className={`${mobileTab === 'chat' ? 'flex' : 'hidden'} lg:flex lg:col-span-5 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex-col min-h-0 overflow-hidden`}>
           {selectedThread ? (
             <>
               {/* Header */}
@@ -813,7 +845,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
         </div>
 
         {/* ================= COLUMN 3 (RIGHT): PROACTIVE AI EQUIPMENT & SPARE PARTS OR ACTIVE ORDER ================= */}
-        <div className="lg:col-span-4 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex flex-col min-h-0 overflow-hidden">
+        <div className={`${mobileTab === 'ai' ? 'flex' : 'hidden'} lg:flex lg:col-span-4 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex-col min-h-0 overflow-hidden`}>
           <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
             <h2 className="font-bold text-sm text-white flex items-center space-x-1.5">
               <Sparkles className="w-4 h-4 text-white/70" />

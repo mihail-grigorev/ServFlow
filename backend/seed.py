@@ -498,6 +498,29 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Piers",
             hashed_password=hashed_pwd
         ),
+        # Test Administrator & Engineer with password 1997
+        User(
+            email="admin@kofeservice.ru",
+            full_name="Администратор системы",
+            role="dispatcher",
+            city="Москва",
+            is_demo=True,
+            is_senior=True,
+            qualifications=["C100", "C200", "C300"],
+            avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Admin1997",
+            hashed_password=get_password_hash("1997")
+        ),
+        User(
+            email="engineer@kofeservice.ru",
+            full_name="Дежурный инженер",
+            role="engineer",
+            city="Москва",
+            is_demo=True,
+            is_senior=True,
+            qualifications=["C100", "C200", "C300"],
+            avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Engineer1997",
+            hashed_password=get_password_hash("1997")
+        ),
     ]
     db.add_all(users)
     db.commit()
