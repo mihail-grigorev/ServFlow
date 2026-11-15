@@ -178,3 +178,18 @@ class DemoQrToken(Base):
     revoked = Column(Boolean, default=False, nullable=False)
     uses = Column(Integer, default=0, nullable=False)
     max_uses = Column(Integer, default=30, nullable=False)
+
+
+class Event(Base):
+    __tablename__ = "events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ts = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    type = Column(String(64), nullable=False, index=True)
+    thread_id = Column(Integer, nullable=True, index=True)
+    order_id = Column(Integer, nullable=True, index=True)
+    user_id = Column(Integer, nullable=True, index=True)
+    company_id = Column(String(50), nullable=True, index=True)
+    payload = Column(JSON, default=dict)
+    synced_to_ch = Column(Boolean, default=False, nullable=False, index=True)
+

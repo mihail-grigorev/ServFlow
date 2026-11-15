@@ -1,11 +1,14 @@
+import time
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from backend.config import settings
 from backend.database import get_db
 from backend.models import ClientThread, Equipment, SparePart, User
 from backend.schemas import AIAnalysisResult, AIReplyGenerateRequest, AITextAnalysisRequest
 from backend.ai_service import AIService
 from backend.auth import require_dispatcher
 from backend.rate_limiter import check_ai_rate_limit
+from backend.analytics import track_event
 
 router = APIRouter(prefix="/ai", tags=["ИИ-Ассистент"])
 
@@ -31,6 +34,7 @@ async def analyze_thread(
     # Aggregate message texts
     messages_text = "\n".join([f"[{m.channel}] {m.sender_name}: {m.content}" for m in thread.messages])
 
+    start_t = time.perf_counter()
     result = await AIService.analyze_thread(
         client_name=thread.client_name,
         messages_text=messages_text,
@@ -40,6 +44,23 @@ async def analyze_thread(
         current_equipment_code=thread.equipment_code,
         current_equipment_id=thread.equipment_id
     )
+    latency_ms = round((time.perf_counter() - start_t) * 1000, 1)
+
+    source = "gemini" if (settings.GEMINI_API_KEY and settings.GEMINI_API_KEY.strip()) else "fallback"
+    track_event(
+        event_type="ai_analysis",
+        thread_id=thread.id,
+        user_id=current_user.id,
+        company_id=thread.company_id,
+        payload={
+            "source": source,
+            "latency_ms": latency_ms,
+            "rules_triggered": result.rules_applied,
+            "is_warranty": result.is_warranty
+        },
+        db=db
+    )
+
     return result
 
 @router.post("/analyze-text", response_model=AIAnalysisResult)

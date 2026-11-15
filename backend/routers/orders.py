@@ -19,6 +19,7 @@ from backend.schemas import (
 from backend.auth import get_current_user, require_dispatcher
 from backend.seed import get_company_id_for_client
 from backend.audit import log_audit
+from backend.analytics import track_event
 
 router = APIRouter(prefix="/orders", tags=["Заявки на выезд"])
 
@@ -343,6 +344,31 @@ def create_order(
         )
 
     log_audit(db, action="order_create", user_id=current_user.id, object=order.order_number, details={"order_id": order.id})
+    track_event(
+        "order_created",
+        order_id=order.id,
+        thread_id=order.thread_id,
+        user_id=current_user.id,
+        company_id=order.company_id,
+        payload={
+            "order_number": order.order_number,
+            "is_warranty": order.is_warranty,
+            "parts_count": len(order.reserved_parts or []),
+            "engineer_id": order.engineer_id,
+            "model": order.model
+        },
+        db=db
+    )
+    if order.engineer_id:
+        track_event(
+            "engineer_assigned",
+            order_id=order.id,
+            thread_id=order.thread_id,
+            user_id=current_user.id,
+            company_id=order.company_id,
+            payload={"engineer_id": order.engineer_id},
+            db=db
+        )
     return ServiceOrderResponse.model_validate(order)
 
 
@@ -413,6 +439,16 @@ def update_order(
     db.commit()
     db.refresh(order)
     log_audit(db, action="order_update", user_id=current_user.id, object=order.order_number, details={"order_id": order.id})
+    if order_update.engineer_id is not None:
+        track_event(
+            "engineer_assigned",
+            order_id=order.id,
+            thread_id=order.thread_id,
+            user_id=current_user.id,
+            company_id=order.company_id,
+            payload={"engineer_id": order.engineer_id},
+            db=db
+        )
     return ServiceOrderResponse.model_validate(order)
 
 
@@ -436,11 +472,31 @@ def update_order_status(
             detail="Обновление статуса доступно только назначенному инженеру или диспетчеру"
         )
 
+    old_status = order.status
     order.status = status_update.status
     order.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(order)
     log_audit(db, action="order_status_update", user_id=current_user.id, object=order.order_number, details={"new_status": status_update.status})
+    track_event(
+        "order_status_changed",
+        order_id=order.id,
+        thread_id=order.thread_id,
+        user_id=current_user.id,
+        company_id=order.company_id,
+        payload={"old_status": old_status, "new_status": status_update.status},
+        db=db
+    )
+    if status_update.status in ["Отменен", "Отменён"]:
+        track_event(
+            "order_cancelled",
+            order_id=order.id,
+            thread_id=order.thread_id,
+            user_id=current_user.id,
+            company_id=order.company_id,
+            payload={"order_number": order.order_number},
+            db=db
+        )
     return ServiceOrderResponse.model_validate(order)
 
 
@@ -478,6 +534,15 @@ def submit_order_report(
     db.commit()
     db.refresh(order)
     log_audit(db, action="order_submit_report", user_id=current_user.id, object=order.order_number, details={"order_id": order.id})
+    track_event(
+        "report_submitted",
+        order_id=order.id,
+        thread_id=order.thread_id,
+        user_id=current_user.id,
+        company_id=order.company_id,
+        payload={"result": report_in.inspection_report, "status": order.status},
+        db=db
+    )
     return ServiceOrderResponse.model_validate(order)
 
 

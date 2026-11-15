@@ -20,6 +20,9 @@ class Settings(BaseSettings):
         "postgresql+psycopg://postgres:postgres@localhost:5434/kofeservice"
     )
     
+    # ClickHouse Analytics URL (optional, e.g. clickhouse://localhost:8123/kofeservice)
+    CLICKHOUSE_URL: str = os.getenv("CLICKHOUSE_URL", "")
+    
     # System Reference Date per case specification: 16.11.2026 11:30
     SYSTEM_REFERENCE_DATE: datetime = datetime(2026, 11, 16, 11, 30, 0)
     
