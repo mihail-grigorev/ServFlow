@@ -1,50 +1,80 @@
 from datetime import datetime
-from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field
+from typing import Optional, List, Dict, Any, Literal
+from pydantic import BaseModel, Field, ConfigDict
 
 # ----------------- Auth & Users -----------------
 class UserBase(BaseModel):
-    email: str
-    full_name: str
-    role: str  # dispatcher, engineer
-    city: Optional[str] = None
+    email: str = Field(max_length=255)
+    full_name: str = Field(max_length=255)
+    role: str = Field(default="company", max_length=50)
+    city: Optional[str] = Field(default=None, max_length=50)
+    company_id: Optional[str] = Field(default=None, max_length=50)
     is_senior: bool = False
     qualifications: List[str] = Field(default_factory=list)
     avatar_url: Optional[str] = None
 
-class UserCreate(UserBase):
-    password: str
-    code: Optional[str] = None
+class UserCreate(BaseModel):
+    email: str = Field(max_length=255)
+    full_name: str = Field(max_length=255)
+    password: str = Field(min_length=6, max_length=100)
+    city: Optional[str] = Field(default=None, max_length=50)
+    code: Optional[str] = Field(default=None, max_length=20)
+    role: Optional[str] = None  # Ignored in registration per K4
+    is_senior: Optional[bool] = None  # Ignored in registration per K4
+    qualifications: Optional[List[str]] = None  # Ignored in registration per K4
+    avatar_url: Optional[str] = None
+
+    model_config = ConfigDict(extra="forbid")
+
+class StaffCreate(BaseModel):
+    email: str = Field(max_length=255)
+    full_name: str = Field(max_length=255)
+    role: Literal["dispatcher", "engineer"]
+    city: Optional[Literal["Москва", "Тула"]] = "Москва"
+    is_senior: bool = False
+    qualifications: List[str] = Field(default_factory=list)
+    password: str = Field(min_length=6, max_length=100)
+
+    model_config = ConfigDict(extra="forbid")
 
 class SendCodeRequest(BaseModel):
-    email: str
+    email: str = Field(max_length=255)
+
+    model_config = ConfigDict(extra="forbid")
 
 class SendCodeResponse(BaseModel):
     status: str
     message: str
 
 class ConfirmCodeRequest(BaseModel):
-    code: str
+    code: str = Field(min_length=1, max_length=20)
+
+    model_config = ConfigDict(extra="forbid")
 
 class UserProfileUpdate(BaseModel):
-    full_name: Optional[str] = None
-    email: Optional[str] = None
-    city: Optional[str] = None
+    full_name: Optional[str] = Field(default=None, max_length=255)
+    email: Optional[str] = Field(default=None, max_length=255)
+    city: Optional[str] = Field(default=None, max_length=50)
     is_senior: Optional[bool] = None
     qualifications: Optional[List[str]] = None
     avatar_url: Optional[str] = None
-    password: Optional[str] = None
+    password: Optional[str] = Field(default=None, max_length=100)
+    code: Optional[str] = Field(default=None, max_length=20)  # Needed if email is changed
+
+    model_config = ConfigDict(extra="forbid")
 
 class UserResponse(UserBase):
     id: int
+    is_demo: bool = False
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class LoginRequest(BaseModel):
-    email: str
-    password: str
+    email: str = Field(max_length=255)
+    password: str = Field(max_length=100)
+
+    model_config = ConfigDict(extra="forbid")
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -53,18 +83,22 @@ class TokenResponse(BaseModel):
 
 # ----------------- Equipment -----------------
 class EquipmentCreate(BaseModel):
-    code: Optional[str] = None
-    client_name: Optional[str] = None
-    address: str
-    city: Optional[str] = "Москва"
-    model: str
-    serial_number: str
+    code: Optional[str] = Field(default=None, max_length=50)
+    client_name: Optional[str] = Field(default=None, max_length=255)
+    company_id: Optional[str] = Field(default=None, max_length=50)
+    address: str = Field(max_length=255)
+    city: Optional[str] = Field(default="Москва", max_length=50)
+    model: str = Field(max_length=50)
+    serial_number: str = Field(max_length=50)
     installation_date: Optional[datetime] = None
+
+    model_config = ConfigDict(extra="forbid")
 
 class EquipmentResponse(BaseModel):
     id: int
     code: str
     client_name: str
+    company_id: Optional[str] = None
     address: str
     city: str
     model: str
@@ -73,8 +107,7 @@ class EquipmentResponse(BaseModel):
     last_visit_date: Optional[datetime] = None
     last_visit_result: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # ----------------- Spare Parts -----------------
 class SparePartResponse(BaseModel):
@@ -89,23 +122,26 @@ class SparePartResponse(BaseModel):
     tula_reserved: int
     tula_free: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class ReservedPartItem(BaseModel):
-    code: str
-    name: str
-    quantity: int = 1
-    source_city: str  # Москва, Тула
+    code: str = Field(max_length=50)
+    name: str = Field(max_length=255)
+    quantity: int = Field(default=1, ge=1, le=10)
+    source_city: Literal["Москва", "Тула"]
     transfer_required: bool = False
+
+    model_config = ConfigDict(extra="forbid")
 
 # ----------------- Messages -----------------
 class MessageCreate(BaseModel):
-    content: str
-    channel: Optional[str] = "Мессенджер"
-    chat_type: Optional[str] = "client_dispatcher"  # client_dispatcher, dispatcher_engineer, client_engineer
-    sender_type: Optional[str] = "dispatcher"
-    sender_name: Optional[str] = "Диспетчер"
+    content: str = Field(max_length=4000)
+    channel: Optional[str] = Field(default="Мессенджер", max_length=50)
+    chat_type: Optional[str] = Field(default="client_dispatcher", max_length=50)
+    sender_type: Optional[str] = Field(default=None, max_length=50)
+    sender_name: Optional[str] = Field(default=None, max_length=255)
+
+    model_config = ConfigDict(extra="forbid")
 
 class MessageResponse(BaseModel):
     id: int
@@ -118,14 +154,15 @@ class MessageResponse(BaseModel):
     content: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # ----------------- Client Threads -----------------
 class ClientThreadResponse(BaseModel):
     id: int
     thread_number: int
     client_name: str
+    company_id: Optional[str] = None
+    owner_user_id: Optional[int] = None
     equipment_id: Optional[int] = None
     equipment_code: Optional[str] = None
     status: str
@@ -141,20 +178,23 @@ class ClientThreadResponse(BaseModel):
     assigned_engineer_name: Optional[str] = None
     assigned_engineer_id: Optional[int] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class CreateThreadRequest(BaseModel):
-    client_name: Optional[str] = None
-    equipment_code: Optional[str] = None
-    channel: str = "Мессенджер"
-    content: str
+    client_name: Optional[str] = Field(default=None, max_length=255)
+    equipment_code: Optional[str] = Field(default=None, max_length=50)
+    channel: str = Field(default="Мессенджер", max_length=50)
+    content: str = Field(max_length=4000)
+
+    model_config = ConfigDict(extra="forbid")
 
 class SimulateCustomerMessageRequest(BaseModel):
-    client_name: str
-    channel: str = "Мессенджер"  # Почта, Звонок, Мессенджер
-    content: str
-    request_code: Optional[str] = None
+    client_name: str = Field(max_length=255)
+    channel: str = Field(default="Мессенджер", max_length=50)
+    content: str = Field(max_length=4000)
+    request_code: Optional[str] = Field(default=None, max_length=50)
+
+    model_config = ConfigDict(extra="forbid")
 
 # ----------------- AI Analysis -----------------
 class RecommendedPartCandidate(BaseModel):
@@ -168,6 +208,8 @@ class RecommendedPartCandidate(BaseModel):
     transfer_required: bool
     status_note: str
     diagnostic_reason: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 class AIAnalysisResult(BaseModel):
     detected_equipment_code: Optional[str] = None
@@ -188,57 +230,72 @@ class AIAnalysisResult(BaseModel):
     recommended_parts: List[RecommendedPartCandidate] = Field(default_factory=list)
     rules_applied: List[str] = Field(default_factory=list)
 
+    model_config = ConfigDict(from_attributes=True)
+
 class AIReplyGenerateRequest(BaseModel):
     thread_id: int
-    custom_instruction: Optional[str] = None
+    custom_instruction: Optional[str] = Field(default=None, max_length=1000)
+
+    model_config = ConfigDict(extra="forbid")
 
 class AITextAnalysisRequest(BaseModel):
-    text: str
-    client_name: Optional[str] = None
+    text: str = Field(max_length=4000)
+    client_name: Optional[str] = Field(default=None, max_length=255)
+
+    model_config = ConfigDict(extra="forbid")
 
 # ----------------- Orders -----------------
 class ServiceOrderCreate(BaseModel):
     thread_id: Optional[int] = None
-    client_name: str
-    equipment_code: Optional[str] = None
-    address: str
-    model: str
-    serial_number: str
-    symptom: str
-    client_assumption: Optional[str] = None
+    client_name: str = Field(max_length=255)
+    equipment_code: Optional[str] = Field(default=None, max_length=50)
+    address: str = Field(max_length=255)
+    model: str = Field(max_length=50)
+    serial_number: str = Field(max_length=50)
+    symptom: str = Field(max_length=2000)
+    client_assumption: Optional[str] = Field(default=None, max_length=1000)
     is_warranty: bool = False
-    warranty_reason: Optional[str] = None
+    warranty_reason: Optional[str] = Field(default=None, max_length=1000)
     is_sales_transfer: bool = False
     engineer_id: Optional[int] = None
     reserved_parts: List[ReservedPartItem] = Field(default_factory=list)
     created_at: Optional[datetime] = None
 
+    model_config = ConfigDict(extra="forbid")
+
 class ServiceOrderStatusUpdate(BaseModel):
-    status: str  # Назначен, В пути, На месте, Выполнен, Отменен
+    status: Literal["Новая", "Назначен", "В пути", "На месте", "Выполнен", "Отменен"]
+
+    model_config = ConfigDict(extra="forbid")
 
 class ServiceOrderUpdate(BaseModel):
-    client_name: Optional[str] = None
-    address: Optional[str] = None
-    model: Optional[str] = None
-    serial_number: Optional[str] = None
-    symptom: Optional[str] = None
-    client_assumption: Optional[str] = None
+    client_name: Optional[str] = Field(default=None, max_length=255)
+    address: Optional[str] = Field(default=None, max_length=255)
+    model: Optional[str] = Field(default=None, max_length=50)
+    serial_number: Optional[str] = Field(default=None, max_length=50)
+    symptom: Optional[str] = Field(default=None, max_length=2000)
+    client_assumption: Optional[str] = Field(default=None, max_length=1000)
     is_warranty: Optional[bool] = None
-    warranty_reason: Optional[str] = None
-    status: Optional[str] = None
+    warranty_reason: Optional[str] = Field(default=None, max_length=1000)
+    status: Optional[str] = Field(default=None, max_length=50)
     engineer_id: Optional[int] = None
     reserved_parts: Optional[List[ReservedPartItem]] = None
-    inspection_report: Optional[str] = None
+    inspection_report: Optional[str] = Field(default=None, max_length=4000)
+
+    model_config = ConfigDict(extra="forbid")
 
 class ServiceOrderReportUpdate(BaseModel):
-    inspection_report: str
-    status: Optional[str] = "Выполнен"
+    inspection_report: str = Field(max_length=4000)
+    status: Optional[str] = Field(default="Выполнен", max_length=50)
+
+    model_config = ConfigDict(extra="forbid")
 
 class ServiceOrderResponse(BaseModel):
     id: int
     order_number: str
     thread_id: Optional[int] = None
     client_name: str
+    company_id: Optional[str] = None
     equipment_id: Optional[int] = None
     equipment_code: Optional[str] = None
     address: str
@@ -257,5 +314,4 @@ class ServiceOrderResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

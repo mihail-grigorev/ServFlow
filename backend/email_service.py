@@ -2,7 +2,9 @@ import smtplib
 import ssl
 import socket
 import logging
-import random
+import secrets
+import hmac
+import hashlib
 import email.utils
 from email.header import Header
 from email.mime.multipart import MIMEMultipart
@@ -136,8 +138,29 @@ def create_smtp_connection(timeout: int = 8):
 
 
 def generate_verification_code() -> str:
-    """Generate a secure 6-digit verification code."""
-    return f"{random.randint(100000, 999999)}"
+    """Generate a cryptographically secure 6-digit verification code."""
+    return f"{secrets.randbelow(900000) + 100000}"
+
+
+def hash_verification_code(email: str, code: str) -> str:
+    """
+    Computes HMAC-SHA256 hash of the verification code bound to the email address.
+    """
+    key = settings.JWT_SECRET.encode("utf-8")
+    msg = f"{email.strip().lower()}:{code.strip()}".encode("utf-8")
+    return hmac.new(key, msg, hashlib.sha256).hexdigest()
+
+
+def verify_code_hash(email: str, input_code: str, stored_hash: Optional[str], raw_code: Optional[str] = None) -> bool:
+    """
+    Validates the verification code using constant-time comparison to prevent timing attacks.
+    """
+    if stored_hash:
+        expected = hash_verification_code(email, input_code)
+        return hmac.compare_digest(expected, stored_hash)
+    if raw_code:
+        return hmac.compare_digest(input_code.strip(), raw_code.strip())
+    return False
 
 
 def send_yandex_verification_email(
@@ -293,14 +316,10 @@ def send_yandex_verification_email(
             code_num = resp_err.smtp_code
             err_text = resp_err.smtp_error.decode("utf-8", errors="ignore") if isinstance(resp_err.smtp_error, bytes) else str(resp_err.smtp_error)
             logger.error(f"[YANDEX SMTP REJECTION] Code {code_num}: {err_text}")
-            if "SPAM" in err_text.upper() or code_num == 554:
-                return False, "Яндекс отклонил отправку (подозрение в спаме: https://ya.cc/1IrBc). Для активации подтвердите телефон на passport.yandex.ru/phoneconfirm или отправьте одно пробное письмо через mail.yandex.ru."
-            if code_num == 550:
-                return False, f"Почтовый сервер Яндекса отклонил адрес получателя {to_email} (550 Policy Rejection)."
-            return False, f"Ошибка Яндекс Почты ({code_num}): {err_text}"
+            return False, "Не удалось доставить письмо с кодом подтверждения. Пожалуйста, попробуйте позже."
 
         logger.info(f"[YANDEX SMTP] Verification email successfully sent to {to_email}")
-        return True, f"Код подтверждения успешно отправлен с Яндекс Почты на адрес {to_email}"
+        return True, "Код подтверждения успешно отправлен на указанный email адрес."
     except Exception as e:
         logger.error(f"[YANDEX SMTP ERROR] Не удалось отправить письмо на {to_email}: {e}")
-        return False, f"Ошибка отправки через Яндекс SMTP: {e}"
+        return False, "Не удалось доставить письмо с кодом подтверждения. Пожалуйста, попробуйте позже."

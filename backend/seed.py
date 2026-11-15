@@ -289,6 +289,28 @@ THREAD_DEFINITIONS = [
     }
 ]
 
+COMPANY_NAME_TO_ID = {
+    "Кафе «Кедр»": "comp_kedr",
+    "Гостиница «Берег»": "comp_bereg",
+    "Кафе «Лист»": "comp_list",
+    "Кафе «Парк»": "comp_park",
+    "Кафе «Угол»": "comp_ugol",
+    "Кофейня «Сквер»": "comp_skver",
+    "Пекарня «Зерно»": "comp_zerno",
+    "Кафе «Маяк»": "comp_mayak",
+    "Гостиница «Север»": "comp_sever",
+    "Ресторан «Пирс»": "comp_piers",
+    "Кафе «Ромашка»": "comp_romashka",
+}
+
+def get_company_id_for_client(name: str) -> str:
+    if name in COMPANY_NAME_TO_ID:
+        return COMPANY_NAME_TO_ID[name]
+    norm = name.lower().replace("«", "").replace("»", "").replace('"', '').replace("'", "").strip()
+    words = [w for w in norm.split() if w not in ["кафе", "гостиница", "пекарня", "кофейня", "ресторан", "ооо", "зао", "ип"]]
+    key = words[0] if words else norm
+    return f"comp_{key}"
+
 def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.xlsx"):
     """
     Clears and seeds all initial data: users, equipment, parts, threads, messages.
@@ -355,12 +377,14 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Pavel",
             hashed_password=hashed_pwd
         ),
-        # Company accounts (clients)
+        # Company accounts (clients) with company_id and is_demo=True
         User(
             email="client_kedr@kofeservice.ru",
             full_name="Кафе «Кедр»",
+            company_id="comp_kedr",
             role="company",
             city="Москва",
+            is_demo=True,
             is_senior=False,
             qualifications=[],
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Kedr",
@@ -369,8 +393,10 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
         User(
             email="client_bereg@kofeservice.ru",
             full_name="Гостиница «Берег»",
+            company_id="comp_bereg",
             role="company",
             city="Тула",
+            is_demo=True,
             is_senior=False,
             qualifications=[],
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Bereg",
@@ -379,21 +405,114 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
         User(
             email="client_zerno@kofeservice.ru",
             full_name="Пекарня «Зерно»",
+            company_id="comp_zerno",
             role="company",
             city="Москва",
+            is_demo=True,
             is_senior=False,
             qualifications=[],
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Zerno",
+            hashed_password=hashed_pwd
+        ),
+        User(
+            email="client_list@kofeservice.ru",
+            full_name="Кафе «Лист»",
+            company_id="comp_list",
+            role="company",
+            city="Москва",
+            is_demo=True,
+            is_senior=False,
+            qualifications=[],
+            avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=List",
+            hashed_password=hashed_pwd
+        ),
+        User(
+            email="client_park@kofeservice.ru",
+            full_name="Кафе «Парк»",
+            company_id="comp_park",
+            role="company",
+            city="Москва",
+            is_demo=True,
+            is_senior=False,
+            qualifications=[],
+            avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Park",
+            hashed_password=hashed_pwd
+        ),
+        User(
+            email="client_ugol@kofeservice.ru",
+            full_name="Кафе «Угол»",
+            company_id="comp_ugol",
+            role="company",
+            city="Тула",
+            is_demo=True,
+            is_senior=False,
+            qualifications=[],
+            avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Ugol",
+            hashed_password=hashed_pwd
+        ),
+        User(
+            email="client_skver@kofeservice.ru",
+            full_name="Кофейня «Сквер»",
+            company_id="comp_skver",
+            role="company",
+            city="Москва",
+            is_demo=True,
+            is_senior=False,
+            qualifications=[],
+            avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Skver",
+            hashed_password=hashed_pwd
+        ),
+        User(
+            email="client_mayak@kofeservice.ru",
+            full_name="Кафе «Маяк»",
+            company_id="comp_mayak",
+            role="company",
+            city="Москва",
+            is_demo=True,
+            is_senior=False,
+            qualifications=[],
+            avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Mayak",
+            hashed_password=hashed_pwd
+        ),
+        User(
+            email="client_sever@kofeservice.ru",
+            full_name="Гостиница «Север»",
+            company_id="comp_sever",
+            role="company",
+            city="Москва",
+            is_demo=True,
+            is_senior=False,
+            qualifications=[],
+            avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Sever",
+            hashed_password=hashed_pwd
+        ),
+        User(
+            email="client_piers@kofeservice.ru",
+            full_name="Ресторан «Пирс»",
+            company_id="comp_piers",
+            role="company",
+            city="Москва",
+            is_demo=True,
+            is_senior=False,
+            qualifications=[],
+            avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Piers",
             hashed_password=hashed_pwd
         ),
     ]
     db.add_all(users)
     db.commit()
 
+    # Build company user lookup
+    users_by_company = {}
+    for u in users:
+        if u.company_id:
+            users_by_company[u.company_id] = u
+
     # 3. Seed Equipment
     eq_objs = {}
     for eq_data in EQUIPMENT_DATA:
-        eq = Equipment(**eq_data)
+        cid = get_company_id_for_client(eq_data["client_name"])
+        eq = Equipment(**eq_data, company_id=cid)
         db.add(eq)
         db.flush()
         eq_objs[eq.code] = eq
@@ -425,9 +544,13 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
                 msgs_text
             )
 
+        cid = get_company_id_for_client(t_def["client_name"])
+        owner = users_by_company.get(cid)
         thread = ClientThread(
             thread_number=t_def["thread_number"],
             client_name=t_def["client_name"],
+            company_id=cid,
+            owner_user_id=owner.id if owner else None,
             equipment_id=eq.id if eq else None,
             equipment_code=eq.code if eq else None,
             status=t_def["status"],

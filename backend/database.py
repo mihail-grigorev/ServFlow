@@ -46,16 +46,45 @@ def init_db():
     try:
         with engine.begin() as conn:
             from sqlalchemy import text
-            if "sqlite" in str(engine.url):
-                try:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN avatar_url TEXT;"))
-                except Exception:
-                    pass
+            is_sqlite = "sqlite" in str(engine.url)
+            
+            if not is_sqlite:
+                # PostgreSQL migrations: safe ADD COLUMN IF NOT EXISTS
+                alter_statements = [
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS company_id VARCHAR(50);",
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_demo BOOLEAN DEFAULT FALSE;",
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS token_version INTEGER DEFAULT 1;",
+                    "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;",
+                    "ALTER TABLE equipments ADD COLUMN IF NOT EXISTS company_id VARCHAR(50);",
+                    "ALTER TABLE client_threads ADD COLUMN IF NOT EXISTS company_id VARCHAR(50);",
+                    "ALTER TABLE client_threads ADD COLUMN IF NOT EXISTS owner_user_id INTEGER;",
+                    "ALTER TABLE service_orders ADD COLUMN IF NOT EXISTS company_id VARCHAR(50);",
+                    "ALTER TABLE verification_codes ADD COLUMN IF NOT EXISTS code_hash VARCHAR(128);",
+                    "ALTER TABLE verification_codes ADD COLUMN IF NOT EXISTS attempts INTEGER DEFAULT 0;",
+                ]
+                for stmt in alter_statements:
+                    try:
+                        conn.execute(text(stmt))
+                    except Exception as ex:
+                        logger.debug(f"Postgres column add skipped: {ex}")
             else:
-                conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url TEXT;"))
-            try:
-                conn.execute(text("UPDATE users SET avatar_url = 'https://api.dicebear.com/7.x/notionists/svg?seed=Anna' WHERE email = 'dispatcher@kofeservice.ru' AND avatar_url IS NULL;"))
-            except Exception:
-                pass
+                # SQLite migrations
+                sqlite_alters = [
+                    "ALTER TABLE users ADD COLUMN company_id VARCHAR(50);",
+                    "ALTER TABLE users ADD COLUMN is_demo BOOLEAN DEFAULT 0;",
+                    "ALTER TABLE users ADD COLUMN token_version INTEGER DEFAULT 1;",
+                    "ALTER TABLE users ADD COLUMN avatar_url TEXT;",
+                    "ALTER TABLE equipments ADD COLUMN company_id VARCHAR(50);",
+                    "ALTER TABLE client_threads ADD COLUMN company_id VARCHAR(50);",
+                    "ALTER TABLE client_threads ADD COLUMN owner_user_id INTEGER;",
+                    "ALTER TABLE service_orders ADD COLUMN company_id VARCHAR(50);",
+                    "ALTER TABLE verification_codes ADD COLUMN code_hash VARCHAR(128);",
+                    "ALTER TABLE verification_codes ADD COLUMN attempts INTEGER DEFAULT 0;",
+                ]
+                for stmt in sqlite_alters:
+                    try:
+                        conn.execute(text(stmt))
+                    except Exception:
+                        pass
     except Exception as e:
         logger.debug(f"Migration note: {e}")

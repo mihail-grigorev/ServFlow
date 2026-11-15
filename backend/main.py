@@ -1,17 +1,30 @@
 import os
+import uuid
+import logging
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from backend.config import settings
 from backend.database import init_db, SessionLocal
 from backend.models import User
 from backend.seed import seed_database
 from backend.routers import auth, equipment, parts, threads, orders, ai, seed
 
+logger = logging.getLogger(__name__)
+
+DEFAULT_JWT_SECRET = "super-secret-kofeservice-jwt-key-2026"
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Security check B3: Verify JWT_SECRET
+    if settings.JWT_SECRET == DEFAULT_JWT_SECRET:
+        if not settings.DEMO_MODE:
+            raise RuntimeError("CRITICAL SECURITY ERROR: Default JWT_SECRET is not allowed when DEMO_MODE=False!")
+        else:
+            logger.warning("[SECURITY WARNING] Default JWT_SECRET detected. Allowed only because DEMO_MODE=True.")
+
     # Initialize DB schema
     init_db()
     
@@ -20,21 +33,56 @@ async def lifespan(app: FastAPI):
     try:
         user_count = db.query(User).count()
         if user_count == 0:
-            print("База данных пуста. Запуск автоматического сидинга...")
+            logger.info("База данных пуста. Запуск автоматического сидинга...")
             seed_database(db)
-            print("Сидинг успешно завершён!")
+            logger.info("Сидинг успешно завершён!")
     except Exception as e:
-        print(f"Ошибка проверки базы данных при старте: {e}")
+        logger.error(f"Ошибка проверки базы данных при старте: {e}")
     finally:
         db.close()
     
     yield
 
+# Security check B5: Swagger/OpenAPI docs exposed only in DEMO_MODE
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url="/docs" if settings.DEMO_MODE else None,
+    redoc_url="/redoc" if settings.DEMO_MODE else None,
+    openapi_url="/openapi.json" if settings.DEMO_MODE else None,
 )
+
+# Security check B5: Security Headers Middleware
+@app.middleware("http")
+async def security_headers_middleware(request: Request, call_next):
+    response = await call_next(request)
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; "
+        "img-src 'self' data: https://api.dicebear.com blob:; "
+        "style-src 'self' 'unsafe-inline'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "font-src 'self' data:; "
+        "connect-src 'self' ws: wss:; "
+        "frame-ancestors 'none';"
+    )
+    if settings.PUBLIC_BASE_URL.startswith("https://"):
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    return response
+
+# Security check B6: Global Exception Handler
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    req_id = str(uuid.uuid4())[:8]
+    logger.error(f"[REQUEST {req_id}] Unhandled error on {request.method} {request.url.path}: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Внутренняя ошибка сервера", "request_id": req_id}
+    )
 
 # CORS middleware
 app.add_middleware(
@@ -45,7 +93,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static uploads
+# Mount static uploads with security options
 uploads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "uploads")
 os.makedirs(uploads_dir, exist_ok=True)
 app.mount("/api/uploads", StaticFiles(directory=uploads_dir), name="uploads")

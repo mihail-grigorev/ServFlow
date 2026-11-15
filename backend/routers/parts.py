@@ -1,13 +1,17 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from backend.database import get_db
-from backend.models import SparePart
+from backend.models import SparePart, User
 from backend.schemas import SparePartResponse
+from backend.auth import get_current_user
 
 router = APIRouter(prefix="/parts", tags=["Запчасти"])
 
 @router.get("", response_model=list[SparePartResponse])
-def get_all_spare_parts(db: Session = Depends(get_db)):
+def get_all_spare_parts(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     parts = db.query(SparePart).order_by(SparePart.code).all()
     results = []
     for p in parts:
@@ -26,4 +30,3 @@ def get_all_spare_parts(db: Session = Depends(get_db)):
             tula_free=tula_free
         ))
     return results
-

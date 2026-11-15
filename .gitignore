@@ -6,6 +6,7 @@ frontend/node_modules/
 
 # Environment variables
 .env
+!.env.example
 .env.local
 .env.development.local
 .env.test.local
@@ -45,6 +46,7 @@ local_pgdata/
 *.sqlite
 *.sqlite3
 uploaded_data.xlsx
+uploads/
 
 # Build Outputs
 frontend/dist/

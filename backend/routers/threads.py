@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Optional
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from backend.config import settings
@@ -10,9 +10,10 @@ from backend.models import ClientThread, Message, Equipment, User, ServiceOrder,
 from backend.schemas import (
     ClientThreadResponse, MessageCreate, MessageResponse, SimulateCustomerMessageRequest, CreateThreadRequest
 )
-from backend.auth import get_current_user
+from backend.auth import get_current_user, require_dispatcher, oauth2_scheme
 from backend.rules_engine import RulesEngine
 from backend.ai_service import AIService
+from backend.seed import get_company_id_for_client
 
 logger = logging.getLogger(__name__)
 
@@ -21,18 +22,19 @@ router = APIRouter(prefix="/threads", tags=["Обращения и перепи�
 AUTO_REPLY_ENABLED = True
 
 @router.get("/settings/auto-reply")
-def get_auto_reply_setting():
+def get_auto_reply_setting(current_user: User = Depends(require_dispatcher)):
     global AUTO_REPLY_ENABLED
     return {"auto_reply_enabled": AUTO_REPLY_ENABLED}
 
 @router.post("/settings/auto-reply")
-def set_auto_reply_setting(payload: dict):
+def set_auto_reply_setting(payload: dict, current_user: User = Depends(require_dispatcher)):
     global AUTO_REPLY_ENABLED
     AUTO_REPLY_ENABLED = bool(payload.get("auto_reply_enabled", True))
     return {"auto_reply_enabled": AUTO_REPLY_ENABLED}
 
 @router.post("/auto-reply-all")
 async def auto_reply_all_threads(
+    current_user: User = Depends(require_dispatcher),
     db: Session = Depends(get_db)
 ):
     """
@@ -157,6 +159,29 @@ def get_threads(
 ):
     query = db.query(ClientThread)
 
+    # Security check K6: Company isolation & Engineer assignment scoping
+    if current_user.role == "company":
+        comp_id = current_user.company_id
+        u_name = current_user.full_name.strip()
+        conds = []
+        if comp_id:
+            conds.append(ClientThread.company_id == comp_id)
+        if u_name:
+            conds.append(ClientThread.client_name == u_name)
+        if current_user.id:
+            conds.append(ClientThread.owner_user_id == current_user.id)
+        if conds:
+            query = query.filter(or_(*conds))
+        else:
+            return []
+    elif current_user.role == "engineer":
+        assigned_orders = db.query(ServiceOrder.thread_id).filter(
+            ServiceOrder.engineer_id == current_user.id,
+            ServiceOrder.thread_id.isnot(None)
+        ).all()
+        assigned_thread_ids = [t[0] for t in assigned_orders if t[0] is not None]
+        query = query.filter(ClientThread.id.in_(assigned_thread_ids))
+
     if filter_type == "needs_clarification":
         query = query.filter(ClientThread.status == "needs_clarification")
     elif filter_type == "ready_for_order":
@@ -169,17 +194,20 @@ def get_threads(
     if client_name and client_name.strip():
         raw_name = client_name.strip()
         clean_name = raw_name.replace("«", "").replace("»", "").replace('"', '').replace("'", "").strip()
+        clean_escaped = clean_name.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         words = [w for w in clean_name.split() if len(w) > 2 and w.lower() not in ["кафе", "ооо", "зао", "ип", "гостиница", "пекарня", "ресторан"]]
         conds = [
             ClientThread.client_name == raw_name,
-            ClientThread.client_name.ilike(f"%{clean_name}%")
+            ClientThread.client_name.ilike(f"%{clean_escaped}%")
         ]
         for w in words:
-            conds.append(ClientThread.client_name.ilike(f"%{w}%"))
+            w_esc = w.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            conds.append(ClientThread.client_name.ilike(f"%{w_esc}%"))
         query = query.filter(or_(*conds))
 
     if search and search.strip():
-        s = f"%{search.strip().lower()}%"
+        clean_s = search.strip().lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        s = f"%{clean_s}%"
         query = query.filter(
             or_(
                 ClientThread.client_name.ilike(s),
@@ -249,9 +277,13 @@ def create_thread(
 
     activity_time = settings.SYSTEM_REFERENCE_DATE + timedelta(minutes=max_num)
 
+    company_id = current_user.company_id or get_company_id_for_client(client_name)
+
     thread = ClientThread(
         thread_number=max_num,
         client_name=client_name,
+        company_id=company_id,
+        owner_user_id=current_user.id if current_user.role == "company" else None,
         equipment_id=eq.id if eq else None,
         equipment_code=eq.code if eq else (req.equipment_code or None),
         status=initial_status,
@@ -282,6 +314,7 @@ def create_thread(
         order_number=order_num,
         thread_id=thread.id,
         client_name=client_name,
+        company_id=company_id,
         equipment_id=eq.id if eq else None,
         equipment_code=eq.code if eq else (req.equipment_code or None),
         address=eq.address if eq else (f"г. {user_city}" if user_city else "Адрес уточняется"),
@@ -339,6 +372,24 @@ def get_thread(
     thread = db.query(ClientThread).filter(ClientThread.id == thread_id).first()
     if not thread:
         raise HTTPException(status_code=404, detail="Обращение не найдено")
+
+    # Security check K6: Company IDOR protection & Engineer assignment scoping
+    if current_user.role == "company":
+        is_owner = (
+            (thread.company_id and thread.company_id == current_user.company_id)
+            or (thread.owner_user_id and thread.owner_user_id == current_user.id)
+            or (thread.client_name == current_user.full_name.strip())
+        )
+        if not is_owner:
+            raise HTTPException(status_code=404, detail="Обращение не найдено")
+    elif current_user.role == "engineer":
+        ord_assigned = db.query(ServiceOrder).filter(
+            ServiceOrder.thread_id == thread.id,
+            ServiceOrder.engineer_id == current_user.id
+        ).first()
+        if not ord_assigned:
+            raise HTTPException(status_code=404, detail="Обращение не найдено")
+
     resp = ClientThreadResponse.model_validate(thread)
     ord_obj = db.query(ServiceOrder).filter(ServiceOrder.thread_id == thread.id).first()
     if ord_obj:
@@ -364,6 +415,23 @@ async def add_message(
     thread = db.query(ClientThread).filter(ClientThread.id == thread_id).first()
     if not thread:
         raise HTTPException(status_code=404, detail="Обращение не найдено")
+
+    # Security check K6: Company & Engineer IDOR check on sending messages
+    if current_user.role == "company":
+        is_owner = (
+            (thread.company_id and thread.company_id == current_user.company_id)
+            or (thread.owner_user_id and thread.owner_user_id == current_user.id)
+            or (thread.client_name == current_user.full_name.strip())
+        )
+        if not is_owner:
+            raise HTTPException(status_code=404, detail="Обращение не найдено")
+    elif current_user.role == "engineer":
+        ord_assigned = db.query(ServiceOrder).filter(
+            ServiceOrder.thread_id == thread.id,
+            ServiceOrder.engineer_id == current_user.id
+        ).first()
+        if not ord_assigned:
+            raise HTTPException(status_code=404, detail="Обращение не найдено")
 
     if current_user.role == "company":
         sender_type = "client"
@@ -512,13 +580,22 @@ async def add_message(
 @router.post("/simulate", response_model=ClientThreadResponse)
 def simulate_customer_message(
     req: SimulateCustomerMessageRequest,
+    token: Optional[str] = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
     """
     Simulation endpoint for live jury demonstration:
     Injects a client message into existing thread if matched by client (П-3),
     or creates a new thread, resolves equipment (П-1/П-2), and checks warranty (П-9).
+    Security check K5: Allowed in DEMO_MODE or by authenticated dispatcher.
     """
+    if not settings.DEMO_MODE:
+        if not token:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Требуется авторизация диспетчера")
+        user = get_current_user(token=token, db=db)
+        if user.role != "dispatcher":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Симуляция обращений доступна только диспетчеру")
+
     client_name = req.client_name.strip()
     all_eq = db.query(Equipment).all()
 
@@ -549,6 +626,7 @@ def simulate_customer_message(
         thread = ClientThread(
             thread_number=max_num,
             client_name=client_name,
+            company_id=get_company_id_for_client(client_name),
             equipment_id=eq.id if eq else None,
             equipment_code=eq.code if eq else None,
             status="sales_transfer" if eq_info.get("is_unregistered") else ("needs_clarification" if eq_info.get("is_ambiguous") else "ready_for_order"),

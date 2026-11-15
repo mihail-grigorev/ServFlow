@@ -23,13 +23,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Create non-root user for security (B7)
+RUN useradd -m -u 1000 appuser && mkdir -p /app/uploads && chown -R appuser:appuser /app
+
 # Copy application files
 COPY backend/ ./backend/
 COPY logo.png ./logo.png
 COPY Данные_к_кейсу_06.xlsx ./Данные_к_кейсу_06.xlsx
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
+RUN chown -R appuser:appuser /app
+
+USER appuser
+
 EXPOSE 8000
 
 CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
-

@@ -486,6 +486,11 @@ class RulesEngine:
         Intelligently prioritizes parts based on previous service calls/visits (last_visit_result),
         eliminating excess part recommendations and strictly respecting model compatibility.
         """
+        # Rule П-2: For unregistered machines or when machine is not identified in contract registry,
+        # recommended parts must be strictly empty (prevent recommending G100, V010 etc.)
+        if not model and not equipment:
+            return []
+
         lower = text_content.lower()
         recommended = []
 
