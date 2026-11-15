@@ -28,7 +28,7 @@ export const SparePartsInventoryView: React.FC<SparePartsInventoryViewProps> = (
       <div className="bg-[#16171B] p-5 rounded-2xl border border-white/[0.08] shadow-apple flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2.5">
-            <div className="p-2 rounded-xl bg-[#4A6751]/15 text-[#6E9078]">
+            <div className="p-2 rounded-xl bg-white/10 text-white">
               <Package className="w-5 h-5" />
             </div>
             <div>
@@ -36,7 +36,7 @@ export const SparePartsInventoryView: React.FC<SparePartsInventoryViewProps> = (
                 <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white">
                   Складской учёт и резерв запчастей
                 </h1>
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-[#4A6751]/20 text-[#6E9078]">
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white border border-white/20">
                   {partsList.length} номенклатурных позиций
                 </span>
               </div>
@@ -51,11 +51,11 @@ export const SparePartsInventoryView: React.FC<SparePartsInventoryViewProps> = (
         <div className="flex items-center space-x-3 text-xs">
           <div className="p-2.5 rounded-xl bg-black/30 border border-white/[0.06] text-center">
             <div className="text-[10px] text-[#8E9E94] uppercase font-semibold">Москва свободно</div>
-            <div className="text-sm font-bold text-[#48BB78]">{totalMoscowFree} шт.</div>
+            <div className="text-sm font-bold text-white">{totalMoscowFree} шт.</div>
           </div>
           <div className="p-2.5 rounded-xl bg-black/30 border border-white/[0.06] text-center">
             <div className="text-[10px] text-[#8E9E94] uppercase font-semibold">Тула свободно</div>
-            <div className="text-sm font-bold text-[#48BB78]">{totalTulaFree} шт.</div>
+            <div className="text-sm font-bold text-white">{totalTulaFree} шт.</div>
           </div>
         </div>
       </div>
@@ -70,7 +70,7 @@ export const SparePartsInventoryView: React.FC<SparePartsInventoryViewProps> = (
             placeholder="Поиск детали по артикулу или названию..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-white/[0.1] bg-[#1D2E24] text-white placeholder-[#8E9E94] outline-none focus:border-[#6E9078] transition-all"
+            className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-white/[0.1] bg-[#1F2026] text-white placeholder-[#8E9E94] outline-none focus:border-white/20 transition-all"
           />
         </div>
 
@@ -82,7 +82,7 @@ export const SparePartsInventoryView: React.FC<SparePartsInventoryViewProps> = (
               onClick={() => setModelFilter(m)}
               className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
                 modelFilter === m
-                  ? 'bg-[#4A6751] text-white shadow-sm'
+                  ? 'bg-white text-black font-semibold shadow-sm'
                   : 'text-[#8E9E94] hover:text-white'
               }`}
             >
@@ -115,7 +115,7 @@ export const SparePartsInventoryView: React.FC<SparePartsInventoryViewProps> = (
 
                 return (
                   <tr key={p.code} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="py-3.5 px-4 font-mono font-bold text-[#6E9078]">
+                    <td className="py-3.5 px-4 font-mono font-bold text-white">
                       {p.code}
                     </td>
                     <td className="py-3.5 px-4 font-medium text-white">
@@ -143,7 +143,7 @@ export const SparePartsInventoryView: React.FC<SparePartsInventoryViewProps> = (
                       <span
                         className={`font-bold px-2 py-0.5 rounded-md text-[11px] ${
                           p.moscow_free > 0
-                            ? 'bg-[#2E7D47]/15 text-[#48BB78]'
+                            ? 'bg-white/15 text-white border border-white/20'
                             : 'bg-[#FF453A]/15 text-[#FF453A]'
                         }`}
                       >
@@ -160,7 +160,7 @@ export const SparePartsInventoryView: React.FC<SparePartsInventoryViewProps> = (
                       <span
                         className={`font-bold px-2 py-0.5 rounded-md text-[11px] ${
                           p.tula_free > 0
-                            ? 'bg-[#2E7D47]/15 text-[#48BB78]'
+                            ? 'bg-white/15 text-white border border-white/20'
                             : 'bg-[#FF453A]/15 text-[#FF453A]'
                         }`}
                       >
@@ -182,7 +182,7 @@ export const SparePartsInventoryView: React.FC<SparePartsInventoryViewProps> = (
                         </span>
                       ) : (
                         <span className="text-[#8E9E94] text-[11px] flex items-center space-x-1">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-[#48BB78]" />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-neutral-400" />
                           <span>В наличии на месте</span>
                         </span>
                       )}

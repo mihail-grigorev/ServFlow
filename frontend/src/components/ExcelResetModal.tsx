@@ -73,7 +73,7 @@ export const ExcelResetModal: React.FC<ExcelResetModalProps> = ({
         {/* Header */}
         <div className="p-5 border-b border-white/[0.08] flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
-            <div className="p-2 rounded-xl bg-[#4A6751]/15 border border-[#6E9078]/25 text-[#6E9078]">
+            <div className="p-2 rounded-xl bg-white/10 border border-white/20 text-white">
               <FileSpreadsheet className="w-5 h-5" />
             </div>
             <div>
@@ -96,7 +96,7 @@ export const ExcelResetModal: React.FC<ExcelResetModalProps> = ({
         {/* Content */}
         <div className="p-5 space-y-4 text-xs">
           {successMsg && (
-            <div className="p-3 rounded-xl bg-[#2E7D47]/15 border border-[#2E7D47]/25 flex items-center space-x-2 text-[#48BB78] font-medium">
+            <div className="p-3 rounded-xl bg-white/10 border border-white/20 flex items-center space-x-2 text-white font-medium">
               <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
               <span>{successMsg}</span>
             </div>
@@ -110,9 +110,9 @@ export const ExcelResetModal: React.FC<ExcelResetModalProps> = ({
           )}
 
           {/* Option 1: 1-Click Reset to 23 requests */}
-          <div className="p-4 rounded-xl border border-white/[0.08] bg-[#16221B] space-y-2">
+          <div className="p-4 rounded-xl border border-white/[0.08] bg-[#1F2026] space-y-2">
             <h3 className="font-semibold text-sm text-[#F0F5F2] flex items-center space-x-2">
-              <RotateCcw className="w-4 h-4 text-[#6E9078]" />
+              <RotateCcw className="w-4 h-4 text-white/70" />
               <span>Сбросить данные к началу защиты</span>
             </h3>
             <p className="text-[#8E9E94] leading-relaxed">
@@ -121,14 +121,14 @@ export const ExcelResetModal: React.FC<ExcelResetModalProps> = ({
             <button
               onClick={handleReset}
               disabled={loading}
-              className="mt-2 w-full py-2.5 rounded-xl bg-[#4A6751] hover:bg-[#0077ED] text-white font-semibold transition-colors flex items-center justify-center space-x-1.5 shadow-sm disabled:opacity-40"
+              className="mt-2 w-full py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black font-semibold transition-colors flex items-center justify-center space-x-1.5 shadow-sm disabled:opacity-40"
             >
               <span>{loading ? 'Сброс базы данных...' : 'Сбросить базу данных в 1 клик'}</span>
             </button>
           </div>
 
           {/* Option 2: Upload custom Excel file */}
-          <form onSubmit={handleFileUpload} className="p-4 rounded-xl border border-white/[0.08] bg-[#16221B] space-y-2.5">
+          <form onSubmit={handleFileUpload} className="p-4 rounded-xl border border-white/[0.08] bg-[#1F2026] space-y-2.5">
             <h3 className="font-semibold text-sm text-[#F0F5F2] flex items-center space-x-2">
               <Upload className="w-4 h-4 text-[#FF9F0A]" />
               <span>Загрузить свой файл Excel (.xlsx)</span>

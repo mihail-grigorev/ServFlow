@@ -161,7 +161,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
             <h1 className="text-xl font-bold tracking-tight text-[#F0F5F2]">
               Журнал заявок на выезд
             </h1>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#4A6751]/15 text-[#6E9078] border border-[#6E9078]/20">
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white border border-white/20">
               {orders.length} оформлено
             </span>
           </div>
@@ -185,7 +185,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
               onClick={() => setStatusFilter(f.id)}
               className={`px-3 py-1 rounded-lg font-medium transition-all ${
                 statusFilter === f.id
-                  ? 'bg-[#16221B] text-[#F0F5F2] shadow-sm border border-white/[0.12]'
+                  ? 'bg-white text-black font-semibold shadow-sm'
                   : 'text-[#8E9E94] hover:text-[#F0F5F2]'
               }`}
             >
@@ -199,7 +199,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
       <div className="bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="bg-[#16221B]/80 text-[#8E9E94] font-semibold uppercase tracking-wider border-b border-white/[0.08]">
+            <thead className="bg-white/[0.04] text-[#8E9E94] font-semibold uppercase tracking-wider border-b border-white/[0.08]">
               <tr>
                 <th className="py-3 px-4">№ Заявки</th>
                 <th className="py-3 px-4">Клиент и адрес</th>
@@ -214,7 +214,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
             <tbody className="divide-y divide-white/[0.06]">
               {filtered.map((o) => (
                 <tr key={o.id} className="hover:bg-white/[0.02] transition-colors">
-                  <td className="py-3.5 px-4 font-mono font-bold text-[#6E9078] whitespace-nowrap">
+                  <td className="py-3.5 px-4 font-mono font-bold text-white whitespace-nowrap">
                     <div>{o.order_number}</div>
                     {o.is_warranty && (
                       <span className="inline-block mt-0.5 text-[10px] font-bold px-1.5 py-0.2 rounded bg-[#FF453A]/15 text-[#FF453A] border border-[#FF453A]/20">
@@ -248,7 +248,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                   <td className="py-3.5 px-4 whitespace-nowrap">
                     {o.engineer ? (
                       <div className="flex items-center space-x-1.5">
-                        <User className="w-3.5 h-3.5 text-[#6E9078]" />
+                        <User className="w-3.5 h-3.5 text-white/60" />
                         <span className="font-medium text-[#F0F5F2]">{o.engineer.full_name}</span>
                       </div>
                     ) : (
@@ -277,11 +277,11 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                     <span
                       className={`font-semibold px-2.5 py-1 rounded-full text-[11px] border ${
                         o.status === 'Выполнен'
-                          ? 'bg-[#2E7D47]/15 text-[#48BB78] border-[#2E7D47]/25'
+                          ? 'bg-white/15 text-white border-white/20'
                           : o.status === 'На месте'
                           ? 'bg-[#FF9F0A]/15 text-[#FF9F0A] border-[#FF9F0A]/25'
                           : o.status === 'В пути'
-                          ? 'bg-[#4A6751]/15 text-[#6E9078] border-[#6E9078]/25'
+                          ? 'bg-white/10 text-white border-white/15'
                           : 'bg-white/[0.06] text-[#8E9E94] border-white/[0.08]'
                       }`}
                     >
@@ -294,7 +294,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                       <button
                         type="button"
                         onClick={() => handleOpenEdit(o)}
-                        className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-[#4A6751]/20 hover:bg-[#4A6751]/35 text-[#6E9078] hover:text-white border border-[#6E9078]/30 text-[11px] font-semibold transition-all active:scale-95 cursor-pointer"
+                        className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white border border-white/20 text-[11px] font-semibold transition-all active:scale-95 cursor-pointer"
                       >
                         <Edit3 className="w-3 h-3" />
                         <span>Редактировать</span>
@@ -329,10 +329,10 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
       {/* ================= EDIT ORDER MODAL (DISPATCHER) ================= */}
       {editingOrder && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#16221B] w-full max-w-xl rounded-2xl border border-white/[0.1] shadow-2xl p-6 text-[#F0F5F2] animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+          <div className="bg-[#16171B] w-full max-w-xl rounded-2xl border border-white/[0.1] shadow-2xl p-6 text-[#F0F5F2] animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-white/[0.08] mb-4">
               <div className="flex items-center space-x-2">
-                <Wrench className="w-5 h-5 text-[#6E9078]" />
+                <Wrench className="w-5 h-5 text-white/70" />
                 <div>
                   <h3 className="text-base font-bold text-white">
                     Редактирование заявки {editingOrder.order_number}
@@ -412,7 +412,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                     type="checkbox"
                     checked={editIsWarranty}
                     onChange={(e) => setEditIsWarranty(e.target.checked)}
-                    className="rounded text-[#FF453A] focus:ring-[#FF453A] bg-[#1D2E24]"
+                    className="rounded text-[#FF453A] focus:ring-[#FF453A] bg-[#1F2026]"
                   />
                   <span className={editIsWarranty ? 'text-[#FF453A]' : 'text-white'}>
                     Гарантийный случай (Правило П-9)
@@ -433,7 +433,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
               <div className="p-3 rounded-xl bg-black/25 border border-white/[0.06] space-y-2.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold text-white flex items-center space-x-1.5">
-                    <Package className="w-3.5 h-3.5 text-[#6E9078]" />
+                    <Package className="w-3.5 h-3.5 text-white/70" />
                     <span>Зарезервированные запчасти (Правило П-7, П-8)</span>
                   </label>
                   <span className="text-[10px] text-[#8E9E94]">
@@ -509,7 +509,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                     type="button"
                     disabled={!selectedPartToAdd}
                     onClick={handleAddPart}
-                    className="px-3 py-1.5 rounded-lg bg-[#4A6751] hover:bg-[#3D5643] disabled:opacity-40 text-white text-xs font-semibold flex items-center space-x-1 cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-white hover:bg-neutral-200 disabled:opacity-40 text-black text-xs font-semibold flex items-center space-x-1 cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Добавить</span>
@@ -539,7 +539,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                   <button
                     type="submit"
                     disabled={saving}
-                    className="px-5 py-2 rounded-xl bg-[#4A6751] hover:bg-[#3D5643] disabled:opacity-50 text-white font-semibold text-xs shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer"
+                    className="px-5 py-2 rounded-xl bg-white hover:bg-neutral-200 disabled:opacity-50 text-black font-semibold text-xs shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer"
                   >
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>{saving ? 'Сохранение...' : 'Сохранить изменения'}</span>

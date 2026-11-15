@@ -72,7 +72,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setActiveTab('dispatcher')}
                   className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                     activeTab === 'dispatcher'
-                      ? 'bg-[#2E7D47] text-white shadow-sm font-semibold'
+                      ? 'bg-white text-black shadow-sm font-semibold'
                       : 'text-[#9CA3AF] hover:text-white'
                   }`}
                 >
@@ -84,7 +84,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setActiveTab('orders')}
                   className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                     activeTab === 'orders'
-                      ? 'bg-[#2E7D47] text-white shadow-sm font-semibold'
+                      ? 'bg-white text-black shadow-sm font-semibold'
                       : 'text-[#9CA3AF] hover:text-white'
                   }`}
                 >
@@ -96,7 +96,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setActiveTab('warehouse')}
                   className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                     activeTab === 'warehouse'
-                      ? 'bg-[#2E7D47] text-white shadow-sm font-semibold'
+                      ? 'bg-white text-black shadow-sm font-semibold'
                       : 'text-[#9CA3AF] hover:text-white'
                   }`}
                 >
@@ -110,7 +110,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setActiveTab('company')}
                   className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                     activeTab === 'company'
-                      ? 'bg-[#2E7D47] text-white shadow-sm font-semibold'
+                      ? 'bg-white text-black shadow-sm font-semibold'
                       : 'text-[#9CA3AF] hover:text-white'
                   }`}
                 >
@@ -122,7 +122,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setActiveTab('orders')}
                   className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                     activeTab === 'orders'
-                      ? 'bg-[#2E7D47] text-white shadow-sm font-semibold'
+                      ? 'bg-white text-black shadow-sm font-semibold'
                       : 'text-[#9CA3AF] hover:text-white'
                   }`}
                 >
@@ -135,7 +135,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onClick={() => setActiveTab('engineer')}
                 className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                   activeTab === 'engineer'
-                    ? 'bg-[#2E7D47] text-white shadow-sm font-semibold'
+                    ? 'bg-white text-black shadow-sm font-semibold'
                     : 'text-[#9CA3AF] hover:text-white'
                 }`}
               >
@@ -158,20 +158,20 @@ export const Navbar: React.FC<NavbarProps> = ({
                 title="Автоответ с ИИ: автоматически отвечает клиентам во всех входящих чатах и ветках"
                 className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   autoReplyEnabled
-                    ? 'bg-[#2E7D47]/25 text-[#48BB78] border border-[#2E7D47]/40'
+                    ? 'bg-white/15 text-white border border-white/20'
                     : 'bg-white/[0.04] text-[#9CA3AF] hover:text-white border border-transparent'
                 }`}
               >
-                <Sparkles className="w-3.5 h-3.5 text-[#48BB78]" />
+                <Sparkles className="w-3.5 h-3.5 text-white" />
                 <span>Автоответ с ИИ:</span>
                 <span className="font-bold">{autoReplyEnabled ? 'ВКЛ' : 'ВЫКЛ'}</span>
                 <span
                   className={`w-6 h-3.5 flex items-center rounded-full p-0.5 transition-colors ${
-                    autoReplyEnabled ? 'bg-[#2E7D47]' : 'bg-neutral-700'
+                    autoReplyEnabled ? 'bg-white' : 'bg-neutral-700'
                   }`}
                 >
                   <span
-                    className={`bg-white w-2.5 h-2.5 rounded-full shadow-md transform transition-transform ${
+                    className={`${autoReplyEnabled ? 'bg-black' : 'bg-white'} w-2.5 h-2.5 rounded-full shadow-md transform transition-transform ${
                       autoReplyEnabled ? 'translate-x-2.5' : 'translate-x-0'
                     }`}
                   />
@@ -268,7 +268,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                             }}
                             className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-between transition-colors ${
                               currentUser.id === u.id
-                                ? 'bg-[#2E7D47] text-white font-semibold'
+                                ? 'bg-white/15 text-white font-semibold'
                                 : 'hover:bg-white/[0.05] text-[#F3F4F6]'
                             }`}
                           >
@@ -290,7 +290,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                           setMenuOpen(false);
                           onLogout();
                         }}
-                        className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-xl text-xs font-medium text-[#FF453A] hover:bg-[#FF453A]/10 transition-colors"
+                        className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-xl text-xs font-medium text-white hover:bg-white/10 transition-colors"
                       >
                         <LogOut className="w-3.5 h-3.5" />
                         <span>Выйти из аккаунта</span>
@@ -303,9 +303,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           ) : (
             <button
               onClick={onOpenLogin}
-              className="px-3.5 py-1.5 rounded-xl bg-[#2E7D47] hover:bg-[#256B3C] text-white text-xs font-semibold shadow-sm transition-all flex items-center space-x-1.5"
+              className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-semibold shadow-sm transition-all flex items-center space-x-1.5"
             >
-              <UserCheck className="w-3.5 h-3.5 text-white" />
+              <UserCheck className="w-3.5 h-3.5 text-black" />
               <span>Войти</span>
             </button>
           )}

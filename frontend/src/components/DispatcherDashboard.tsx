@@ -257,11 +257,11 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
   const getChannelIcon = (ch: string) => {
     switch (ch) {
       case 'Почта':
-        return <Mail className="w-3.5 h-3.5 text-[#48BB78]" />;
+        return <Mail className="w-3.5 h-3.5 text-white" />;
       case 'Звонок':
-        return <Phone className="w-3.5 h-3.5 text-emerald-400" />;
+        return <Phone className="w-3.5 h-3.5 text-white" />;
       default:
-        return <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />;
+        return <MessageSquare className="w-3.5 h-3.5 text-white" />;
     }
   };
 
@@ -285,9 +285,9 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => onOpenOrderModal()}
-                className="w-full py-2.5 px-3 rounded-xl bg-[#264232] hover:bg-[#2F503D] text-[#D8F3E5] border border-[#3A6349]/50 text-xs font-semibold flex items-center justify-center space-x-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
+                className="w-full py-2.5 px-3 rounded-xl bg-white hover:bg-neutral-200 text-black border border-white/20 text-xs font-semibold flex items-center justify-center space-x-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
               >
-                <Plus className="w-4 h-4 text-[#48BB78]" />
+                <Plus className="w-4 h-4 text-black" />
                 <span>+ Новая заявка в 1 клик</span>
               </button>
             </div>
@@ -318,7 +318,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                   onClick={() => setActiveFilter(f.id)}
                   className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
                     activeFilter === f.id
-                      ? 'bg-[#334A3E] text-[#D8F3E5] font-semibold border border-[#4E765D]/50 shadow-sm'
+                      ? 'bg-white text-black font-semibold shadow-sm'
                       : 'bg-white/[0.05] text-[#9CA3AF] hover:text-white hover:bg-white/[0.08]'
                   }`}
                 >
@@ -340,7 +340,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                   onClick={() => setSelectedThreadId(t.id)}
                   className={`p-3.5 cursor-pointer transition-all ${
                     isSelected
-                      ? 'bg-white/[0.08] border-l-4 border-[#2E7D47]'
+                      ? 'bg-white/[0.08] border-l-4 border-white'
                       : 'hover:bg-white/[0.03]'
                   }`}
                 >
@@ -374,7 +374,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                       </span>
                     )}
                     {t.status === 'order_created' && (
-                      <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-[#2E7D47]/20 text-[#48BB78] border border-[#2E7D47]/30">
+                      <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-white/10 text-white border border-white/20">
                         Заявка создана
                       </span>
                     )}
@@ -428,11 +428,11 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                   <span
                     className={`text-xs px-2.5 py-1 rounded-full font-medium ${
                       selectedThread.status === 'ready_for_order'
-                        ? 'bg-[#2E7D47]/20 text-[#48BB78] border border-[#2E7D47]/30'
+                        ? 'bg-white/15 text-white border border-white/20'
                         : selectedThread.status === 'sales_transfer'
-                        ? 'bg-[#FF9F0A]/15 text-[#FF9F0A] border border-[#FF9F0A]/30'
+                        ? 'bg-neutral-800 text-neutral-300 border border-white/10'
                         : selectedThread.status === 'order_created'
-                        ? 'bg-[#2E7D47]/20 text-[#48BB78] border border-[#2E7D47]/30'
+                        ? 'bg-white/15 text-white border border-white/20'
                         : 'bg-white/[0.06] text-[#9CA3AF]'
                     }`}
                   >
@@ -455,7 +455,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                     onClick={() => setDispatcherChatTab('client')}
                     className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
                       dispatcherChatTab === 'client'
-                        ? 'bg-[#2E7D47] text-white shadow-sm font-semibold'
+                        ? 'bg-white text-black shadow-sm font-semibold'
                         : 'text-[#9CA3AF] hover:text-white'
                     }`}
                   >
@@ -463,7 +463,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                     <span>Чат с клиентом</span>
                     {clientMessagesCount > 0 && (
                       <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                        dispatcherChatTab === 'client' ? 'bg-white/20 text-white' : 'bg-white/10 text-[#9CA3AF]'
+                        dispatcherChatTab === 'client' ? 'bg-black/15 text-black' : 'bg-white/10 text-[#9CA3AF]'
                       }`}>
                         {clientMessagesCount}
                       </span>
@@ -474,7 +474,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                     onClick={() => setDispatcherChatTab('engineer')}
                     className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
                       dispatcherChatTab === 'engineer'
-                        ? 'bg-[#2E7D47] text-white shadow-sm font-semibold'
+                        ? 'bg-white text-black shadow-sm font-semibold'
                         : 'text-[#9CA3AF] hover:text-white'
                     }`}
                   >
@@ -482,7 +482,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                     <span>Чат с инженером</span>
                     {engineerMessagesCount > 0 && (
                       <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                        dispatcherChatTab === 'engineer' ? 'bg-white/20 text-white' : 'bg-white/10 text-[#9CA3AF]'
+                        dispatcherChatTab === 'engineer' ? 'bg-black/15 text-black' : 'bg-white/10 text-[#9CA3AF]'
                       }`}>
                         {engineerMessagesCount}
                       </span>
@@ -536,13 +536,13 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                         <div className="flex items-center space-x-1.5 mb-1 text-[11px] text-[#9CA3AF]">
                           <span>{m.sender_name}</span>
                           {isEngineer && (
-                            <span className="px-1.5 py-0.2 rounded-full bg-[#2E7D47]/20 text-[#48BB78] border border-[#2E7D47]/30 font-semibold text-[9px] flex items-center space-x-0.5">
+                            <span className="px-1.5 py-0.2 rounded-full bg-white/10 text-white border border-white/20 font-semibold text-[9px] flex items-center space-x-0.5">
                               <Wrench className="w-2.5 h-2.5" />
                               <span>Инженер на выезде</span>
                             </span>
                           )}
                           {m.sender_name.includes('ИИ') && (
-                            <span className="px-1.5 py-0.2 rounded-full bg-[#2E7D47]/20 text-[#48BB78] border border-[#2E7D47]/30 font-semibold text-[9px] flex items-center space-x-0.5">
+                            <span className="px-1.5 py-0.2 rounded-full bg-white/10 text-white border border-white/20 font-semibold text-[9px] flex items-center space-x-0.5">
                               <Sparkles className="w-2.5 h-2.5" />
                               <span>Автоответ</span>
                             </span>
@@ -559,9 +559,9 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                         <div
                           className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed ${
                             isDispatcher
-                              ? 'bg-[#1F3A29] text-white border border-[#2E7D47]/35 rounded-tr-sm shadow-sm'
+                              ? 'bg-white/15 text-white border border-white/10 rounded-tr-sm shadow-sm'
                               : isEngineer
-                              ? 'bg-[#16291E] text-white border border-[#2E7D47]/40 rounded-tl-sm shadow-sm'
+                              ? 'bg-white/10 text-white border border-white/10 rounded-tl-sm shadow-sm'
                               : 'bg-[#1F2026] text-white border border-white/[0.08] rounded-tl-sm shadow-sm'
                           }`}
                         >
@@ -585,7 +585,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                       className="p-2.5 sm:p-3 flex items-center justify-between gap-2 bg-[#1F2026] cursor-pointer select-none hover:bg-white/[0.02] transition-colors"
                     >
                       <div className="flex items-center space-x-2 flex-1 min-w-0">
-                        <div className="p-1 rounded-lg bg-[#2E7D47]/20 text-[#48BB78] flex-shrink-0">
+                        <div className="p-1 rounded-lg bg-white/10 text-white flex-shrink-0">
                           <Sparkles className="w-3.5 h-3.5" />
                         </div>
                         <div className="min-w-0 flex-1">
@@ -664,17 +664,17 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                                 <button
                                   onClick={() => handleSendMessage(aiAnalysis.reply_to_client)}
                                   disabled={sendingMsg}
-                                  className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-[#2E7D47] hover:bg-[#256B3C] text-white font-semibold transition-colors flex items-center space-x-1 cursor-pointer"
+                                  className="px-2.5 py-1 text-[11px] font-semibold rounded-lg bg-white hover:bg-neutral-200 text-black transition-colors flex items-center space-x-1 cursor-pointer"
                                 >
                                   <span>Отправить клиенту</span>
-                                  <ArrowRight className="w-3 h-3 text-white" />
+                                  <ArrowRight className="w-3 h-3 text-black" />
                                 </button>
                               </div>
                             </div>
                           </>
                         ) : (
                           <div className="text-xs text-[#9CA3AF] py-2 flex items-center justify-center space-x-2 mt-2">
-                            <Sparkles className="w-3.5 h-3.5 animate-spin text-[#48BB78]" />
+                            <Sparkles className="w-3.5 h-3.5 animate-spin text-white/60" />
                             <span>Анализ контекста обращения...</span>
                           </div>
                         )}
@@ -699,7 +699,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                           type="button"
                           onClick={() => handleSendMessage(prompt)}
                           disabled={sendingMsg}
-                          className="px-2.5 py-1 text-[11px] rounded-lg bg-[#18281F] hover:bg-[#22382B] text-[#D8F3E5] border border-[#2E7D47]/40 transition-colors text-left cursor-pointer disabled:opacity-50"
+                          className="px-2.5 py-1 text-[11px] rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-white border border-white/10 transition-colors text-left cursor-pointer disabled:opacity-50"
                         >
                           {prompt}
                         </button>
@@ -730,9 +730,9 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                   <button
                     type="submit"
                     disabled={sendingMsg || !inputText.trim()}
-                    className="p-2 rounded-xl bg-[#2E7D47] hover:bg-[#256B3C] text-white disabled:opacity-40 transition-colors cursor-pointer"
+                    className="p-2 rounded-xl bg-white hover:bg-neutral-200 text-black disabled:opacity-40 transition-colors cursor-pointer"
                   >
-                    <Send className="w-4 h-4 text-white" />
+                    <Send className="w-4 h-4 text-black" />
                   </button>
                 </form>
               </div>
@@ -749,7 +749,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
         <div className="lg:col-span-4 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex flex-col min-h-0 overflow-hidden">
           <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
             <h2 className="font-bold text-sm text-white flex items-center space-x-1.5">
-              <Sparkles className="w-4 h-4 text-[#48BB78]" />
+              <Sparkles className="w-4 h-4 text-white/70" />
               <span>Диагностика и запчасти</span>
             </h2>
           </div>
@@ -762,7 +762,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                   Оборудование
                 </span>
                 {aiAnalysis?.detected_equipment_code && (
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#2E7D47]/20 text-[#48BB78] border border-[#2E7D47]/30">
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-white/10 text-white border border-white/20">
                     {aiAnalysis.detected_equipment_code}
                   </span>
                 )}
@@ -797,7 +797,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-[#9CA3AF]">Серийный номер:</span>
-                    <span className="font-mono font-bold text-[#48BB78]">
+                    <span className="font-mono font-bold text-white">
                       {selectedThread.equipment.serial_number}
                     </span>
                   </div>
@@ -849,7 +849,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                   </p>
                 </div>
               ) : (
-                <div className="flex items-center space-x-1.5 text-xs text-[#48BB78]">
+                <div className="flex items-center space-x-1.5 text-xs text-neutral-300">
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   <span>Стандартный платный визит</span>
                 </div>
@@ -863,7 +863,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                   <span className="text-xs font-semibold text-white">
                     Код ошибки
                   </span>
-                  <span className="text-xs font-mono font-bold text-[#48BB78] px-2 py-0.5 rounded bg-[#2E7D47]/20 border border-[#2E7D47]/30">
+                  <span className="text-xs font-mono font-bold text-white px-2 py-0.5 rounded bg-white/10 border border-white/20">
                     {aiAnalysis.error_code}
                   </span>
                 </div>
@@ -898,7 +898,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
             <div className="p-3.5 rounded-xl border border-white/[0.08] bg-[#1F2026] space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-white flex items-center space-x-1.5">
-                  <Package className="w-3.5 h-3.5 text-[#48BB78]" />
+                  <Package className="w-3.5 h-3.5 text-white/70" />
                   <span>Рекомендуемые запчасти</span>
                 </span>
                 <button
@@ -930,7 +930,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                           <span
                             className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                               (p.local_free ?? 0) > 0
-                                ? 'bg-[#2E7D47]/20 text-[#48BB78]'
+                                ? 'bg-white/10 text-white border border-white/10'
                                 : p.transfer_required
                                 ? 'bg-[#FF9F0A]/15 text-[#FF9F0A]'
                                 : 'bg-white/[0.06] text-[#9CA3AF]'
@@ -956,7 +956,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                       {/* Diagnostic reason from AI / DB history */}
                       {p.diagnostic_reason && (
                         <div className="text-[11px] text-[#9CA3AF] leading-relaxed">
-                          <span className="text-[#48BB78] font-medium">Диагностика:</span> {p.diagnostic_reason}
+                          <span className="text-neutral-300 font-medium">Диагностика:</span> {p.diagnostic_reason}
                         </div>
                       )}
 
@@ -1034,7 +1034,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                         type="button"
                         disabled={!selectedPartCodeToAdd}
                         onClick={handleAddManualPart}
-                        className="px-3 py-1 rounded-lg bg-[#2E7D47] hover:bg-[#256B3C] disabled:opacity-40 text-white text-xs font-semibold"
+                        className="px-3 py-1 rounded-lg bg-white hover:bg-neutral-200 disabled:opacity-40 text-black text-xs font-semibold"
                       >
                         Добавить в заявку
                       </button>
@@ -1074,9 +1074,9 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
           <div className="p-4 border-t border-white/[0.06] bg-[#16171B]">
             <button
               onClick={handleCreateOrderWithAiParts}
-              className="w-full py-3 rounded-xl bg-[#2E7D47] hover:bg-[#256B3C] text-white border border-[#3A8F57]/50 text-xs font-semibold flex items-center justify-center space-x-2 shadow-lg transition-all cursor-pointer active:scale-95"
+              className="w-full py-3 rounded-xl bg-white hover:bg-neutral-200 text-black border border-white/20 text-xs font-semibold flex items-center justify-center space-x-2 shadow-lg transition-all cursor-pointer active:scale-95"
             >
-              <Wrench className="w-4 h-4 text-white" />
+              <Wrench className="w-4 h-4 text-black" />
               <span>Оформить заявку на выезд с деталями ИИ</span>
             </button>
           </div>

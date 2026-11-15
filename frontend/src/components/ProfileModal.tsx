@@ -172,7 +172,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         {/* Header */}
         <div className="p-5 border-b border-white/[0.08] flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-[#4A6751]/10 text-[#6E9078] flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-xl bg-white/10 text-white flex items-center justify-center font-bold">
               <UserIcon className="w-5 h-5" />
             </div>
             <div>
@@ -192,7 +192,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
         {/* Notifications */}
         {successMsg && (
-          <div className="mx-5 mt-4 p-3 rounded-xl bg-[#2E7D47]/10 border border-[#2E7D47]/20 flex items-center space-x-2 text-xs text-[#48BB78] font-medium">
+          <div className="mx-5 mt-4 p-3 rounded-xl bg-white/10 border border-white/20 flex items-center space-x-2 text-xs text-white font-medium">
             <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
             <span>{successMsg}</span>
           </div>
@@ -243,7 +243,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                       onClick={() => setAvatarUrl(preset)}
                       className={`w-8 h-8 rounded-xl border p-0.5 overflow-hidden transition-all ${
                         avatarUrl === preset
-                          ? 'border-[#4A6751] ring-2 ring-[#4A6751]/40'
+                          ? 'border-white ring-2 ring-white/40'
                           : 'border-white/[0.1] hover:border-white/[0.3]'
                       }`}
                     >
@@ -271,7 +271,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     required
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-white/[0.1] bg-[#1D2E24] text-white outline-none focus:border-[#6E9078]"
+                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/20"
                   />
                 </div>
               </div>
@@ -285,7 +285,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-white/[0.1] bg-[#1D2E24] text-white outline-none focus:border-[#6E9078]"
+                    className="w-full pl-9 pr-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/20"
                   />
                 </div>
               </div>
@@ -299,7 +299,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     <select
                       value={city}
                       onChange={(e) => setCity(e.target.value as any)}
-                      className="w-full px-3 py-1.5 rounded-lg border border-white/[0.1] bg-[#1D2E24] text-white outline-none"
+                      className="w-full px-3 py-1.5 rounded-lg border border-white/[0.1] bg-[#1F2026] text-white outline-none"
                     >
                       <option value="Москва">Москва</option>
                       <option value="Тула">Тула</option>
@@ -316,7 +316,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                           onClick={() => toggleQual(m)}
                           className={`px-2.5 py-1 rounded-lg font-medium border transition-colors ${
                             qualifications.includes(m)
-                              ? 'bg-[#4A6751] border-[#4A6751] text-white'
+                              ? 'bg-white border-white text-black font-semibold'
                               : 'bg-black/30 border-white/[0.1] text-[#8E9E94]'
                           }`}
                         >
@@ -338,7 +338,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   <select
                     value={city}
                     onChange={(e: any) => setCity(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-xl border border-white/[0.1] bg-[#1D2E24] text-white outline-none"
+                    className="w-full px-3 py-1.5 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none"
                   >
                     <option value="Москва">Москва</option>
                     <option value="Тула">Тула</option>
@@ -364,7 +364,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Минимум 6 знаков"
-                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-white/[0.1] bg-[#1D2E24] text-white outline-none focus:border-[#6E9078]"
+                  className="w-full pl-9 pr-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/20"
                 />
               </div>
             </div>
@@ -487,7 +487,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <button
                 type="submit"
                 disabled={loading}
-                className="px-5 py-2 rounded-xl bg-[#4A6751] hover:bg-[#3D5643] text-white font-semibold text-xs shadow-sm transition-all flex items-center space-x-1.5"
+                className="px-5 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black font-semibold text-xs shadow-sm transition-all flex items-center space-x-1.5"
               >
                 <span>{loading ? 'Сохранение...' : 'Сохранить изменения'}</span>
                 <CheckCircle2 className="w-4 h-4" />

@@ -37,7 +37,7 @@ export const EquipmentRegistryView: React.FC<EquipmentRegistryViewProps> = ({
             <h1 className="text-xl font-bold tracking-tight text-[#1D1D1F]">
               Реестр установленного оборудования
             </h1>
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#3D5643]/10 text-[#3D5643]">
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-black/[0.06] text-[#1D1D1F]">
               12 кофемашин
             </span>
           </div>
@@ -55,7 +55,7 @@ export const EquipmentRegistryView: React.FC<EquipmentRegistryViewProps> = ({
               placeholder="Поиск по клиенту или сер. №..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-black/[0.1] bg-white outline-none focus:border-[#3D5643]"
+              className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-black/[0.1] bg-white outline-none focus:border-black/30"
             />
           </div>
 
@@ -85,7 +85,7 @@ export const EquipmentRegistryView: React.FC<EquipmentRegistryViewProps> = ({
             >
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-md bg-[#3D5643]/10 text-[#3D5643]">
+                  <span className="font-mono text-xs font-bold px-2 py-0.5 rounded-md bg-black/[0.06] text-[#1D1D1F]">
                     {eq.code}
                   </span>
                   <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-black/[0.05] text-[#1D1D1F]">
@@ -102,7 +102,7 @@ export const EquipmentRegistryView: React.FC<EquipmentRegistryViewProps> = ({
                   <span className="truncate">{eq.address}</span>
                 </div>
 
-                <div className="p-3 rounded-xl bg-[#F0F5F2] text-xs space-y-1">
+                <div className="p-3 rounded-xl bg-neutral-100 text-xs space-y-1">
                   <div className="flex justify-between">
                     <span className="text-[#86868B]">Модель:</span>
                     <span className="font-bold text-[#1D1D1F]">{eq.model}</span>
@@ -132,7 +132,7 @@ export const EquipmentRegistryView: React.FC<EquipmentRegistryViewProps> = ({
               {onSelectForOrder && (
                 <button
                   onClick={() => onSelectForOrder(eq)}
-                  className="w-full py-2 rounded-xl border border-[#3D5643] text-[#3D5643] hover:bg-[#3D5643] hover:text-white text-xs font-medium transition-all"
+                  className="w-full py-2 rounded-xl bg-black text-white hover:bg-neutral-800 text-xs font-medium transition-all"
                 >
                   Оформить выезд на эту машину
                 </button>

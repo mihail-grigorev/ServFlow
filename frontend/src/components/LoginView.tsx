@@ -53,6 +53,18 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
   const [resendCountdown, setResendCountdown] = useState(0);
   const [codeSentMsg, setCodeSentMsg] = useState<string | null>(null);
 
+  const [activeDemoUsers, setActiveDemoUsers] = useState<User[]>(demoUsers);
+
+  useEffect(() => {
+    if (demoUsers && demoUsers.length > 0) {
+      setActiveDemoUsers(demoUsers);
+    } else {
+      api.getDemoUsers()
+        .then((users) => setActiveDemoUsers(users))
+        .catch((err) => console.error('Failed to load demo users in LoginView:', err));
+    }
+  }, [demoUsers]);
+
   useEffect(() => {
     let timer: any;
     if (resendCountdown > 0) {
@@ -193,17 +205,17 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
     }
   };
 
-  const dispatchers = demoUsers.filter((u) => u.role === 'dispatcher');
-  const engineers = demoUsers.filter((u) => u.role === 'engineer');
-  const companies = demoUsers.filter((u) => u.role === 'company');
+  const dispatchers = activeDemoUsers.filter((u) => u.role === 'dispatcher');
+  const engineers = activeDemoUsers.filter((u) => u.role === 'engineer');
+  const companies = activeDemoUsers.filter((u) => u.role === 'company');
 
   return (
     <div className="min-h-screen bg-[#0C0D0F] text-[#F3F4F6] flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {/* Background ambient dark glows inspired by Web3 Dark aesthetic (Photo 1) */}
+      {/* Background ambient dark glows in neutral graphite */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute -top-[120px] left-[10%] w-[580px] h-[580px] bg-gradient-to-br from-[#1C4332]/25 via-[#23533E]/15 to-transparent rounded-full blur-[140px]" />
-        <div className="absolute top-[10%] -right-[100px] w-[600px] h-[600px] bg-gradient-to-bl from-[#7D4A22]/20 via-[#5E381A]/15 to-transparent rounded-full blur-[150px]" />
-        <div className="absolute -bottom-[150px] left-[25%] w-[680px] h-[680px] bg-gradient-to-tr from-[#1B3545]/20 via-[#1E2E25]/15 to-transparent rounded-full blur-[160px]" />
+        <div className="absolute -top-[120px] left-[10%] w-[580px] h-[580px] bg-gradient-to-br from-white/[0.03] via-zinc-800/10 to-transparent rounded-full blur-[140px]" />
+        <div className="absolute top-[10%] -right-[100px] w-[600px] h-[600px] bg-gradient-to-bl from-zinc-800/10 via-neutral-900/15 to-transparent rounded-full blur-[150px]" />
+        <div className="absolute -bottom-[150px] left-[25%] w-[680px] h-[680px] bg-gradient-to-tr from-zinc-900/20 via-zinc-900/15 to-transparent rounded-full blur-[160px]" />
       </div>
 
       <div className="relative z-10 w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -236,7 +248,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
               }}
               className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${
                 mode === 'login'
-                  ? 'bg-[#4A6751] text-white shadow-sm'
+                  ? 'bg-white text-black shadow-sm font-semibold'
                   : 'text-[#8E9E94] hover:text-white'
               }`}
             >
@@ -252,7 +264,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
               }}
               className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${
                 mode === 'register'
-                  ? 'bg-[#4A6751] text-white shadow-sm'
+                  ? 'bg-white text-black shadow-sm font-semibold'
                   : 'text-[#8E9E94] hover:text-white'
               }`}
             >
@@ -261,7 +273,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
           </div>
 
           {error && (
-            <div className="mb-4 p-3 rounded-xl bg-[#FF453A]/10 border border-[#FF453A]/20 flex items-center space-x-2 text-xs text-[#FF453A]">
+            <div className="mb-4 p-3 rounded-xl bg-white/10 border border-white/20 flex items-center space-x-2 text-xs text-white">
               <AlertCircle className="w-4 h-4 flex-shrink-0" />
               <span>{error}</span>
             </div>
@@ -269,6 +281,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
 
           {mode === 'login' ? (
             <form onSubmit={handleLogin} className="space-y-4">
+              <div className="p-3 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-between text-xs text-neutral-300">
+                <div className="flex items-center space-x-2">
+                  <ShieldCheck className="w-4 h-4 text-white flex-shrink-0" />
+                  <span>Пароль для всех тестовых аккаунтов: <strong className="text-white font-mono bg-black/40 px-1.5 py-0.5 rounded border border-white/10">password123</strong></span>
+                </div>
+                <span className="text-[10px] text-[#8E9E94] hidden sm:inline">вход в 1 клик справа ➔</span>
+              </div>
+
               <div>
                 <label className="block text-xs font-medium text-[#8E9E94] mb-1">
                   Электронная почта
@@ -281,7 +301,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="ivanov@kofeservice.ru"
-                    className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-white/[0.1] bg-[#1D2E24] text-white focus:border-[#6E9078] outline-none transition-all"
+                    className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-white/[0.1] bg-black/40 text-white focus:border-white/30 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -298,7 +318,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-white/[0.1] bg-[#1D2E24] text-white focus:border-[#6E9078] outline-none transition-all"
+                    className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-white/[0.1] bg-black/40 text-white focus:border-white/30 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -306,7 +326,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 rounded-xl bg-[#4A6751] hover:bg-[#3D5643] text-white text-sm font-semibold transition-colors shadow-sm flex items-center justify-center space-x-1.5 cursor-pointer active:scale-95"
+                className="w-full py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black text-sm font-semibold transition-colors shadow-sm flex items-center justify-center space-x-1.5 cursor-pointer active:scale-95"
               >
                 <span>{loading ? 'Вход...' : 'Войти в систему'}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -314,8 +334,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
             </form>
           ) : regStep === 'code' ? (
             <form onSubmit={handleConfirmRegister} className="space-y-4">
-              <div className="p-4 rounded-xl border border-[#2E7D47]/30 bg-[#16251C] space-y-2 text-center">
-                <div className="w-12 h-12 mx-auto rounded-full bg-[#2E7D47]/20 border border-[#2E7D47]/40 flex items-center justify-center text-[#48BB78]">
+              <div className="p-4 rounded-xl border border-white/10 bg-white/[0.03] space-y-2 text-center">
+                <div className="w-12 h-12 mx-auto rounded-full bg-white/10 border border-white/20 flex items-center justify-center text-white">
                   <Mail className="w-6 h-6" />
                 </div>
                 <h3 className="text-sm font-bold text-white">Проверка электронной почты</h3>
@@ -325,13 +345,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
               </div>
 
               {codeSentMsg && (
-                <div className="p-2.5 rounded-xl bg-[#2E7D47]/10 border border-[#2E7D47]/25 text-xs text-[#48BB78] flex items-center space-x-2">
+                <div className="p-2.5 rounded-xl bg-white/10 border border-white/20 text-xs text-white flex items-center space-x-2">
                   <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
                   <span>{codeSentMsg}</span>
                 </div>
               )}
-
-
 
               <div>
                 <label className="block text-xs font-medium text-[#8E9E94] mb-1.5 text-center">
@@ -346,7 +364,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                     value={verificationCode}
                     onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
                     placeholder="123456"
-                    className="w-full text-center tracking-[0.4em] text-2xl font-mono font-bold py-2.5 rounded-xl border border-white/[0.15] bg-[#1D2E24] text-white focus:border-[#48BB78] outline-none transition-all"
+                    className="w-full text-center tracking-[0.4em] text-2xl font-mono font-bold py-2.5 rounded-xl border border-white/[0.15] bg-black/40 text-white focus:border-white/40 outline-none transition-all"
                   />
                 </div>
                 <p className="text-[11px] text-center text-[#8E9E94] mt-1.5">
@@ -357,7 +375,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
               <button
                 type="submit"
                 disabled={loading || verificationCode.length < 6}
-                className="w-full py-2.5 rounded-xl bg-[#2E7D47] hover:bg-[#25663A] disabled:opacity-50 text-white text-sm font-semibold transition-colors shadow-sm flex items-center justify-center space-x-1.5 cursor-pointer active:scale-95"
+                className="w-full py-2.5 rounded-xl bg-white hover:bg-neutral-200 disabled:opacity-50 text-black text-sm font-semibold transition-colors shadow-sm flex items-center justify-center space-x-1.5 cursor-pointer active:scale-95"
               >
                 <span>{loading ? 'Проверка...' : 'Подтвердить и войти'}</span>
                 <CheckCircle2 className="w-4 h-4" />
@@ -406,7 +424,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                         type="button"
                         onClick={() => setAvatarUrl(preset)}
                         className={`w-7 h-7 rounded-lg border p-0.5 overflow-hidden transition-all flex-shrink-0 ${
-                          avatarUrl === preset ? 'border-[#4A6751] ring-2 ring-[#4A6751]/40' : 'border-white/[0.1]'
+                          avatarUrl === preset ? 'border-white ring-2 ring-white/30' : 'border-white/[0.1]'
                         }`}
                       >
                         <img src={preset} alt="preset" className="w-full h-full object-cover" />
@@ -427,7 +445,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                     onClick={() => setRole('dispatcher')}
                     className={`py-2 px-2.5 text-xs rounded-xl border font-medium text-center transition-all ${
                       role === 'dispatcher'
-                        ? 'border-[#4A6751] bg-[#4A6751]/10 text-[#6E9078]'
+                        ? 'border-white/30 bg-white/15 text-white font-semibold'
                         : 'border-white/[0.1] text-[#8E9E94] hover:text-white'
                     }`}
                   >
@@ -438,7 +456,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                     onClick={() => setRole('engineer')}
                     className={`py-2 px-2.5 text-xs rounded-xl border font-medium text-center transition-all ${
                       role === 'engineer'
-                        ? 'border-[#4A6751] bg-[#4A6751]/10 text-[#6E9078]'
+                        ? 'border-white/30 bg-white/15 text-white font-semibold'
                         : 'border-white/[0.1] text-[#8E9E94] hover:text-white'
                     }`}
                   >
@@ -449,7 +467,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                     onClick={() => setRole('company')}
                     className={`py-2 px-2.5 text-xs rounded-xl border font-medium text-center transition-all ${
                       role === 'company'
-                        ? 'border-[#4A6751] bg-[#4A6751]/10 text-[#6E9078]'
+                        ? 'border-white/30 bg-white/15 text-white font-semibold'
                         : 'border-white/[0.1] text-[#8E9E94] hover:text-white'
                     }`}
                   >
@@ -474,7 +492,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder={role === 'company' ? 'Кафе «Кедр»' : 'Елена Васильева'}
-                    className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-white/[0.1] bg-[#1D2E24] text-white focus:border-[#6E9078] outline-none transition-all"
+                    className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-white/[0.1] bg-black/40 text-white focus:border-white/30 outline-none transition-all"
                   />
                 </div>
               </div>
@@ -491,7 +509,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="user@kofeservice.ru"
-                    className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-white/[0.1] bg-[#1D2E24] text-white outline-none focus:border-[#6E9078] transition-all"
+                    className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-white/[0.1] bg-black/40 text-white outline-none focus:border-white/30 transition-all"
                   />
                 </div>
               </div>
@@ -510,7 +528,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Минимум 6 символов"
-                      className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-white/[0.1] bg-[#1D2E24] text-white outline-none focus:border-[#6E9078] transition-all"
+                      className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-white/[0.1] bg-black/40 text-white outline-none focus:border-white/30 transition-all"
                     />
                   </div>
                 </div>
@@ -527,24 +545,24 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       placeholder="Повторите пароль"
-                      className={`w-full pl-9 pr-3 py-2 text-sm rounded-xl border bg-[#1D2E24] text-white outline-none transition-all ${
+                      className={`w-full pl-9 pr-3 py-2 text-sm rounded-xl border bg-black/40 text-white outline-none transition-all ${
                         confirmPassword
                           ? password === confirmPassword
-                            ? 'border-[#2E7D47] focus:border-[#2E7D47]'
-                            : 'border-[#FF453A] focus:border-[#FF453A]'
-                          : 'border-white/[0.1] focus:border-[#6E9078]'
+                            ? 'border-white focus:border-white'
+                            : 'border-white/30 focus:border-white/40'
+                          : 'border-white/[0.1] focus:border-white/30'
                       }`}
                     />
                   </div>
                   {confirmPassword && (
                     <div className="mt-1 text-[11px] flex items-center space-x-1">
                       {password === confirmPassword ? (
-                        <span className="text-[#48BB78] flex items-center space-x-1">
+                        <span className="text-white flex items-center space-x-1">
                           <CheckCircle2 className="w-3 h-3" />
                           <span>Пароли совпадают</span>
                         </span>
                       ) : (
-                        <span className="text-[#FF453A] flex items-center space-x-1">
+                        <span className="text-[#8E9E94] flex items-center space-x-1">
                           <AlertCircle className="w-3 h-3" />
                           <span>Пароли не совпадают</span>
                         </span>
@@ -563,7 +581,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                   <select
                     value={city}
                     onChange={(e: any) => setCity(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-white/[0.1] bg-[#1D2E24] text-white outline-none focus:border-[#6E9078]"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-white/[0.1] bg-black/40 text-white outline-none focus:border-white/30"
                   >
                     <option value="Москва">Москва</option>
                     <option value="Тула">Тула</option>
@@ -571,7 +589,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                 </div>
               )}
 
-              {/* Qualifications for Engineer only */}
               {role === 'engineer' && (
                 <div className="space-y-2 p-3 rounded-xl bg-black/30 border border-white/[0.06]">
                   <label className="block text-xs font-medium text-[#8E9E94]">
@@ -585,7 +602,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                         onClick={() => toggleQual(m)}
                         className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${
                           qualifications.includes(m)
-                            ? 'bg-[#4A6751] border-[#4A6751] text-white'
+                            ? 'bg-white text-black border-white font-semibold'
                             : 'bg-black/30 border-white/[0.1] text-[#8E9E94]'
                         }`}
                       >
@@ -599,7 +616,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2.5 rounded-xl bg-[#4A6751] hover:bg-[#3D5643] text-white text-sm font-semibold transition-colors shadow-sm flex items-center justify-center space-x-1.5 cursor-pointer active:scale-95"
+                className="w-full py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black text-sm font-semibold transition-colors shadow-sm flex items-center justify-center space-x-1.5 cursor-pointer active:scale-95"
               >
                 <span>{loading ? 'Отправка кода...' : 'Получить проверочный код'}</span>
                 <ArrowRight className="w-4 h-4" />
@@ -613,7 +630,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
           <div className="bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple p-6 space-y-4">
             <div>
               <div className="flex items-center space-x-2">
-                <ShieldCheck className="w-4 h-4 text-[#6E9078]" />
+                <ShieldCheck className="w-4 h-4 text-white" />
                 <h2 className="text-sm font-semibold tracking-tight text-white">
                   Быстрый вход для жюри (1 клик)
                 </h2>
@@ -626,7 +643,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
             {/* 1. Dispatchers */}
             <div>
               <div className="text-[10px] font-semibold text-[#8E9E94] uppercase tracking-wider mb-1.5 flex items-center space-x-1">
-                <Sparkles className="w-3 h-3 text-[#6E9078]" />
+                <Sparkles className="w-3 h-3 text-white" />
                 <span>Диспетчеры</span>
               </div>
               <div className="space-y-1.5">
@@ -634,7 +651,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                   <button
                     key={u.id}
                     onClick={() => handleQuickLogin(u)}
-                    className="w-full text-left p-2.5 rounded-xl border border-white/[0.06] hover:border-[#4A6751] hover:bg-[#4A6751]/[0.05] transition-all group flex items-center justify-between"
+                    className="w-full text-left p-2.5 rounded-xl border border-white/[0.06] hover:border-white/30 hover:bg-white/[0.05] transition-all group flex items-center justify-between"
                   >
                     <div className="flex items-center space-x-2.5 min-w-0">
                       <img
@@ -643,13 +660,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                         className="w-7 h-7 rounded-lg object-cover bg-white/10 flex-shrink-0"
                       />
                       <div className="min-w-0">
-                        <div className="text-xs font-semibold text-white group-hover:text-[#6E9078] transition-colors truncate">
+                        <div className="text-xs font-semibold text-white group-hover:text-white transition-colors truncate">
                           {u.full_name}
                         </div>
-                        <div className="text-[10px] text-[#8E9E94]">Диспетчер сервиса</div>
+                        <div className="text-[10px] text-[#8E9E94] truncate">Диспетчер · {u.email}</div>
                       </div>
                     </div>
-                    <ArrowRight className="w-3 h-3 text-[#8E9E94] group-hover:text-[#6E9078]" />
+                    <ArrowRight className="w-3 h-3 text-[#8E9E94] group-hover:text-white" />
                   </button>
                 ))}
               </div>
@@ -658,7 +675,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
             {/* 2. Engineers (All standard engineers, no senior) */}
             <div>
               <div className="text-[10px] font-semibold text-[#8E9E94] uppercase tracking-wider mb-1.5 flex items-center space-x-1">
-                <Wrench className="w-3 h-3 text-[#48BB78]" />
+                <Wrench className="w-3 h-3 text-white" />
                 <span>Сервисные инженеры</span>
               </div>
               <div className="space-y-1.5">
@@ -666,7 +683,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                   <button
                     key={u.id}
                     onClick={() => handleQuickLogin(u)}
-                    className="w-full text-left p-2.5 rounded-xl border border-white/[0.06] hover:border-[#4A6751] hover:bg-[#4A6751]/[0.05] transition-all group flex items-center justify-between"
+                    className="w-full text-left p-2.5 rounded-xl border border-white/[0.06] hover:border-white/30 hover:bg-white/[0.05] transition-all group flex items-center justify-between"
                   >
                     <div className="flex items-center space-x-2.5 min-w-0">
                       <img
@@ -675,15 +692,15 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                         className="w-7 h-7 rounded-lg object-cover bg-white/10 flex-shrink-0"
                       />
                       <div className="min-w-0">
-                        <div className="text-xs font-semibold text-white group-hover:text-[#6E9078] transition-colors truncate">
+                        <div className="text-xs font-semibold text-white group-hover:text-white transition-colors truncate">
                           {u.full_name}
                         </div>
-                        <div className="text-[10px] text-[#8E9E94]">
-                          Инженер · {u.city} {u.qualifications && `(${u.qualifications.join(', ')})`}
+                        <div className="text-[10px] text-[#8E9E94] truncate">
+                          {u.email} · {u.city} {u.qualifications && `(${u.qualifications.join(', ')})`}
                         </div>
                       </div>
                     </div>
-                    <ArrowRight className="w-3 h-3 text-[#8E9E94] group-hover:text-[#6E9078]" />
+                    <ArrowRight className="w-3 h-3 text-[#8E9E94] group-hover:text-white" />
                   </button>
                 ))}
               </div>
@@ -692,7 +709,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
             {/* 3. Companies / Clients */}
             <div>
               <div className="text-[10px] font-semibold text-[#8E9E94] uppercase tracking-wider mb-1.5 flex items-center space-x-1">
-                <Building className="w-3 h-3 text-[#FF9F0A]" />
+                <Building className="w-3 h-3 text-white" />
                 <span>Компании (Клиенты и чат)</span>
               </div>
               <div className="space-y-1.5">
@@ -700,7 +717,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                   <button
                     key={u.id}
                     onClick={() => handleQuickLogin(u)}
-                    className="w-full text-left p-2.5 rounded-xl border border-white/[0.06] hover:border-[#4A6751] hover:bg-[#4A6751]/[0.05] transition-all group flex items-center justify-between"
+                    className="w-full text-left p-2.5 rounded-xl border border-white/[0.06] hover:border-white/30 hover:bg-white/[0.05] transition-all group flex items-center justify-between"
                   >
                     <div className="flex items-center space-x-2.5 min-w-0">
                       <img
@@ -709,13 +726,13 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                         className="w-7 h-7 rounded-lg object-cover bg-white/10 flex-shrink-0"
                       />
                       <div className="min-w-0">
-                        <div className="text-xs font-semibold text-white group-hover:text-[#6E9078] transition-colors truncate">
+                        <div className="text-xs font-semibold text-white group-hover:text-white transition-colors truncate">
                           {u.full_name}
                         </div>
-                        <div className="text-[10px] text-[#8E9E94]">Клиент сервиса · {u.city}</div>
+                        <div className="text-[10px] text-[#8E9E94] truncate">{u.email} · {u.city}</div>
                       </div>
                     </div>
-                    <ArrowRight className="w-3 h-3 text-[#8E9E94] group-hover:text-[#6E9078]" />
+                    <ArrowRight className="w-3 h-3 text-[#8E9E94] group-hover:text-white" />
                   </button>
                 ))}
               </div>
@@ -725,7 +742,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
           {/* Reference Info */}
           <div className="p-3.5 rounded-xl bg-black/30 border border-white/[0.06] text-[11px] text-[#8E9E94] flex justify-between items-center">
             <span>Опорная дата: 16.11.2026 11:30</span>
-            <span className="text-[#6E9078] font-medium">Сервис 2.0</span>
+            <span className="text-white font-medium">Сервис 2.0</span>
           </div>
         </div>
       </div>

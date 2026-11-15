@@ -7,39 +7,132 @@ import email.utils
 from email.header import Header
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from typing import Tuple
+from typing import Tuple, List, Optional
 from backend.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Known public IP for smtp.yandex.ru to bypass local transparent TUN/proxy drops on port 465
-YANDEX_SMTP_DIRECT_IP = "77.88.21.158"
+# Known public IPs for smtp.yandex.ru to bypass local transparent TUN/proxy drops on port 465/587
+YANDEX_SMTP_KNOWN_IPS = ["77.88.21.158", "213.180.204.158"]
 
-class DirectYandexSMTPSSL(smtplib.SMTP_SSL):
-    """
-    Subclass that binds to the physical network interface and connects directly
-    to Yandex SMTP, bypassing local fake-IP/TUN proxy routing when needed.
-    """
-    def _get_socket(self, host, port, timeout):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(timeout)
 
-        # Attempt binding to physical IP or fallback to 0.0.0.0
-        bound = False
-        for iface_ip in ["172.20.10.2", "0.0.0.0"]:
+def get_candidate_bind_ips() -> List[Optional[str]]:
+    """
+    Discovers active physical network IPv4 addresses to bypass local fake-IP/TUN
+    routing (e.g. Clash, Mihomo, v2ray, etc.) that intercepts and terminates SMTP traffic.
+    Returns a list of local IP strings, ending with None (default routing fallback).
+    """
+    candidate_ips: List[str] = []
+
+    # 1. Inspect physical interfaces via psutil if available
+    try:
+        import psutil
+        for iface_name, addrs in psutil.net_if_addrs().items():
+            lname = iface_name.lower()
+            if any(bad in lname for bad in ["meta", "clash", "sing-box", "tun", "tap", "vethernet", "wsl", "loopback", "bluetooth"]):
+                continue
+            for addr in addrs:
+                if addr.family == socket.AF_INET:
+                    ip = addr.address
+                    if not (ip.startswith("127.") or ip.startswith("169.254.") or ip.startswith("198.18.") or ip.startswith("198.19.")):
+                        if ip not in candidate_ips:
+                            candidate_ips.append(ip)
+    except Exception as e:
+        logger.debug(f"psutil adapter inspection skipped: {e}")
+
+    # 2. Inspect host addrinfo as additional source
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            ip = info[4][0]
+            if not (ip.startswith("127.") or ip.startswith("169.254.") or ip.startswith("198.18.") or ip.startswith("198.19.")):
+                if ip not in candidate_ips:
+                    candidate_ips.append(ip)
+    except Exception:
+        pass
+
+    # 3. Always include None as fallback (default system routing)
+    res: List[Optional[str]] = list(candidate_ips)
+    res.append(None)
+    return res
+
+
+def create_smtp_connection(timeout: int = 8):
+    """
+    Establishes an SMTP connection to Yandex, automatically trying:
+    - Candidate physical interfaces (bypassing TUN/proxy drops)
+    - Port 465 (SSL) and Port 587 (STARTTLS)
+    - Direct public IP and hostname
+    """
+    bind_ips = get_candidate_bind_ips()
+
+    configured_host = (settings.YANDEX_SMTP_HOST or "smtp.yandex.ru").strip()
+    dest_hosts = [configured_host]
+    for ip in YANDEX_SMTP_KNOWN_IPS:
+        if ip not in dest_hosts:
+            dest_hosts.append(ip)
+
+    context = ssl.create_default_context()
+    last_exception = None
+
+    # Priority 1: Port 465 (SMTPS / direct SSL)
+    for bind_ip in bind_ips:
+        for host in dest_hosts:
+            sock = None
             try:
-                if iface_ip != "0.0.0.0":
-                    sock.bind((iface_ip, 0))
-                sock.connect((YANDEX_SMTP_DIRECT_IP, port))
-                bound = True
-                break
-            except Exception:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(timeout)
+                if bind_ip:
+                    sock.bind((bind_ip, 0))
+                sock.connect((host, 465))
+                ssock = context.wrap_socket(sock, server_hostname="smtp.yandex.ru")
+                server = smtplib.SMTP_SSL()
+                server.sock = ssock
+                server.file = ssock.makefile("rb")
+                server.getreply()
+                server.ehlo("servflow.local")
+                logger.info(f"[YANDEX SMTP] Connected via 465 (SSL) to {host} [bind: {bind_ip or 'default'}]")
+                return server
+            except Exception as e:
+                last_exception = e
+                if sock:
+                    try:
+                        sock.close()
+                    except Exception:
+                        pass
                 continue
 
-        if not bound:
-            sock.connect((host, port))
+    # Priority 2: Port 587 (STARTTLS)
+    for bind_ip in bind_ips:
+        for host in dest_hosts:
+            sock = None
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(timeout)
+                if bind_ip:
+                    sock.bind((bind_ip, 0))
+                sock.connect((host, 587))
+                server = smtplib.SMTP()
+                server._host = "smtp.yandex.ru"
+                server.sock = sock
+                server.file = sock.makefile("rb")
+                server.getreply()
+                server.ehlo("servflow.local")
+                server.starttls(context=context)
+                server.ehlo("servflow.local")
+                logger.info(f"[YANDEX SMTP] Connected via 587 (STARTTLS) to {host} [bind: {bind_ip or 'default'}]")
+                return server
+            except Exception as e:
+                last_exception = e
+                if sock:
+                    try:
+                        sock.close()
+                    except Exception:
+                        pass
+                continue
 
-        return self.context.wrap_socket(sock, server_hostname="smtp.yandex.ru")
+    if last_exception:
+        raise last_exception
+    raise ConnectionError("Не удалось установить соединение с сервером Яндекс Почты (порты 465 и 587 недоступны)")
 
 
 def generate_verification_code() -> str:
@@ -186,22 +279,16 @@ def send_yandex_verification_email(
         msg.attach(MIMEText(text_content, "plain", "utf-8"))
         msg.attach(MIMEText(html_content, "html", "utf-8"))
 
-        context = ssl.create_default_context()
-
-        # Connect with auto-recovery for transparent proxy / TUN interference
-        server = None
-        try:
-            # First attempt: standard SMTP_SSL
-            server = smtplib.SMTP_SSL(settings.YANDEX_SMTP_HOST, settings.YANDEX_SMTP_PORT, context=context, timeout=10)
-        except Exception as conn_err:
-            logger.info(f"Standard SMTP connection failed ({conn_err}), attempting direct network binding...")
-            # Fallback attempt: Direct physical connection to Yandex IP
-            server = DirectYandexSMTPSSL(settings.YANDEX_SMTP_HOST, settings.YANDEX_SMTP_PORT, context=context, timeout=12)
+        # Connect using smart adapter detection & auto-fallback (465 SSL / 587 STARTTLS)
+        server = create_smtp_connection(timeout=8)
 
         try:
             server.login(smtp_user, smtp_password)
             server.sendmail(smtp_user, [to_email], msg.as_string())
-            server.quit()
+            try:
+                server.quit()
+            except Exception:
+                pass
         except smtplib.SMTPResponseException as resp_err:
             code_num = resp_err.smtp_code
             err_text = resp_err.smtp_error.decode("utf-8", errors="ignore") if isinstance(resp_err.smtp_error, bytes) else str(resp_err.smtp_error)

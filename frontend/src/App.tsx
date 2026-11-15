@@ -67,11 +67,15 @@ export function App() {
     }
   }, [currentUser?.role, currentUser?.id]);
 
-  // Load auto-reply setting
+  // Load auto-reply setting and demo users for login screen
   useEffect(() => {
     api.getAutoReplySetting()
       .then((res) => setAutoReplyEnabled(res.auto_reply_enabled))
       .catch((err) => console.error('Failed to load auto-reply setting:', err));
+
+    api.getDemoUsers()
+      .then((users) => setDemoUsers(users))
+      .catch((err) => console.error('Failed to load demo users:', err));
   }, []);
 
   const handleToggleAutoReply = async () => {
@@ -154,11 +158,21 @@ export function App() {
     setCurrentUser(null);
   };
 
-  const handleSwitchUser = (user: User) => {
-    setCurrentUser(user);
-    const valid = getValidTabForRole(user.role);
-    setActiveTab(valid);
-    localStorage.setItem('kofe_active_tab', valid);
+  const handleSwitchUser = async (user: User) => {
+    try {
+      const res = await api.switchUser(user.id);
+      setCurrentUser(res.user);
+      const valid = getValidTabForRole(res.user.role);
+      setActiveTab(valid);
+      localStorage.setItem('kofe_active_tab', valid);
+      await loadGlobalData();
+    } catch (err) {
+      console.error('Failed to switch user token:', err);
+      setCurrentUser(user);
+      const valid = getValidTabForRole(user.role);
+      setActiveTab(valid);
+      localStorage.setItem('kofe_active_tab', valid);
+    }
   };
 
   const handleOpenOrderModal = (thread?: ClientThread, aiData?: AIAnalysisResult | null) => {
@@ -178,12 +192,12 @@ export function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0C0D0F] text-[#F3F4F6] flex flex-col font-sans relative overflow-x-hidden selection:bg-[#30D158]/30 selection:text-white">
-      {/* Background ambient dark glows in neutral graphite and subtle emerald */}
+    <div className="min-h-screen bg-[#0C0D0F] text-[#F3F4F6] flex flex-col font-sans relative overflow-x-hidden selection:bg-white/20 selection:text-white">
+      {/* Background ambient dark glows in neutral graphite */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute -top-[120px] left-[10%] w-[580px] h-[580px] bg-gradient-to-br from-[#30D158]/5 via-neutral-800/10 to-transparent rounded-full blur-[140px]" />
-        <div className="absolute top-[10%] -right-[100px] w-[620px] h-[620px] bg-gradient-to-bl from-neutral-800/15 via-slate-900/10 to-transparent rounded-full blur-[150px]" />
-        <div className="absolute -bottom-[180px] left-[30%] w-[720px] h-[720px] bg-gradient-to-tr from-slate-950/20 via-neutral-900/15 to-transparent rounded-full blur-[160px]" />
+        <div className="absolute -top-[120px] left-[10%] w-[580px] h-[580px] bg-gradient-to-br from-white/[0.03] via-neutral-800/10 to-transparent rounded-full blur-[140px]" />
+        <div className="absolute top-[10%] -right-[100px] w-[620px] h-[620px] bg-gradient-to-bl from-neutral-800/15 via-zinc-900/10 to-transparent rounded-full blur-[150px]" />
+        <div className="absolute -bottom-[180px] left-[30%] w-[720px] h-[720px] bg-gradient-to-tr from-zinc-950/20 via-neutral-900/15 to-transparent rounded-full blur-[160px]" />
       </div>
 
       <div className="relative z-10 flex flex-col min-h-screen">

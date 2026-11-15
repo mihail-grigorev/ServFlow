@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Optional
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
 from backend.config import settings
@@ -354,136 +354,10 @@ def get_thread(
         resp.messages = [m for m in resp.messages if getattr(m, 'chat_type', 'dispatcher_engineer') != 'client_dispatcher']
     return resp
 
-async def async_generate_auto_reply(thread_id: int):
-    """
-    Background worker that runs Gemini AI reasoning and persists the auto-reply
-    without blocking the user's message submission HTTP response.
-    """
-    from backend.database import SessionLocal
-    db = SessionLocal()
-    try:
-        thread = db.query(ClientThread).filter(ClientThread.id == thread_id).first()
-        if not thread:
-            return
-
-        all_eq = db.query(Equipment).all()
-        all_parts = db.query(SparePart).all()
-        all_thread_msgs = db.query(Message).filter(Message.thread_id == thread.id).order_by(Message.id.asc()).all()
-        client_msgs = [m for m in all_thread_msgs if m.sender_type == "client"]
-        if not client_msgs:
-            return
-
-        last_msg = all_thread_msgs[-1] if all_thread_msgs else None
-        if not last_msg or last_msg.sender_type != "client":
-            return
-
-        full_client_text = " ".join([m.content for m in client_msgs])
-
-        eq = None
-        if thread.equipment_id:
-            eq = db.query(Equipment).filter(Equipment.id == thread.equipment_id).first()
-        if not eq and thread.equipment_code:
-            eq = db.query(Equipment).filter(Equipment.code == thread.equipment_code).first()
-
-        eq_info = {"equipment": eq, "is_ambiguous": False, "is_unregistered": False}
-        if not eq:
-            eq_info = RulesEngine.identify_equipment(
-                thread.client_name,
-                full_client_text,
-                all_eq,
-                current_equipment_code=thread.equipment_code,
-                current_equipment_id=thread.equipment_id
-            )
-            eq = eq_info.get("equipment")
-            if eq:
-                thread.equipment_id = eq.id
-                thread.equipment_code = eq.code
-                linked_order = db.query(ServiceOrder).filter(ServiceOrder.thread_id == thread.id).first()
-                if linked_order:
-                    linked_order.equipment_id = eq.id
-                    linked_order.equipment_code = eq.code
-                    linked_order.model = eq.model
-                    linked_order.serial_number = eq.serial_number
-                    linked_order.address = eq.address
-            elif eq_info.get("is_unregistered"):
-                thread.is_unregistered = True
-
-        is_warranty = thread.is_warranty
-        warranty_reason = thread.warranty_reason
-        if eq and not is_warranty:
-            is_warranty, warranty_reason = RulesEngine.check_warranty(
-                eq.installation_date,
-                eq.last_visit_date,
-                eq.last_visit_result,
-                full_client_text
-            )
-            thread.is_warranty = is_warranty
-            thread.warranty_reason = warranty_reason
-
-        # Dynamic live AI reasoning via Gemini
-        ai_reply = None
-        try:
-            messages_context = "\n".join([f"[{m.channel}] {m.sender_name}: {m.content}" for m in all_thread_msgs])
-            analysis = await AIService.analyze_thread(
-                client_name=thread.client_name,
-                messages_text=messages_context,
-                all_equipments=all_eq,
-                all_parts=all_parts,
-                thread_channel=thread.channel,
-                current_equipment_code=thread.equipment_code,
-                current_equipment_id=thread.equipment_id
-            )
-            ai_reply = analysis.reply_to_client
-            if analysis.is_warranty and not thread.is_warranty:
-                thread.is_warranty = True
-                thread.warranty_reason = analysis.warranty_reason
-        except Exception as e:
-            logger.warning(f"Live Gemini auto-reply in background failed: {e}")
-
-        if not ai_reply:
-            ai_reply = RulesEngine.generate_conversational_reply(
-                messages_history=all_thread_msgs,
-                client_name=thread.client_name,
-                equipment_info=eq_info,
-                is_warranty=is_warranty,
-                warranty_reason=warranty_reason,
-                all_equipment=all_eq
-            )
-
-        if ai_reply:
-            msg_time = (last_msg.created_at + timedelta(seconds=2)) if (last_msg and last_msg.created_at) else datetime.utcnow()
-            auto_msg = Message(
-                thread_id=thread.id,
-                channel=thread.channel,
-                chat_type="client_dispatcher",
-                sender_type="dispatcher",
-                sender_name="ИИ-Диспетчер ServFlow",
-                content=ai_reply,
-                created_at=msg_time
-            )
-            db.add(auto_msg)
-            thread.last_activity = auto_msg.created_at
-
-            if eq_info.get("is_unregistered"):
-                thread.status = "sales_transfer"
-            elif eq_info.get("is_ambiguous") or not eq or "уточните" in ai_reply.lower() or "подскажите" in ai_reply.lower():
-                thread.status = "needs_clarification"
-            else:
-                thread.status = "ready_for_order"
-
-            db.commit()
-    except Exception as e:
-        logger.error(f"Error in async_generate_auto_reply for thread {thread_id}: {e}")
-        db.rollback()
-    finally:
-        db.close()
-
-
 @router.post("/{thread_id}/messages", response_model=MessageResponse)
 async def add_message(
     thread_id: int,
     msg_in: MessageCreate,
-    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -529,14 +403,110 @@ async def add_message(
         created_at=msg_time
     )
     db.add(msg)
+    db.flush()
     thread.last_activity = msg_time
+
+    # Auto-Reply by AI if customer sent message in client_dispatcher channel and feature is enabled
+    if sender_type == "client" and chat_type == "client_dispatcher" and AUTO_REPLY_ENABLED:
+        all_eq = db.query(Equipment).all()
+        all_parts = db.query(SparePart).all()
+        all_thread_msgs = db.query(Message).filter(Message.thread_id == thread.id).order_by(Message.id.asc()).all()
+        full_client_text = " ".join([m.content for m in all_thread_msgs if m.sender_type == "client"])
+
+        eq = None
+        if thread.equipment_id:
+            eq = db.query(Equipment).filter(Equipment.id == thread.equipment_id).first()
+        if not eq and thread.equipment_code:
+            eq = db.query(Equipment).filter(Equipment.code == thread.equipment_code).first()
+
+        eq_info = {"equipment": eq, "is_ambiguous": False, "is_unregistered": False}
+        if not eq:
+            eq_info = RulesEngine.identify_equipment(
+                thread.client_name,
+                full_client_text,
+                all_eq,
+                current_equipment_code=thread.equipment_code,
+                current_equipment_id=thread.equipment_id
+            )
+            eq = eq_info.get("equipment")
+            if eq:
+                thread.equipment_id = eq.id
+                thread.equipment_code = eq.code
+                # Sync with linked service order
+                linked_order = db.query(ServiceOrder).filter(ServiceOrder.thread_id == thread.id).first()
+                if linked_order:
+                    linked_order.equipment_id = eq.id
+                    linked_order.equipment_code = eq.code
+                    linked_order.model = eq.model
+                    linked_order.serial_number = eq.serial_number
+                    linked_order.address = eq.address
+            elif eq_info.get("is_unregistered"):
+                thread.is_unregistered = True
+
+        is_warranty = thread.is_warranty
+        warranty_reason = thread.warranty_reason
+        if eq and not is_warranty:
+            is_warranty, warranty_reason = RulesEngine.check_warranty(
+                eq.installation_date,
+                eq.last_visit_date,
+                eq.last_visit_result,
+                full_client_text
+            )
+            thread.is_warranty = is_warranty
+            thread.warranty_reason = warranty_reason
+
+        # Dynamic live AI reasoning via Gemini 3 Flash
+        ai_reply = None
+        try:
+            messages_context = "\n".join([f"[{m.channel}] {m.sender_name}: {m.content}" for m in all_thread_msgs])
+            analysis = await AIService.analyze_thread(
+                client_name=thread.client_name,
+                messages_text=messages_context,
+                all_equipments=all_eq,
+                all_parts=all_parts,
+                thread_channel=thread.channel,
+                current_equipment_code=thread.equipment_code,
+                current_equipment_id=thread.equipment_id
+            )
+            ai_reply = analysis.reply_to_client
+            if analysis.is_warranty and not thread.is_warranty:
+                thread.is_warranty = True
+                thread.warranty_reason = analysis.warranty_reason
+        except Exception as e:
+            logger.warning(f"Live Gemini reasoning failed, using fallback: {e}")
+
+        if not ai_reply:
+            ai_reply = RulesEngine.generate_conversational_reply(
+                messages_history=all_thread_msgs,
+                client_name=thread.client_name,
+                equipment_info=eq_info,
+                is_warranty=is_warranty,
+                warranty_reason=warranty_reason,
+                all_equipment=all_eq
+            )
+
+        if ai_reply:
+            auto_msg = Message(
+                thread_id=thread.id,
+                channel=thread.channel,
+                chat_type="client_dispatcher",
+                sender_type="dispatcher",
+                sender_name="ИИ-Диспетчер ServFlow",
+                content=ai_reply,
+                created_at=msg_time + timedelta(seconds=2)
+            )
+            db.add(auto_msg)
+            thread.last_activity = auto_msg.created_at
+
+            if eq_info.get("is_unregistered"):
+                thread.status = "sales_transfer"
+            elif eq_info.get("is_ambiguous") or not eq or "уточните" in ai_reply.lower() or "подскажите" in ai_reply.lower():
+                thread.status = "needs_clarification"
+            else:
+                thread.status = "ready_for_order"
+
     db.commit()
     db.refresh(msg)
-
-    # Schedule AI Auto-Reply in background so user message returns INSTANTLY without freezing the UI!
-    if sender_type == "client" and chat_type == "client_dispatcher" and AUTO_REPLY_ENABLED:
-        background_tasks.add_task(async_generate_auto_reply, thread.id)
-
     return MessageResponse.model_validate(msg)
 
 @router.post("/simulate", response_model=ClientThreadResponse)

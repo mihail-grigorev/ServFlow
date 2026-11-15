@@ -253,7 +253,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         {/* Header */}
         <div className="p-5 border-b border-white/[0.08] flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
-            <div className="p-2 rounded-xl bg-[#4A6751]/15 text-[#6E9078]">
+            <div className="p-2 rounded-xl bg-white/10 text-white">
               <Wrench className="w-5 h-5" />
             </div>
             <div>
@@ -297,7 +297,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   disabled={isSalesTransfer}
                   value={selectedEqCode}
                   onChange={(e) => setSelectedEqCode(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1D2E24] text-white outline-none focus:border-[#6E9078]"
+                  className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/20"
                 >
                   {allEquipment.map((eq) => (
                     <option key={eq.code} value={eq.code}>
@@ -316,7 +316,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   required
                   value={clientName}
                   onChange={(e) => setClientName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1D2E24] text-white outline-none focus:border-[#6E9078]"
+                  className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/20"
                 />
               </div>
 
@@ -329,7 +329,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   required
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1D2E24] text-white outline-none focus:border-[#6E9078]"
+                  className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/20"
                 />
               </div>
 
@@ -343,7 +343,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     required
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1D2E24] text-white outline-none"
+                    className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none"
                   />
                 </div>
                 <div>
@@ -355,7 +355,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     required
                     value={serialNumber}
                     onChange={(e) => setSerialNumber(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1D2E24] text-white outline-none font-mono"
+                    className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none font-mono"
                   />
                 </div>
               </div>
@@ -368,7 +368,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   type="checkbox"
                   checked={isWarranty}
                   onChange={(e) => setIsWarranty(e.target.checked)}
-                  className="rounded text-[#FF453A] focus:ring-[#FF453A] bg-[#1D2E24]"
+                  className="rounded text-[#FF453A] focus:ring-[#FF453A] bg-[#1F2026]"
                 />
                 <span className="font-semibold text-[#FF453A]">Гарантийный визит (Правило П-9)</span>
               </label>
@@ -378,7 +378,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   type="checkbox"
                   checked={isSalesTransfer}
                   onChange={(e) => setIsSalesTransfer(e.target.checked)}
-                  className="rounded text-[#FF9F0A] focus:ring-[#FF9F0A] bg-[#1D2E24]"
+                  className="rounded text-[#FF9F0A] focus:ring-[#FF9F0A] bg-[#1F2026]"
                 />
                 <span className="font-semibold text-[#FF9F0A]">
                   Передать в отдел продаж (машина вне реестра П-2)
@@ -387,21 +387,21 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             </div>
 
             {warrantyNotice && (
-              <div className="p-3 rounded-xl bg-[#2E7D47]/15 border border-[#2E7D47]/30 text-[#48BB78] flex items-start space-x-2">
-                <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#48BB78]" />
+              <div className="p-3 rounded-xl bg-white/10 border border-white/20 text-white flex items-start space-x-2">
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-white" />
                 <div>
                   <span className="font-bold">Рекомендация: случай гарантийный (правило 40 дней): </span>
-                  <p className="text-[#D8F3E5] mt-0.5">{warrantyNotice}</p>
+                  <p className="text-neutral-300 mt-0.5">{warrantyNotice}</p>
                 </div>
               </div>
             )}
 
             {isWarranty && (
-              <div className="p-3 rounded-xl bg-[#2E7D47]/15 border border-[#2E7D47]/30 text-[#48BB78] flex items-start space-x-2">
+              <div className="p-3 rounded-xl bg-white/10 border border-white/20 text-white flex items-start space-x-2">
                 <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold">Основание гарантии (Правило П-9): </span>
-                  <span className="text-[#D8F3E5]">{warrantyReason || 'Обращение в течение 40 дней после ремонта / установки'}</span>
+                  <span className="text-neutral-300">{warrantyReason || 'Обращение в течение 40 дней после ремонта / установки'}</span>
                 </div>
               </div>
             )}
@@ -423,7 +423,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 value={symptom}
                 onChange={(e) => setSymptom(e.target.value)}
                 placeholder="Например: течь справа после завершения приготовления..."
-                className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1D2E24] text-white outline-none focus:border-[#6E9078]"
+                className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/20"
               />
             </div>
 
@@ -468,15 +468,15 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       onClick={() => togglePartSelection(p.code)}
                       className={`p-2.5 rounded-xl border cursor-pointer transition-all flex items-start space-x-2.5 ${
                         isChecked
-                          ? 'border-[#4A6751] bg-[#4A6751]/15'
-                          : 'border-white/[0.08] bg-[#1D2E24] hover:bg-white/[0.04]'
+                          ? 'border-white bg-white/10'
+                          : 'border-white/[0.08] bg-[#1F2026] hover:bg-white/[0.04]'
                       }`}
                     >
                       <input
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => {}}
-                        className="mt-0.5 rounded accent-[#2E7D47] text-[#48BB78] focus:ring-[#2E7D47] bg-[#16171B]"
+                        className="mt-0.5 rounded accent-white text-white focus:ring-white bg-[#16171B]"
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
@@ -486,7 +486,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                           <span
                             className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
                               localFree > 0
-                                ? 'bg-[#2E7D47]/15 text-[#48BB78]'
+                                ? 'bg-white/15 text-white'
                                 : transferReq
                                 ? 'bg-[#FF9F0A]/15 text-[#FF9F0A]'
                                 : 'bg-white/[0.06] text-[#8E9E94]'
@@ -530,14 +530,14 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       onClick={() => setSelectedEngineerId(eng.id)}
                       className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
                         isSelected
-                          ? 'border-[#4A6751] bg-[#4A6751]/15 ring-2 ring-[#4A6751]/25'
-                          : 'border-white/[0.08] bg-[#1D2E24] hover:bg-white/[0.04]'
+                          ? 'border-white bg-white/15 ring-2 ring-white/25'
+                          : 'border-white/[0.08] bg-[#1F2026] hover:bg-white/[0.04]'
                       }`}
                     >
                       <div className="flex-1 min-w-0 pr-2">
                         {eng.is_recommended && (
-                          <div className="text-[10px] text-[#48BB78] font-bold flex items-center space-x-1 mb-1">
-                            <Sparkles className="w-3 h-3 text-[#48BB78] flex-shrink-0" />
+                          <div className="text-[10px] text-white font-bold flex items-center space-x-1 mb-1">
+                            <Sparkles className="w-3 h-3 text-white flex-shrink-0" />
                             <span className="truncate">{eng.recommendation_reason}</span>
                           </div>
                         )}
@@ -548,7 +548,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                             <span
                               className={`text-[10px] font-semibold px-1.5 py-0.2 rounded ${
                                 eng.active_orders === 0
-                                  ? 'bg-[#2E7D47]/20 text-[#48BB78]'
+                                  ? 'bg-white/15 text-white'
                                   : 'bg-[#FF9F0A]/20 text-[#FF9F0A]'
                               }`}
                             >
@@ -560,17 +560,17 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                         <div className="flex flex-wrap items-center gap-1 mt-1 text-[11px] text-[#8E9E94]">
                           <span>Допуски: {eng.qualifications.join(', ')}</span>
                           {hasModelQual ? (
-                            <span className="text-[#48BB78] font-medium">(допущен)</span>
+                            <span className="text-white font-medium">(допущен)</span>
                           ) : (
                             <span className="text-[#FF453A] font-medium">(нет допуска к {model})</span>
                           )}
                           {eng.model_experience_count > 0 && (
-                            <span className="text-[#6E9078] font-medium">
+                            <span className="text-neutral-300 font-medium">
                               • {eng.model_experience_count} рем. {model} в журнале
                             </span>
                           )}
                           {eng.symptom_match_count > 0 && (
-                            <span className="text-[#48BB78] font-medium">
+                            <span className="text-white font-medium">
                               • опыт по симптому
                             </span>
                           )}
@@ -580,11 +580,11 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       <div
                         className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 ${
                           isSelected
-                            ? 'border-[#4A6751] bg-[#4A6751]'
+                            ? 'border-white bg-white'
                             : 'border-white/[0.2]'
                         }`}
                       >
-                        {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
                       </div>
                     </div>
                   );
@@ -605,7 +605,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2.5 font-bold rounded-xl bg-[#2E7D47] hover:bg-[#256B3C] text-white shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer"
+              className="px-5 py-2.5 font-bold rounded-xl bg-white hover:bg-neutral-200 text-black shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer"
             >
               <span>{loading ? 'Сохранение...' : 'Подтвердить и назначить инженера'}</span>
               <CheckCircle2 className="w-4 h-4 text-black" />
