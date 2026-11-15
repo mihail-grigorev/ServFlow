@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { User } from '../types';
 import logoImg from '../assets/logo.png';
 import {
-  Clock,
   RotateCcw,
   LogOut,
   UserCheck,
@@ -13,7 +12,7 @@ import {
   ChevronDown,
   Package,
   Building,
-  Radio
+  Zap
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -22,7 +21,10 @@ interface NavbarProps {
   setActiveTab: (tab: 'dispatcher' | 'orders' | 'engineer' | 'warehouse' | 'company') => void;
   onOpenResetModal: () => void;
   onOpenProfileModal: () => void;
-  onOpenSimulatorModal?: () => void;
+  autoReplyEnabled?: boolean;
+  onToggleAutoReply?: () => void;
+  onAutoReplyAll?: () => Promise<void>;
+  isAutoReplying?: boolean;
   onSwitchUser: (user: User) => void;
   allDemoUsers: User[];
   onLogout: () => void;
@@ -35,7 +37,10 @@ export const Navbar: React.FC<NavbarProps> = ({
   setActiveTab,
   onOpenResetModal,
   onOpenProfileModal,
-  onOpenSimulatorModal,
+  autoReplyEnabled = true,
+  onToggleAutoReply,
+  onAutoReplyAll,
+  isAutoReplying = false,
   onSwitchUser,
   allDemoUsers,
   onLogout,
@@ -44,7 +49,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-40 w-full glass-panel border-b border-white/[0.08] bg-[#17231D]/80 backdrop-blur-md text-[#F0F5F2]">
+    <header className="sticky top-0 z-40 w-full glass-panel border-b border-white/[0.08] bg-[#16171B]/90 backdrop-blur-md text-[#F3F4F6]">
       <div className="w-full px-4 sm:px-8 h-16 flex items-center justify-between">
         {/* Left: Clean Brand logo & name */}
         <div className="flex items-center space-x-3">
@@ -67,8 +72,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setActiveTab('dispatcher')}
                   className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                     activeTab === 'dispatcher'
-                      ? 'bg-[#4A6751] text-white shadow-sm'
-                      : 'text-[#8E9E94] hover:text-white'
+                      ? 'bg-blue-600 text-white shadow-sm font-semibold'
+                      : 'text-[#9CA3AF] hover:text-white'
                   }`}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
@@ -79,8 +84,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setActiveTab('orders')}
                   className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                     activeTab === 'orders'
-                      ? 'bg-[#4A6751] text-white shadow-sm'
-                      : 'text-[#8E9E94] hover:text-white'
+                      ? 'bg-blue-600 text-white shadow-sm font-semibold'
+                      : 'text-[#9CA3AF] hover:text-white'
                   }`}
                 >
                   <ClipboardList className="w-3.5 h-3.5" />
@@ -91,8 +96,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setActiveTab('warehouse')}
                   className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                     activeTab === 'warehouse'
-                      ? 'bg-[#4A6751] text-white shadow-sm'
-                      : 'text-[#8E9E94] hover:text-white'
+                      ? 'bg-blue-600 text-white shadow-sm font-semibold'
+                      : 'text-[#9CA3AF] hover:text-white'
                   }`}
                 >
                   <Package className="w-3.5 h-3.5" />
@@ -105,8 +110,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setActiveTab('company')}
                   className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                     activeTab === 'company'
-                      ? 'bg-[#4A6751] text-white shadow-sm'
-                      : 'text-[#8E9E94] hover:text-white'
+                      ? 'bg-blue-600 text-white shadow-sm font-semibold'
+                      : 'text-[#9CA3AF] hover:text-white'
                   }`}
                 >
                   <Building className="w-3.5 h-3.5" />
@@ -117,8 +122,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   onClick={() => setActiveTab('orders')}
                   className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                     activeTab === 'orders'
-                      ? 'bg-[#4A6751] text-white shadow-sm'
-                      : 'text-[#8E9E94] hover:text-white'
+                      ? 'bg-blue-600 text-white shadow-sm font-semibold'
+                      : 'text-[#9CA3AF] hover:text-white'
                   }`}
                 >
                   <ClipboardList className="w-3.5 h-3.5" />
@@ -130,8 +135,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onClick={() => setActiveTab('engineer')}
                 className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                   activeTab === 'engineer'
-                    ? 'bg-[#4A6751] text-white shadow-sm'
-                    : 'text-[#8E9E94] hover:text-white'
+                    ? 'bg-blue-600 text-white shadow-sm font-semibold'
+                    : 'text-[#9CA3AF] hover:text-white'
                 }`}
               >
                 <Wrench className="w-3.5 h-3.5" />
@@ -141,18 +146,52 @@ export const Navbar: React.FC<NavbarProps> = ({
           </nav>
         )}
 
-        {/* Right: Reset & Avatar Profile */}
-        <div className="flex items-center space-x-2.5">
-          {/* Simulator Button - Visible ONLY to Dispatcher */}
-          {currentUser?.role === 'dispatcher' && onOpenSimulatorModal && (
-            <button
-              onClick={onOpenSimulatorModal}
-              title="Симулятор обращений клиентов (для тестирования и жюри)"
-              className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-[#FF9F0A]/15 hover:bg-[#FF9F0A]/25 border border-[#FF9F0A]/30 text-[#FF9F0A] transition-all cursor-pointer shadow-sm active:scale-95"
-            >
-              <Radio className="w-3.5 h-3.5 text-[#FF9F0A]" />
-              <span className="hidden sm:inline">Симулятор</span>
-            </button>
+        {/* Right: AI Auto-reply, Reset & Avatar Profile */}
+        <div className="flex items-center space-x-2">
+          {/* AI Auto-Reply Switch & Batch Trigger - Replaces Simulator for Dispatcher */}
+          {currentUser?.role === 'dispatcher' && onToggleAutoReply && (
+            <div className="flex items-center space-x-1.5 bg-[#1F2026] p-1 rounded-xl border border-white/[0.08]">
+              {/* Global Auto-reply Toggle */}
+              <button
+                type="button"
+                onClick={onToggleAutoReply}
+                title="Автоответ с ИИ: автоматически отвечает клиентам во всех входящих чатах и ветках"
+                className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  autoReplyEnabled
+                    ? 'bg-blue-600/20 text-blue-400 border border-blue-500/30'
+                    : 'bg-white/[0.04] text-[#9CA3AF] hover:text-white border border-transparent'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                <span>Автоответ с ИИ:</span>
+                <span className="font-bold">{autoReplyEnabled ? 'ВКЛ' : 'ВЫКЛ'}</span>
+                <span
+                  className={`w-6 h-3.5 flex items-center rounded-full p-0.5 transition-colors ${
+                    autoReplyEnabled ? 'bg-blue-600' : 'bg-neutral-700'
+                  }`}
+                >
+                  <span
+                    className={`bg-white w-2.5 h-2.5 rounded-full shadow-md transform transition-transform ${
+                      autoReplyEnabled ? 'translate-x-2.5' : 'translate-x-0'
+                    }`}
+                  />
+                </span>
+              </button>
+
+              {/* Batch Reply All Active Chats */}
+              {onAutoReplyAll && (
+                <button
+                  type="button"
+                  onClick={onAutoReplyAll}
+                  disabled={isAutoReplying}
+                  title="Ответить ИИ на все ожидающие чаты прямо сейчас"
+                  className="flex items-center space-x-1 px-2 py-1 rounded-lg text-xs font-medium bg-white/[0.06] hover:bg-white/[0.12] text-white transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <Zap className={`w-3.5 h-3.5 text-amber-400 ${isAutoReplying ? 'animate-bounce' : ''}`} />
+                  <span className="hidden sm:inline">{isAutoReplying ? 'Отправка...' : 'Ответить во всех'}</span>
+                </button>
+              )}
+            </div>
           )}
 
           {/* Reset / Excel Button - Visible ONLY to Dispatcher */}
@@ -162,8 +201,8 @@ export const Navbar: React.FC<NavbarProps> = ({
               title="Сброс и импорт данных из Excel"
               className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-medium bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-white transition-colors"
             >
-              <RotateCcw className="w-3.5 h-3.5 text-[#8E9E94]" />
-              <span className="hidden sm:inline">Сброс / Excel</span>
+              <RotateCcw className="w-3.5 h-3.5 text-[#9CA3AF]" />
+              <span className="hidden md:inline">Сброс / Excel</span>
             </button>
           )}
 
@@ -183,11 +222,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <div className="text-xs font-medium text-white max-w-[110px] truncate leading-tight">
                     {currentUser.full_name.split(' ')[0]}
                   </div>
-                  <div className="text-[10px] text-[#8E9E94] leading-tight">
+                  <div className="text-[10px] text-[#9CA3AF] leading-tight">
                     {currentUser.role === 'dispatcher' ? 'Диспетчер' : currentUser.city}
                   </div>
                 </div>
-                <ChevronDown className="w-3.5 h-3.5 text-[#8E9E94]" />
+                <ChevronDown className="w-3.5 h-3.5 text-[#9CA3AF]" />
               </button>
 
               {menuOpen && (
@@ -196,7 +235,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     className="fixed inset-0 z-40"
                     onClick={() => setMenuOpen(false)}
                   />
-                  <div className="absolute right-0 mt-2 w-72 p-2 bg-[#16221B] text-[#F0F5F2] rounded-2xl shadow-modal border border-white/[0.08] z-50 animate-in fade-in zoom-in-95 duration-100">
+                  <div className="absolute right-0 mt-2 w-72 p-2 bg-[#1C1D22] text-[#F3F4F6] rounded-2xl shadow-modal border border-white/[0.08] z-50 animate-in fade-in zoom-in-95 duration-100">
                     {/* User Info Header */}
                     <div className="p-2.5 border-b border-white/[0.06] flex items-center space-x-3">
                       <img
@@ -208,7 +247,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <div className="font-semibold text-xs text-white truncate">
                           {currentUser.full_name}
                         </div>
-                        <div className="text-[11px] text-[#8E9E94] truncate">
+                        <div className="text-[11px] text-[#9CA3AF] truncate">
                           {currentUser.email}
                         </div>
                       </div>
@@ -223,14 +262,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                         }}
                         className="w-full flex items-center space-x-2 px-2.5 py-2 rounded-xl text-xs text-white hover:bg-white/[0.06] transition-colors"
                       >
-                        <Settings className="w-4 h-4 text-[#6E9078]" />
+                        <Settings className="w-4 h-4 text-neutral-400" />
                         <span>Настройки профиля и аватарка</span>
                       </button>
                     </div>
 
                     {/* Quick Role Switcher for Jury */}
                     <div className="border-t border-white/[0.06] pt-1.5 mt-1">
-                      <div className="text-[10px] font-semibold text-[#8E9E94] px-2.5 py-1 uppercase tracking-wider">
+                      <div className="text-[10px] font-semibold text-[#9CA3AF] px-2.5 py-1 uppercase tracking-wider">
                         Быстрый выбор аккаунта (Жюри)
                       </div>
                       <div className="space-y-0.5 max-h-60 overflow-y-auto">
@@ -243,8 +282,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                             }}
                             className={`w-full text-left px-2.5 py-1.5 rounded-xl text-xs flex items-center justify-between transition-colors ${
                               currentUser.id === u.id
-                                ? 'bg-[#4A6751] text-white font-medium'
-                                : 'hover:bg-white/[0.05] text-[#F0F5F2]'
+                                ? 'bg-blue-600 text-white font-medium'
+                                : 'hover:bg-white/[0.05] text-[#F3F4F6]'
                             }`}
                           >
                             <div className="truncate">
@@ -278,7 +317,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           ) : (
             <button
               onClick={onOpenLogin}
-              className="px-3.5 py-1.5 rounded-xl bg-[#4A6751] hover:bg-[#3D5643] text-white text-xs font-semibold shadow-sm transition-all flex items-center space-x-1.5"
+              className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold shadow-sm transition-all flex items-center space-x-1.5"
             >
               <UserCheck className="w-3.5 h-3.5" />
               <span>Войти</span>

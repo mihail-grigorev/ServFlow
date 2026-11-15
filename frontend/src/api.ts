@@ -358,6 +358,12 @@ export const api = {
     });
   },
 
+  autoReplyAll: async (): Promise<{ success: boolean; replied_count: number; auto_reply_enabled: boolean }> => {
+    return request<{ success: boolean; replied_count: number; auto_reply_enabled: boolean }>('/threads/auto-reply-all', {
+      method: 'POST',
+    });
+  },
+
   // Seed / Reset / Upload
   resetData: async (): Promise<{ status: string; message: string }> => {
     return request<{ status: string; message: string }>('/seed/reset', {

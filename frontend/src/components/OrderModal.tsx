@@ -209,7 +209,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-      <div className="bg-[#17231D] text-[#F0F5F2] rounded-2xl border border-white/[0.08] shadow-modal max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-[#16171B] text-[#F3F4F6] rounded-2xl border border-white/[0.08] shadow-modal max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
         <div className="p-5 border-b border-white/[0.08] flex items-center justify-between">
           <div className="flex items-center space-x-2.5">
@@ -426,7 +426,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => {}}
-                        className="mt-0.5 rounded text-[#6E9078] focus:ring-[#4A6751] bg-[#17231D]"
+                        className="mt-0.5 rounded text-blue-500 focus:ring-blue-600 bg-[#16171B]"
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">

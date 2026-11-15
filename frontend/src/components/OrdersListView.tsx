@@ -196,7 +196,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
       </div>
 
       {/* Orders Table */}
-      <div className="bg-[#17231D] rounded-2xl border border-white/[0.08] shadow-2xl overflow-hidden">
+      <div className="bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-[#16221B]/80 text-[#8E9E94] font-semibold uppercase tracking-wider border-b border-white/[0.08]">
@@ -361,7 +361,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                   <select
                     value={editStatus}
                     onChange={(e) => setEditStatus(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-white/[0.1] bg-[#17231D] text-white outline-none focus:border-[#6E9078]"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/20"
                   >
                     <option value="Новая">Новая</option>
                     <option value="Назначен">Назначен</option>
@@ -379,7 +379,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                   <select
                     value={editEngineerId || ''}
                     onChange={(e) => setEditEngineerId(e.target.value ? Number(e.target.value) : null)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-white/[0.1] bg-[#17231D] text-white outline-none focus:border-[#6E9078]"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/20"
                   >
                     <option value="">-- Не назначен --</option>
                     {engineers.map((eng) => (
@@ -401,7 +401,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                   required
                   value={editSymptom}
                   onChange={(e) => setEditSymptom(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-white/[0.1] bg-[#17231D] text-white placeholder-[#8E9E94] outline-none focus:border-[#6E9078] resize-none"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-white/[0.1] bg-[#1F2026] text-white placeholder-[#9CA3AF] outline-none focus:border-white/20 resize-none"
                 />
               </div>
 
@@ -424,7 +424,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                     value={editWarrantyReason}
                     onChange={(e) => setEditWarrantyReason(e.target.value)}
                     placeholder="Причина гарантии (например: повторный вызов до 30 дней)"
-                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-white/[0.1] bg-[#17231D] text-white outline-none focus:border-[#FF453A]"
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-[#FF453A]"
                   />
                 )}
               </div>
@@ -446,7 +446,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                     {editReservedParts.map((p) => (
                       <div
                         key={p.code}
-                        className="p-2 rounded-lg bg-[#17231D] border border-white/[0.06] flex items-center justify-between text-xs"
+                        className="p-2 rounded-lg bg-[#1F2026] border border-white/[0.06] flex items-center justify-between text-xs"
                       >
                         <div className="min-w-0 pr-2">
                           <span className="font-semibold text-white">{p.code}</span>
@@ -496,7 +496,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                   <select
                     value={selectedPartToAdd}
                     onChange={(e) => setSelectedPartToAdd(e.target.value)}
-                    className="flex-1 px-2.5 py-1.5 text-xs rounded-lg border border-white/[0.1] bg-[#17231D] text-white outline-none focus:border-[#6E9078]"
+                    className="flex-1 px-2.5 py-1.5 text-xs rounded-lg border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/20"
                   >
                     <option value="">-- Добавить деталь со склада --</option>
                     {allParts.map((pt) => (

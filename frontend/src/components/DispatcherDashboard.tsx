@@ -1,47 +1,46 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../api';
-import { ClientThread, AIAnalysisResult, Equipment, SparePart } from '../types';
 import {
-  Search,
-  Plus,
-  Radio,
+  ClientThread,
+  Equipment,
+  SparePart,
+  AIAnalysisResult
+} from '../types';
+import {
   Mail,
   Phone,
   MessageSquare,
   Sparkles,
-  Send,
-  RotateCcw,
   AlertCircle,
-  CheckCircle2,
-  ShieldAlert,
   Package,
   Wrench,
-  ArrowRight,
+  ShieldAlert,
+  Send,
+  RotateCcw,
+  CheckCircle2,
+  Plus,
+  Trash2,
+  Minus,
   Truck,
   HelpCircle,
-  Check,
+  Search,
+  ArrowRight,
   ChevronDown,
   ChevronUp,
-  Minus,
-  Trash2,
-  RefreshCw,
-  Bot,
-  Zap,
   UserCheck
 } from 'lucide-react';
 
 interface DispatcherDashboardProps {
   onOpenOrderModal: (thread?: ClientThread, aiData?: AIAnalysisResult | null) => void;
-  onOpenSimulatorModal: () => void;
   threads: ClientThread[];
   onRefreshThreads: () => void;
   allEquipment: Equipment[];
   allParts: SparePart[];
+  autoReplyEnabled?: boolean;
 }
 
 export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
   onOpenOrderModal,
-  onOpenSimulatorModal,
   threads,
   onRefreshThreads,
   allEquipment,
@@ -70,24 +69,6 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
     }, 3000);
     return () => clearInterval(interval);
   }, []);
-
-  const [autoReplyEnabled, setAutoReplyEnabled] = useState<boolean>(true);
-
-  useEffect(() => {
-    api.getAutoReplySetting()
-      .then((res) => setAutoReplyEnabled(res.auto_reply_enabled))
-      .catch((err) => console.error('Failed to load auto-reply setting:', err));
-  }, []);
-
-  const handleToggleAutoReply = async () => {
-    const nextVal = !autoReplyEnabled;
-    setAutoReplyEnabled(nextVal);
-    try {
-      await api.setAutoReplySetting(nextVal);
-    } catch (err) {
-      console.error('Failed to update auto-reply setting:', err);
-    }
-  };
 
   // Auto-select first thread if none selected
   useEffect(() => {
@@ -151,20 +132,22 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
     }
   }, [aiAnalysis]);
 
-  const handleRemovePart = (code: string) => {
-    setEditedParts((prev) => prev.filter((p) => p.code !== code));
-  };
-
   const handleUpdateQty = (code: string, delta: number) => {
     setEditedParts((prev) =>
-      prev.map((p) => {
-        if (p.code === code) {
-          const newQty = Math.max(1, p.quantity + delta);
-          return { ...p, quantity: newQty };
-        }
-        return p;
-      })
+      prev
+        .map((p) => {
+          if (p.code === code) {
+            const newQty = Math.max(1, p.quantity + delta);
+            return { ...p, quantity: newQty };
+          }
+          return p;
+        })
+        .filter((p) => p.quantity > 0)
     );
+  };
+
+  const handleRemovePart = (code: string) => {
+    setEditedParts((prev) => prev.filter((p) => p.code !== code));
   };
 
   const handleAddManualPart = () => {
@@ -175,12 +158,11 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
     if (editedParts.some((p) => p.code === part.code)) {
       handleUpdateQty(part.code, 1);
     } else {
-      const targetCity = selectedThread?.equipment?.city || 'Москва';
-      const localStock = targetCity === 'Москва' ? part.moscow_stock : part.tula_stock;
-      const localRes = targetCity === 'Москва' ? part.moscow_reserved : part.tula_reserved;
-      const localFree = Math.max(0, localStock - localRes);
-      const otherFree = targetCity === 'Москва' ? part.tula_free : part.moscow_free;
-      const transferReq = localFree === 0 && otherFree > 0;
+      const city = selectedThread?.equipment?.city || 'Москва';
+      const localStock = city === 'Тула' ? part.tula_stock : part.moscow_stock;
+      const localRes = city === 'Тула' ? part.tula_reserved : part.moscow_reserved;
+      const localFree = localStock - localRes;
+      const otherFree = city === 'Тула' ? (part.moscow_stock - part.moscow_reserved) : (part.tula_stock - part.tula_reserved);
 
       setEditedParts((prev) => [
         ...prev,
@@ -188,65 +170,43 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
           code: part.code,
           name: part.name,
           quantity: 1,
-          status_note: localFree > 0 ? `В наличии на складе (${localFree} шт.)` : transferReq ? 'Перевозка со склада др. города (+1 день)' : 'Нет остатка',
-          diagnostic_reason: 'Выбрано диспетчером вручную',
+          status_note: localFree > 0 ? `Свободно: ${localFree} шт.` : (otherFree > 0 ? 'Склад 0 (есть в другом городе)' : 'Нет на складах'),
+          diagnostic_reason: 'Добавлено диспетчером вручную',
           local_free: localFree,
-          transfer_required: transferReq,
-          is_compatible: true,
+          transfer_required: localFree <= 0 && otherFree > 0,
+          is_compatible: selectedThread?.equipment?.model ? part.compatible_models.includes(selectedThread.equipment.model) : true,
         },
       ]);
     }
+
     setSelectedPartCodeToAdd('');
     setIsManualAddOpen(false);
   };
 
   const handleCreateOrderWithAiParts = () => {
     if (!selectedThread) return;
-    const customAiData: AIAnalysisResult = aiAnalysis
+    const transformedAiData: AIAnalysisResult | null = aiAnalysis
       ? {
           ...aiAnalysis,
-          recommended_parts: editedParts.map((p) => ({
-            code: p.code,
-            name: p.name,
-            is_compatible: p.is_compatible ?? true,
-            local_stock: p.local_free ?? 1,
-            local_reserved: 0,
-            local_free: p.local_free ?? 1,
-            other_city_free: 0,
-            transfer_required: p.transfer_required ?? false,
-            status_note: p.status_note || 'В наличии на складе',
-            diagnostic_reason: p.diagnostic_reason || 'Рекомендация по заявке',
-          })),
+          recommended_parts: editedParts.map((ep) => {
+            const orig = aiAnalysis.recommended_parts.find((op) => op.code === ep.code);
+            return {
+              code: ep.code,
+              name: ep.name,
+              is_compatible: ep.is_compatible ?? true,
+              local_stock: orig?.local_stock ?? ep.local_free ?? 1,
+              local_reserved: orig?.local_reserved ?? 0,
+              local_free: ep.local_free ?? 1,
+              other_city_free: orig?.other_city_free ?? 0,
+              transfer_required: ep.transfer_required ?? false,
+              status_note: ep.status_note ?? 'В наличии',
+              diagnostic_reason: ep.diagnostic_reason || null,
+            };
+          }),
         }
-      : {
-          detected_equipment_code: selectedThread.equipment_code,
-          detected_model: selectedThread.equipment?.model,
-          detected_serial: selectedThread.equipment?.serial_number,
-          equipment_reasoning: 'Оборудование из обращения',
-          is_unregistered_machine: selectedThread.is_unregistered,
-          is_ambiguous_machine: false,
-          is_warranty: selectedThread.is_warranty,
-          warranty_reason: selectedThread.warranty_reason,
-          draft_symptom: selectedThread.messages?.[0]?.content || 'Диагностика кофемашины',
-          client_assumption: null,
-          reply_to_client: '',
-          missing_questions: [],
-          recommended_parts: editedParts.map((p) => ({
-            code: p.code,
-            name: p.name,
-            is_compatible: p.is_compatible ?? true,
-            local_stock: p.local_free ?? 1,
-            local_reserved: 0,
-            local_free: p.local_free ?? 1,
-            other_city_free: 0,
-            transfer_required: p.transfer_required ?? false,
-            status_note: p.status_note || 'В наличии на складе',
-            diagnostic_reason: p.diagnostic_reason || 'Ручной выбор диспетчера',
-          })),
-          rules_applied: ['П-7', 'П-8'],
-        };
+      : null;
 
-    onOpenOrderModal(selectedThread, customAiData);
+    onOpenOrderModal(selectedThread, transformedAiData);
   };
 
   const handleSendMessage = async (customText?: string) => {
@@ -285,32 +245,47 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      const matchesClient = t.client_name.toLowerCase().includes(q);
-      const matchesCode = t.equipment_code?.toLowerCase().includes(q);
-      const matchesMsg = t.messages.some((m) => m.content.toLowerCase().includes(q));
-      if (!matchesClient && !matchesCode && !matchesMsg) return false;
+      const matchClient = t.client_name.toLowerCase().includes(q);
+      const matchCode = (t.equipment_code || '').toLowerCase().includes(q);
+      const matchMsg = t.messages.some((m) => m.content.toLowerCase().includes(q));
+      return matchClient || matchCode || matchMsg;
     }
+
     return true;
   });
 
   const getChannelIcon = (ch: string) => {
-    if (ch === 'Почта') return <Mail className="w-3.5 h-3.5 text-blue-400" />;
-    if (ch === 'Звонок') return <Phone className="w-3.5 h-3.5 text-green-400" />;
-    return <MessageSquare className="w-3.5 h-3.5 text-purple-400" />;
+    switch (ch) {
+      case 'Почта':
+        return <Mail className="w-3.5 h-3.5 text-blue-400" />;
+      case 'Звонок':
+        return <Phone className="w-3.5 h-3.5 text-emerald-400" />;
+      default:
+        return <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />;
+    }
   };
 
+  // Strict isolated message filters
+  const clientMessagesCount = (selectedThread?.messages || []).filter(
+    (m) => (m.chat_type === 'client_dispatcher' || (!m.chat_type && m.sender_type !== 'engineer')) &&
+           m.chat_type !== 'dispatcher_engineer' &&
+           m.chat_type !== 'client_engineer'
+  ).length;
+
+  const engineerMessagesCount = (selectedThread?.messages || []).filter(
+    (m) => m.chat_type === 'dispatcher_engineer'
+  ).length;
+
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col p-4 sm:p-6 max-w-[1700px] mx-auto w-full text-[#F0F5F2]">
-      {/* 3-Column Grid */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-5 min-h-0">
-        {/* ================= COLUMN 1 (LEFT): THREADS LIST ================= */}
-        <div className="lg:col-span-3 bg-[#17231D] rounded-2xl border border-white/[0.08] shadow-apple flex flex-col min-h-0 overflow-hidden">
-          {/* Top Actions */}
+    <div className="h-[calc(100vh-4rem)] flex flex-col p-4 sm:p-6 max-w-[1700px] mx-auto w-full text-[#F3F4F6]">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-0">
+        {/* ================= COLUMN 1 (LEFT): THREADS & QUICK ORDER ================= */}
+        <div className="lg:col-span-3 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex flex-col min-h-0 overflow-hidden">
           <div className="p-3.5 border-b border-white/[0.06] space-y-2.5">
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => onOpenOrderModal()}
-                className="w-full py-2.5 px-3 rounded-xl bg-[#4A6751] hover:bg-[#3D5643] text-white text-xs font-semibold flex items-center justify-center space-x-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
+                className="w-full py-2.5 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center justify-center space-x-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
               >
                 <Plus className="w-4 h-4" />
                 <span>+ Новая заявка в 1 клик</span>
@@ -319,18 +294,18 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
 
             {/* Search Input */}
             <div className="relative">
-              <Search className="w-3.5 h-3.5 text-[#8E9E94] absolute left-3 top-2.5" />
+              <Search className="w-3.5 h-3.5 text-[#9CA3AF] absolute left-3 top-2.5" />
               <input
                 type="text"
                 placeholder="Поиск по клиенту или тексту..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-white/[0.08] bg-[#1D2E24] text-white placeholder-[#8E9E94] focus:border-[#6E9078] outline-none transition-all"
+                className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-white/[0.08] bg-[#1F2026] text-white placeholder-[#9CA3AF] focus:border-white/20 outline-none transition-all"
               />
             </div>
 
             {/* Filter Pills */}
-            <div className="flex flex-wrap gap-1">
+            <div className="flex items-center space-x-1 overflow-x-auto pb-0.5">
               {[
                 { id: 'all', label: 'Все' },
                 { id: 'needs_clarification', label: 'Уточнить' },
@@ -343,8 +318,8 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                   onClick={() => setActiveFilter(f.id)}
                   className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
                     activeFilter === f.id
-                      ? 'bg-[#4A6751] text-white shadow-sm'
-                      : 'bg-white/[0.05] text-[#8E9E94] hover:text-white hover:bg-white/[0.08]'
+                      ? 'bg-white/20 text-white font-semibold shadow-sm'
+                      : 'bg-white/[0.05] text-[#9CA3AF] hover:text-white hover:bg-white/[0.08]'
                   }`}
                 >
                   {f.label}
@@ -365,7 +340,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                   onClick={() => setSelectedThreadId(t.id)}
                   className={`p-3.5 cursor-pointer transition-all ${
                     isSelected
-                      ? 'bg-[#4A6751]/15 border-l-4 border-[#4A6751]'
+                      ? 'bg-white/[0.08] border-l-4 border-blue-500'
                       : 'hover:bg-white/[0.03]'
                   }`}
                 >
@@ -376,7 +351,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                         {t.client_name}
                       </span>
                     </div>
-                    <span className="text-[10px] text-[#8E9E94] flex-shrink-0">
+                    <span className="text-[10px] text-[#9CA3AF] flex-shrink-0">
                       #{t.thread_number}
                     </span>
                   </div>
@@ -389,24 +364,24 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                       </span>
                     )}
                     {t.is_warranty && (
-                      <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-[#FF453A]/15 text-[#FF453A]">
+                      <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-[#FF453A]/15 text-[#FF453A] border border-[#FF453A]/20">
                         Гарантия
                       </span>
                     )}
                     {t.is_unregistered && (
-                      <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-[#FF9F0A]/15 text-[#FF9F0A]">
+                      <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-[#FF9F0A]/15 text-[#FF9F0A] border border-[#FF9F0A]/20">
                         Вне договора
                       </span>
                     )}
                     {t.status === 'order_created' && (
-                      <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-[#30D158]/15 text-[#30D158]">
+                      <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-[#30D158]/15 text-[#30D158] border border-[#30D158]/20">
                         Заявка создана
                       </span>
                     )}
                   </div>
 
                   {/* Last message preview */}
-                  <p className="text-[11px] text-[#8E9E94] line-clamp-2">
+                  <p className="text-[11px] text-[#9CA3AF] line-clamp-2">
                     {lastMsg ? lastMsg.content : 'Нет сообщений'}
                   </p>
                 </div>
@@ -414,7 +389,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
             })}
 
             {filteredThreads.length === 0 && (
-              <div className="p-8 text-center text-xs text-[#8E9E94]">
+              <div className="p-8 text-center text-xs text-[#9CA3AF]">
                 Обращения по выбранному фильтру не найдены
               </div>
             )}
@@ -422,7 +397,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
         </div>
 
         {/* ================= COLUMN 2 (CENTER): CHAT & AI ASSISTANT ================= */}
-        <div className="lg:col-span-5 bg-[#17231D] rounded-2xl border border-white/[0.08] shadow-apple flex flex-col min-h-0 overflow-hidden">
+        <div className="lg:col-span-5 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex flex-col min-h-0 overflow-hidden">
           {selectedThread ? (
             <>
               {/* Header */}
@@ -432,11 +407,11 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                     <h2 className="font-bold text-sm text-white">
                       {selectedThread.client_name}
                     </h2>
-                    <span className="text-xs text-[#8E9E94]">
+                    <span className="text-xs text-[#9CA3AF]">
                       (Ветка #{selectedThread.thread_number})
                     </span>
                   </div>
-                  <div className="flex items-center space-x-2 mt-0.5 text-xs text-[#8E9E94]">
+                  <div className="flex items-center space-x-2 mt-0.5 text-xs text-[#9CA3AF]">
                     <span>Канал: {selectedThread.channel}</span>
                     <span>·</span>
                     <span>
@@ -450,42 +425,15 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                 </div>
 
                 <div className="flex items-center space-x-2">
-                  {/* AI Auto-Reply Toggle Switch */}
-                  <button
-                    type="button"
-                    onClick={handleToggleAutoReply}
-                    className={`flex items-center space-x-2 px-2.5 py-1 rounded-xl border text-xs font-semibold transition-all cursor-pointer shadow-sm active:scale-95 ${
-                      autoReplyEnabled
-                        ? 'bg-[#30D158]/15 border-[#30D158]/35 text-[#30D158] hover:bg-[#30D158]/25'
-                        : 'bg-white/[0.04] border-white/[0.08] text-[#8E9E94] hover:bg-white/[0.08]'
-                    }`}
-                    title="Автоответ ИИ: бот автоматически задаёт клиенту уточняющие вопросы (симптомы, ошибки, шильдик) и отвечает в чате"
-                  >
-                    <Zap className="w-3.5 h-3.5" />
-                    <span>Автоответ:</span>
-                    <span className="font-bold">{autoReplyEnabled ? 'ВКЛ' : 'ВЫКЛ'}</span>
-                    <span
-                      className={`w-7 h-4 flex items-center rounded-full p-0.5 transition-colors ${
-                        autoReplyEnabled ? 'bg-[#30D158]' : 'bg-[#2A3B31]'
-                      }`}
-                    >
-                      <span
-                        className={`bg-white w-3 h-3 rounded-full shadow-md transform transition-transform ${
-                          autoReplyEnabled ? 'translate-x-3' : 'translate-x-0'
-                        }`}
-                      />
-                    </span>
-                  </button>
-
                   <span
                     className={`text-xs px-2.5 py-1 rounded-full font-medium ${
                       selectedThread.status === 'ready_for_order'
-                        ? 'bg-[#30D158]/15 text-[#30D158]'
+                        ? 'bg-[#30D158]/15 text-[#30D158] border border-[#30D158]/30'
                         : selectedThread.status === 'sales_transfer'
-                        ? 'bg-[#FF9F0A]/15 text-[#FF9F0A]'
+                        ? 'bg-[#FF9F0A]/15 text-[#FF9F0A] border border-[#FF9F0A]/30'
                         : selectedThread.status === 'order_created'
-                        ? 'bg-[#4A6751]/15 text-[#6E9078]'
-                        : 'bg-white/[0.06] text-[#8E9E94]'
+                        ? 'bg-blue-600/15 text-blue-400 border border-blue-500/30'
+                        : 'bg-white/[0.06] text-[#9CA3AF]'
                     }`}
                   >
                     {selectedThread.status === 'ready_for_order'
@@ -500,22 +448,22 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
               </div>
 
               {/* Sub-tabs: Client chat vs Engineer internal chat */}
-              <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.06] bg-[#141B17]">
+              <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.06] bg-[#121316]">
                 <div className="flex items-center space-x-1.5">
                   <button
                     type="button"
                     onClick={() => setDispatcherChatTab('client')}
                     className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
                       dispatcherChatTab === 'client'
-                        ? 'bg-[#4A6751] text-white shadow-sm'
-                        : 'text-[#8E9E94] hover:text-white'
+                        ? 'bg-white/15 text-white shadow-sm border border-white/10'
+                        : 'text-[#9CA3AF] hover:text-white'
                     }`}
                   >
                     <UserCheck className="w-3.5 h-3.5" />
                     <span>Чат с клиентом</span>
-                    {(selectedThread.messages || []).filter(m => m.chat_type !== 'dispatcher_engineer').length > 0 && (
+                    {clientMessagesCount > 0 && (
                       <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-white font-bold">
-                        {(selectedThread.messages || []).filter(m => m.chat_type !== 'dispatcher_engineer').length}
+                        {clientMessagesCount}
                       </span>
                     )}
                   </button>
@@ -524,33 +472,31 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                     onClick={() => setDispatcherChatTab('engineer')}
                     className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
                       dispatcherChatTab === 'engineer'
-                        ? 'bg-[#30D158] text-black shadow-sm font-bold'
-                        : 'text-[#8E9E94] hover:text-white'
+                        ? 'bg-blue-600 text-white shadow-sm font-bold'
+                        : 'text-[#9CA3AF] hover:text-white'
                     }`}
                   >
                     <Wrench className="w-3.5 h-3.5" />
                     <span>Чат с инженером</span>
-                    {(selectedThread.messages || []).filter(m => m.chat_type === 'dispatcher_engineer').length > 0 && (
-                      <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/30 text-black font-bold">
-                        {(selectedThread.messages || []).filter(m => m.chat_type === 'dispatcher_engineer').length}
+                    {engineerMessagesCount > 0 && (
+                      <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/30 text-white font-bold">
+                        {engineerMessagesCount}
                       </span>
                     )}
                   </button>
                 </div>
-
-                <span className="text-[10px] text-[#8E9E94] hidden sm:inline">
-                  {dispatcherChatTab === 'client'
-                    ? 'Диалог с клиентом'
-                    : '🔒 Служебный канал с инженером (скрыт от клиента)'}
-                </span>
               </div>
 
-              {/* Messages feed */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#111614]/40">
+              {/* Messages feed - Strictly isolated */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#111215]">
                 {(() => {
-                  const visibleMessages = (selectedThread.messages || []).filter(m => {
+                  const visibleMessages = (selectedThread.messages || []).filter((m) => {
                     if (dispatcherChatTab === 'client') {
-                      return m.chat_type !== 'dispatcher_engineer';
+                      return (
+                        (m.chat_type === 'client_dispatcher' || (!m.chat_type && m.sender_type !== 'engineer')) &&
+                        m.chat_type !== 'dispatcher_engineer' &&
+                        m.chat_type !== 'client_engineer'
+                      );
                     } else {
                       return m.chat_type === 'dispatcher_engineer';
                     }
@@ -558,14 +504,14 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
 
                   if (visibleMessages.length === 0) {
                     return (
-                      <div className="h-full flex flex-col items-center justify-center text-xs text-[#8E9E94] space-y-1 py-12">
+                      <div className="h-full flex flex-col items-center justify-center text-xs text-[#9CA3AF] space-y-1 py-12">
                         <MessageSquare className="w-8 h-8 opacity-25 mb-1" />
                         <p>
                           {dispatcherChatTab === 'client'
                             ? 'В диалоге с клиентом нет сообщений'
                             : 'В чате с инженером пока нет сообщений'}
                         </p>
-                        <p className="text-[11px] text-[#6E9078]">
+                        <p className="text-[11px] text-neutral-400">
                           {dispatcherChatTab === 'client'
                             ? 'Напишите клиенту или дождитесь входящего обращения.'
                             : 'Здесь вы можете передать инженеру коды доступа, согласования или служебные инструкции.'}
@@ -583,17 +529,17 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                         key={m.id}
                         className={`flex flex-col ${isDispatcher ? 'items-end' : 'items-start'}`}
                       >
-                        <div className="flex items-center space-x-1.5 mb-1 text-[11px] text-[#8E9E94]">
+                        <div className="flex items-center space-x-1.5 mb-1 text-[11px] text-[#9CA3AF]">
                           <span>{m.sender_name}</span>
                           {isEngineer && (
-                            <span className="px-1.5 py-0.2 rounded-full bg-[#30D158]/20 text-[#30D158] border border-[#30D158]/30 font-semibold text-[9px] flex items-center space-x-0.5">
+                            <span className="px-1.5 py-0.2 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 font-semibold text-[9px] flex items-center space-x-0.5">
                               <Wrench className="w-2.5 h-2.5" />
                               <span>Инженер на выезде</span>
                             </span>
                           )}
                           {m.sender_name.includes('ИИ') && (
-                            <span className="px-1.5 py-0.2 rounded-full bg-[#30D158]/20 text-[#30D158] border border-[#30D158]/30 font-semibold text-[9px] flex items-center space-x-0.5">
-                              <Zap className="w-2.5 h-2.5" />
+                            <span className="px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 font-semibold text-[9px] flex items-center space-x-0.5">
+                              <Sparkles className="w-2.5 h-2.5" />
                               <span>Автоответ</span>
                             </span>
                           )}
@@ -609,10 +555,10 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                         <div
                           className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed ${
                             isDispatcher
-                              ? 'bg-[#4A6751] text-white rounded-tr-sm shadow-sm'
+                              ? 'bg-blue-600 text-white rounded-tr-sm shadow-sm'
                               : isEngineer
-                              ? 'bg-[#18392B] text-white border border-[#30D158]/40 rounded-tl-sm shadow-sm ring-1 ring-[#30D158]/20'
-                              : 'bg-[#1D2E24] text-white border border-white/[0.08] rounded-tl-sm shadow-sm'
+                              ? 'bg-[#1E222D] text-white border border-blue-500/30 rounded-tl-sm shadow-sm'
+                              : 'bg-[#1F2026] text-white border border-white/[0.08] rounded-tl-sm shadow-sm'
                           }`}
                         >
                           {m.content}
@@ -625,17 +571,17 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
               </div>
 
               {/* Chat Bottom Controls */}
-              <div className="p-3 border-t border-white/[0.06] bg-[#4A6751]/[0.03]">
+              <div className="p-3 border-t border-white/[0.06] bg-[#16171B]">
                 {dispatcherChatTab === 'client' ? (
                   /* Gemini AI Assistant Block above input (collapsible) */
-                  <div className="rounded-xl border border-[#6E9078]/25 bg-[#16221B] shadow-sm overflow-hidden transition-all duration-200">
+                  <div className="rounded-xl border border-white/[0.1] bg-[#1F2026] shadow-sm overflow-hidden transition-all duration-200">
                     {/* Collapsible Header */}
                     <div
                       onClick={() => setIsAiSuggestionCollapsed(!isAiSuggestionCollapsed)}
-                      className="p-2.5 sm:p-3 flex items-center justify-between gap-2 bg-[#16221B] cursor-pointer select-none hover:bg-white/[0.02] transition-colors"
+                      className="p-2.5 sm:p-3 flex items-center justify-between gap-2 bg-[#1F2026] cursor-pointer select-none hover:bg-white/[0.02] transition-colors"
                     >
                       <div className="flex items-center space-x-2 flex-1 min-w-0">
-                        <div className="p-1 rounded-lg bg-[#4A6751]/15 text-[#6E9078] flex-shrink-0">
+                        <div className="p-1 rounded-lg bg-blue-600/20 text-blue-400 flex-shrink-0">
                           <Sparkles className="w-3.5 h-3.5" />
                         </div>
                         <div className="min-w-0 flex-1">
@@ -644,13 +590,13 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                               ИИ-Ассистент Gemini
                             </span>
                             {isAiSuggestionCollapsed && (
-                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/[0.08] text-[#8E9E94] hidden sm:inline">
+                              <span className="text-[10px] px-1.5 py-0.2 rounded bg-white/[0.08] text-[#9CA3AF] hidden sm:inline">
                                 свернуто
                               </span>
                             )}
                           </div>
                           {isAiSuggestionCollapsed && aiAnalysis?.reply_to_client && (
-                            <p className="text-[11px] text-[#8E9E94] truncate max-w-sm sm:max-w-md mt-0.5">
+                            <p className="text-[11px] text-[#9CA3AF] truncate max-w-sm sm:max-w-md mt-0.5">
                               {aiAnalysis.reply_to_client}
                             </p>
                           )}
@@ -665,7 +611,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                           }}
                           disabled={aiLoading}
                           title="Перегенерировать анализ"
-                          className="p-1.5 rounded-lg hover:bg-white/[0.08] text-[#8E9E94] hover:text-white transition-colors"
+                          className="p-1.5 rounded-lg hover:bg-white/[0.08] text-[#9CA3AF] hover:text-white transition-colors"
                         >
                           <RotateCcw className={`w-3.5 h-3.5 ${aiLoading ? 'animate-spin' : ''}`} />
                         </button>
@@ -677,7 +623,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                             setIsAiSuggestionCollapsed(!isAiSuggestionCollapsed);
                           }}
                           title={isAiSuggestionCollapsed ? "Развернуть блок предложений" : "Свернуть блок предложений"}
-                          className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-[#4A6751]/10 hover:bg-[#4A6751]/20 text-[#6E9078] border border-[#6E9078]/30 transition-all text-xs font-medium cursor-pointer shadow-sm active:scale-95"
+                          className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] text-white border border-white/[0.1] transition-all text-xs font-medium cursor-pointer shadow-sm active:scale-95"
                         >
                           {isAiSuggestionCollapsed ? (
                             <>
@@ -699,12 +645,12 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                       <div className="px-3 pb-3 pt-0 space-y-2.5 border-t border-white/[0.04]">
                         {aiAnalysis ? (
                           <>
-                            <div className="text-xs text-white bg-black/30 p-2.5 rounded-lg border border-white/[0.06] leading-relaxed whitespace-pre-line mt-2.5">
+                            <div className="text-xs text-white bg-black/40 p-2.5 rounded-lg border border-white/[0.06] leading-relaxed whitespace-pre-line mt-2.5">
                               {aiAnalysis.reply_to_client}
                             </div>
 
                             <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5">
-                              <div className="flex items-center space-x-1">
+                              <div className="flex items-center space-x-2">
                                 <button
                                   onClick={() => setInputText(aiAnalysis.reply_to_client)}
                                   className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-white/[0.08] hover:bg-white/[0.12] text-white transition-colors cursor-pointer"
@@ -714,7 +660,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                                 <button
                                   onClick={() => handleSendMessage(aiAnalysis.reply_to_client)}
                                   disabled={sendingMsg}
-                                  className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-[#4A6751] hover:bg-[#3D5643] text-white transition-colors flex items-center space-x-1 cursor-pointer"
+                                  className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-blue-600 hover:bg-blue-500 text-white transition-colors flex items-center space-x-1 cursor-pointer"
                                 >
                                   <span>Отправить клиенту</span>
                                   <ArrowRight className="w-3 h-3" />
@@ -723,8 +669,8 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                             </div>
                           </>
                         ) : (
-                          <div className="text-xs text-[#8E9E94] py-2 flex items-center justify-center space-x-2 mt-2">
-                            <Sparkles className="w-3.5 h-3.5 animate-spin text-[#6E9078]" />
+                          <div className="text-xs text-[#9CA3AF] py-2 flex items-center justify-center space-x-2 mt-2">
+                            <Sparkles className="w-3.5 h-3.5 animate-spin text-blue-400" />
                             <span>Анализ контекста обращения...</span>
                           </div>
                         )}
@@ -732,24 +678,24 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                     )}
                   </div>
                 ) : (
-                  /* Quick prompts for Dispatcher to Engineer */
-                  <div className="p-2.5 rounded-xl border border-white/[0.08] bg-[#16221B] space-y-2">
-                    <div className="text-[10px] text-[#8E9E94] uppercase tracking-wider font-semibold">
+                  /* Quick prompts for Dispatcher to Engineer - NO EMOJIS */
+                  <div className="p-2.5 rounded-xl border border-white/[0.08] bg-[#1F2026] space-y-2">
+                    <div className="text-[10px] text-[#9CA3AF] uppercase tracking-wider font-semibold">
                       Быстрые указания инженеру на выезде:
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {[
-                        '✅ Согласовано, производите замену узла из резерва',
-                        '🔑 Код от домофона: 421, спросить управляющего на баре',
-                        '⚠️ Выезд по гарантии (правило П-9), работы без оплаты',
-                        '📞 Связался с клиентом, вас уже встречают на месте'
+                        'Согласовано, производите замену узла из резерва',
+                        'Код от домофона: 421, спросить управляющего на баре',
+                        'Выезд по гарантии (правило П-9), работы без оплаты',
+                        'Связался с клиентом, вас уже встречают на месте'
                       ].map((prompt, idx) => (
                         <button
                           key={idx}
                           type="button"
                           onClick={() => handleSendMessage(prompt)}
                           disabled={sendingMsg}
-                          className="px-2.5 py-1 text-[11px] rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-[#F0F5F2] border border-white/[0.08] transition-colors text-left cursor-pointer disabled:opacity-50"
+                          className="px-2.5 py-1 text-[11px] rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-[#F3F4F6] border border-white/[0.08] transition-colors text-left cursor-pointer disabled:opacity-50"
                         >
                           {prompt}
                         </button>
@@ -775,16 +721,12 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                         ? 'Напишите ответ клиенту или уточнение...'
                         : 'Служебная инструкция или ответ инженеру...'
                     }
-                    className="flex-1 px-3 py-2 text-xs rounded-xl border border-white/[0.08] bg-[#1D2E24] text-white placeholder-[#8E9E94] focus:border-[#6E9078] outline-none transition-all"
+                    className="flex-1 px-3 py-2 text-xs rounded-xl border border-white/[0.08] bg-[#1F2026] text-white placeholder-[#9CA3AF] focus:border-white/20 outline-none transition-all"
                   />
                   <button
                     type="submit"
                     disabled={sendingMsg || !inputText.trim()}
-                    className={`p-2 rounded-xl disabled:opacity-40 transition-colors cursor-pointer ${
-                      dispatcherChatTab === 'client'
-                        ? 'bg-[#4A6751] hover:bg-[#3D5643] text-white'
-                        : 'bg-[#30D158] hover:bg-[#28B84B] text-black font-bold'
-                    }`}
+                    className="p-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-40 transition-colors cursor-pointer"
                   >
                     <Send className="w-4 h-4" />
                   </button>
@@ -792,7 +734,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
               </div>
             </>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-[#8E9E94] text-xs">
+            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-[#9CA3AF] text-xs">
               <MessageSquare className="w-8 h-8 text-white/[0.1] mb-2" />
               <span>Выберите обращение из списка слева</span>
             </div>
@@ -800,23 +742,23 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
         </div>
 
         {/* ================= COLUMN 3 (RIGHT): PROACTIVE AI EQUIPMENT & SPARE PARTS ================= */}
-        <div className="lg:col-span-4 bg-[#17231D] rounded-2xl border border-white/[0.08] shadow-apple flex flex-col min-h-0 overflow-hidden">
+        <div className="lg:col-span-4 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex flex-col min-h-0 overflow-hidden">
           <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
             <h2 className="font-bold text-sm text-white flex items-center space-x-1.5">
-              <Sparkles className="w-4 h-4 text-[#6E9078]" />
+              <Sparkles className="w-4 h-4 text-blue-400" />
               <span>Диагностика и запчасти</span>
             </h2>
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-4">
             {/* 1. Proactive AI Equipment Resolution */}
-            <div className="p-3.5 rounded-xl border border-white/[0.08] bg-black/20 space-y-2">
+            <div className="p-3.5 rounded-xl border border-white/[0.08] bg-[#1F2026] space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-white">
                   Оборудование
                 </span>
                 {aiAnalysis?.detected_equipment_code && (
-                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#4A6751]/20 text-[#6E9078]">
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-blue-600/20 text-blue-400 border border-blue-500/30">
                     {aiAnalysis.detected_equipment_code}
                   </span>
                 )}
@@ -846,48 +788,48 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
               ) : selectedThread?.equipment ? (
                 <div className="space-y-1.5 text-xs">
                   <div className="flex justify-between">
-                    <span className="text-[#8E9E94]">Модель:</span>
+                    <span className="text-[#9CA3AF]">Модель:</span>
                     <span className="font-semibold text-white">{selectedThread.equipment.model}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[#8E9E94]">Серийный номер:</span>
-                    <span className="font-mono font-bold text-[#6E9078]">
+                    <span className="text-[#9CA3AF]">Серийный номер:</span>
+                    <span className="font-mono font-bold text-blue-400">
                       {selectedThread.equipment.serial_number}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[#8E9E94]">Адрес:</span>
+                    <span className="text-[#9CA3AF]">Адрес:</span>
                     <span className="text-white text-right max-w-[200px] truncate">
                       {selectedThread.equipment.address}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-[#8E9E94]">Город склада:</span>
+                    <span className="text-[#9CA3AF]">Город склада:</span>
                     <span className="text-white">{selectedThread.equipment.city}</span>
                   </div>
 
                   {aiAnalysis?.equipment_reasoning && (
-                    <div className="mt-2 pt-2 border-t border-white/[0.06] text-[11px] text-[#6E9078]">
+                    <div className="mt-2 pt-2 border-t border-white/[0.06] text-[11px] text-neutral-300">
                       <span className="font-medium text-white">Вывод ИИ:</span> {aiAnalysis.equipment_reasoning}
                     </div>
                   )}
 
                   {selectedThread.equipment.last_visit_result && (
-                    <div className="mt-1 text-[11px] text-[#8E9E94]">
+                    <div className="mt-1 text-[11px] text-[#9CA3AF]">
                       <span className="font-medium text-white">Прошлый визит:</span>{' '}
                       {selectedThread.equipment.last_visit_result}
                     </div>
                   )}
                 </div>
               ) : (
-                <p className="text-xs text-[#8E9E94]">
+                <p className="text-xs text-[#9CA3AF]">
                   Машина ещё не привязана.
                 </p>
               )}
             </div>
 
             {/* 2. Warranty Status */}
-            <div className="p-3.5 rounded-xl border border-white/[0.08] bg-black/20 space-y-1.5">
+            <div className="p-3.5 rounded-xl border border-white/[0.08] bg-[#1F2026] space-y-1.5">
               <span className="text-xs font-semibold text-white">
                 Статус гарантии
               </span>
@@ -912,19 +854,19 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
 
             {/* 3. Error Code Interpretation */}
             {aiAnalysis?.error_code && (
-              <div className="p-3.5 rounded-xl border border-white/[0.08] bg-black/20 space-y-1.5">
+              <div className="p-3.5 rounded-xl border border-white/[0.08] bg-[#1F2026] space-y-1.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-white">
                     Код ошибки
                   </span>
-                  <span className="text-xs font-mono font-bold text-[#6E9078] px-2 py-0.5 rounded bg-[#4A6751]/20">
+                  <span className="text-xs font-mono font-bold text-blue-400 px-2 py-0.5 rounded bg-blue-600/20">
                     {aiAnalysis.error_code}
                   </span>
                 </div>
                 <p className="text-xs text-white font-medium">
                   {aiAnalysis.error_explanation}
                 </p>
-                <p className="text-[10px] text-[#8E9E94]">
+                <p className="text-[10px] text-[#9CA3AF]">
                   Код указывает на сработавшую проверку системы, окончательную причину определяет инженер на месте.
                 </p>
               </div>
@@ -939,7 +881,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                 </span>
                 <ul className="space-y-1">
                   {aiAnalysis.missing_questions.map((q, idx) => (
-                    <li key={idx} className="text-[11px] text-[#F0F5F2] flex items-start space-x-1.5">
+                    <li key={idx} className="text-[11px] text-[#F3F4F6] flex items-start space-x-1.5">
                       <span className="text-[#FF9F0A] font-bold">·</span>
                       <span>{q}</span>
                     </li>
@@ -949,10 +891,10 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
             )}
 
             {/* 5. Recommended Spare Parts (Rule П-7 & П-8) - Interactive & Editable */}
-            <div className="p-3.5 rounded-xl border border-white/[0.08] bg-black/20 space-y-2.5">
+            <div className="p-3.5 rounded-xl border border-white/[0.08] bg-[#1F2026] space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-white flex items-center space-x-1.5">
-                  <Package className="w-3.5 h-3.5 text-[#6E9078]" />
+                  <Package className="w-3.5 h-3.5 text-blue-400" />
                   <span>Рекомендуемые запчасти</span>
                 </span>
                 <button
@@ -960,7 +902,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                   onClick={() => selectedThreadId && loadAiAnalysis(selectedThreadId)}
                   disabled={aiLoading}
                   title="Запустить повторный подбор деталей через ИИ по контексту и истории из БД"
-                  className="px-2.5 py-1 rounded-lg bg-[#4A6751]/25 hover:bg-[#4A6751]/40 text-[#6E9078] border border-[#6E9078]/30 text-[11px] font-semibold flex items-center space-x-1 transition-all active:scale-95 cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg bg-white/[0.06] hover:bg-white/[0.12] text-white border border-white/[0.1] text-[11px] font-semibold flex items-center space-x-1 transition-all active:scale-95 cursor-pointer"
                 >
                   <Sparkles className={`w-3.5 h-3.5 ${aiLoading ? 'animate-spin' : ''}`} />
                   <span>{aiLoading ? 'ИИ анализ...' : 'ИИ-Подбор'}</span>
@@ -972,7 +914,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                   {editedParts.map((p) => (
                     <div
                       key={p.code}
-                      className="p-2.5 rounded-xl bg-[#1D2E24] border border-white/[0.08] flex flex-col space-y-1.5 text-xs transition-all"
+                      className="p-2.5 rounded-xl bg-[#16171B] border border-white/[0.08] flex flex-col space-y-1.5 text-xs transition-all"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-1.5 min-w-0">
@@ -987,7 +929,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                                 ? 'bg-[#30D158]/15 text-[#30D158]'
                                 : p.transfer_required
                                 ? 'bg-[#FF9F0A]/15 text-[#FF9F0A]'
-                                : 'bg-white/[0.06] text-[#8E9E94]'
+                                : 'bg-white/[0.06] text-[#9CA3AF]'
                             }`}
                           >
                             {(p.local_free ?? 0) > 0
@@ -1000,7 +942,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                             type="button"
                             onClick={() => handleRemovePart(p.code)}
                             title="Удалить деталь из заявки"
-                            className="p-1 rounded-md text-[#8E9E94] hover:text-[#FF453A] hover:bg-white/[0.05] transition-colors"
+                            className="p-1 rounded-md text-[#9CA3AF] hover:text-[#FF453A] hover:bg-white/[0.05] transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1009,19 +951,19 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
 
                       {/* Diagnostic reason from AI / DB history */}
                       {p.diagnostic_reason && (
-                        <div className="text-[11px] text-[#8E9E94] leading-relaxed">
-                          <span className="text-[#6E9078] font-medium">Диагностика:</span> {p.diagnostic_reason}
+                        <div className="text-[11px] text-[#9CA3AF] leading-relaxed">
+                          <span className="text-blue-400 font-medium">Диагностика:</span> {p.diagnostic_reason}
                         </div>
                       )}
 
                       <div className="flex items-center justify-between pt-1 border-t border-white/[0.04]">
                         <div className="flex items-center space-x-1.5">
-                          <span className="text-[10px] text-[#8E9E94]">Кол-во:</span>
-                          <div className="flex items-center space-x-1 bg-black/30 rounded-lg p-0.5 border border-white/[0.06]">
+                          <span className="text-[10px] text-[#9CA3AF]">Кол-во:</span>
+                          <div className="flex items-center space-x-1 bg-black/40 rounded-lg p-0.5 border border-white/[0.06]">
                             <button
                               type="button"
                               onClick={() => handleUpdateQty(p.code, -1)}
-                              className="w-5 h-5 flex items-center justify-center rounded text-[#8E9E94] hover:text-white hover:bg-white/10"
+                              className="w-5 h-5 flex items-center justify-center rounded text-[#9CA3AF] hover:text-white hover:bg-white/10"
                             >
                               <Minus className="w-3 h-3" />
                             </button>
@@ -1031,7 +973,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                             <button
                               type="button"
                               onClick={() => handleUpdateQty(p.code, 1)}
-                              className="w-5 h-5 flex items-center justify-center rounded text-[#8E9E94] hover:text-white hover:bg-white/10"
+                              className="w-5 h-5 flex items-center justify-center rounded text-[#9CA3AF] hover:text-white hover:bg-white/10"
                             >
                               <Plus className="w-3 h-3" />
                             </button>
@@ -1049,7 +991,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                   ))}
                 </div>
               ) : (
-                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] text-center text-xs text-[#8E9E94]">
+                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] text-center text-xs text-[#9CA3AF]">
                   <span>Детали пока не предложены. Нажмите «ИИ-Подбор» или добавьте деталь вручную.</span>
                 </div>
               )}
@@ -1057,14 +999,14 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
               {/* Manual Add Trigger */}
               <div className="pt-1">
                 {isManualAddOpen ? (
-                  <div className="p-2.5 rounded-xl bg-[#1D2E24] border border-white/[0.08] space-y-2">
+                  <div className="p-2.5 rounded-xl bg-[#16171B] border border-white/[0.08] space-y-2">
                     <label className="block text-[11px] font-semibold text-white">
                       Выберите запчасть со склада:
                     </label>
                     <select
                       value={selectedPartCodeToAdd}
                       onChange={(e) => setSelectedPartCodeToAdd(e.target.value)}
-                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-white/[0.1] bg-[#16221B] text-white outline-none focus:border-[#6E9078]"
+                      className="w-full px-2.5 py-1.5 text-xs rounded-lg border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/20"
                     >
                       <option value="">-- Выберите деталь --</option>
                       {allParts.map((part) => (
@@ -1080,7 +1022,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                           setIsManualAddOpen(false);
                           setSelectedPartCodeToAdd('');
                         }}
-                        className="px-2.5 py-1 rounded-lg text-xs text-[#8E9E94] hover:text-white"
+                        className="px-2.5 py-1 rounded-lg text-xs text-[#9CA3AF] hover:text-white"
                       >
                         Отмена
                       </button>
@@ -1088,7 +1030,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                         type="button"
                         disabled={!selectedPartCodeToAdd}
                         onClick={handleAddManualPart}
-                        className="px-3 py-1 rounded-lg bg-[#4A6751] hover:bg-[#3D5643] disabled:opacity-40 text-white text-xs font-semibold"
+                        className="px-3 py-1 rounded-lg bg-blue-600 hover:bg-blue-500 disabled:opacity-40 text-white text-xs font-semibold"
                       >
                         Добавить в заявку
                       </button>
@@ -1098,7 +1040,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsManualAddOpen(true)}
-                    className="w-full py-1.5 rounded-xl border border-dashed border-white/[0.15] hover:border-[#6E9078] hover:bg-white/[0.02] text-[#8E9E94] hover:text-white text-xs font-medium flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
+                    className="w-full py-1.5 rounded-xl border border-dashed border-white/[0.15] hover:border-white/30 hover:bg-white/[0.02] text-[#9CA3AF] hover:text-white text-xs font-medium flex items-center justify-center space-x-1.5 transition-colors cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Добавить деталь вручную</span>
@@ -1108,15 +1050,15 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
             </div>
 
             {/* 6. Technical Symptom vs Client Guess (Rule П-4) */}
-            <div className="p-3.5 rounded-xl border border-white/[0.08] bg-black/20 space-y-1.5 text-xs">
+            <div className="p-3.5 rounded-xl border border-white/[0.08] bg-[#1F2026] space-y-1.5 text-xs">
               <span className="font-semibold text-white">
                 Симптом для заявки (Правило П-4)
               </span>
-              <p className="text-xs text-white bg-[#1D2E24] p-2.5 rounded-lg border border-white/[0.06]">
+              <p className="text-xs text-white bg-[#16171B] p-2.5 rounded-lg border border-white/[0.06]">
                 {aiAnalysis?.draft_symptom || 'Симптом формируется...'}
               </p>
               {aiAnalysis?.client_assumption && (
-                <p className="text-[11px] text-[#8E9E94]">
+                <p className="text-[11px] text-[#9CA3AF]">
                   <span className="font-medium text-white">Догадка клиента (отдельно):</span>{' '}
                   {aiAnalysis.client_assumption}
                 </p>
@@ -1125,10 +1067,10 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
           </div>
 
           {/* Bottom Action CTA */}
-          <div className="p-4 border-t border-white/[0.06] bg-[#17231D]">
+          <div className="p-4 border-t border-white/[0.06] bg-[#16171B]">
             <button
               onClick={handleCreateOrderWithAiParts}
-              className="w-full py-3 rounded-xl bg-[#4A6751] hover:bg-[#3D5643] text-white text-xs font-semibold flex items-center justify-center space-x-2 shadow-sm transition-all cursor-pointer"
+              className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold flex items-center justify-center space-x-2 shadow-lg transition-all cursor-pointer active:scale-95"
             >
               <Wrench className="w-4 h-4" />
               <span>Оформить заявку на выезд с деталями ИИ</span>

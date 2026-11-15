@@ -27,6 +27,94 @@ def set_auto_reply_setting(payload: dict):
     AUTO_REPLY_ENABLED = bool(payload.get("auto_reply_enabled", True))
     return {"auto_reply_enabled": AUTO_REPLY_ENABLED}
 
+@router.post("/auto-reply-all")
+def auto_reply_all_threads(
+    db: Session = Depends(get_db)
+):
+    """
+    Applies AI auto-reply to all active client threads that need clarification or customer reply.
+    """
+    global AUTO_REPLY_ENABLED
+    AUTO_REPLY_ENABLED = True
+    
+    threads = db.query(ClientThread).filter(
+        ClientThread.status.in_(["needs_clarification", "ready_for_order", "new"])
+    ).all()
+    all_eq = db.query(Equipment).all()
+    
+    replied_count = 0
+    now = datetime.utcnow()
+    
+    for thread in threads:
+        # Check messages in thread
+        all_thread_msgs = db.query(Message).filter(Message.thread_id == thread.id).order_by(Message.id.asc()).all()
+        client_msgs = [m for m in all_thread_msgs if m.sender_type == "client"]
+        if not client_msgs:
+            continue
+
+        # Check if the last message in client_dispatcher channel is already from dispatcher
+        disp_msgs = [m for m in all_thread_msgs if m.sender_type == "dispatcher" and getattr(m, 'chat_type', 'client_dispatcher') == 'client_dispatcher']
+        last_msg = all_thread_msgs[-1] if all_thread_msgs else None
+        
+        # If last message was from client, or thread still needs clarification without dispatcher response
+        if last_msg and last_msg.sender_type == "client":
+            full_client_text = " ".join([m.content for m in client_msgs])
+            
+            eq = None
+            if thread.equipment_id:
+                eq = db.query(Equipment).filter(Equipment.id == thread.equipment_id).first()
+            if not eq and thread.equipment_code:
+                eq = db.query(Equipment).filter(Equipment.code == thread.equipment_code).first()
+            
+            eq_info = {"equipment": eq, "is_ambiguous": False, "is_unregistered": False}
+            if not eq:
+                eq_info = RulesEngine.identify_equipment(thread.client_name, full_client_text, all_eq)
+                eq = eq_info.get("equipment")
+                if eq:
+                    thread.equipment_id = eq.id
+                    thread.equipment_code = eq.code
+            
+            is_warranty = thread.is_warranty
+            warranty_reason = thread.warranty_reason
+            if eq and not is_warranty:
+                is_warranty, warranty_reason = RulesEngine.check_warranty(
+                    eq.installation_date,
+                    eq.last_visit_date,
+                    eq.last_visit_result,
+                    full_client_text
+                )
+                thread.is_warranty = is_warranty
+                thread.warranty_reason = warranty_reason
+            
+            ai_reply = RulesEngine.generate_conversational_reply(
+                messages_history=all_thread_msgs,
+                client_name=thread.client_name,
+                equipment_info=eq_info,
+                is_warranty=is_warranty,
+                warranty_reason=warranty_reason,
+                all_equipment=all_eq
+            )
+            
+            if ai_reply:
+                msg_time = (last_msg.created_at + timedelta(minutes=1)) if (last_msg and last_msg.created_at) else now
+                auto_msg = Message(
+                    thread_id=thread.id,
+                    channel=thread.channel,
+                    chat_type="client_dispatcher",
+                    sender_type="dispatcher",
+                    sender_name="ИИ-Диспетчер ServFlow",
+                    content=ai_reply,
+                    created_at=msg_time
+                )
+                db.add(auto_msg)
+                thread.last_activity = msg_time
+                if "уточните" in ai_reply.lower() or "подскажите" in ai_reply.lower() or eq_info.get("is_ambiguous"):
+                    thread.status = "needs_clarification"
+                replied_count += 1
+                
+    db.commit()
+    return {"success": True, "replied_count": replied_count, "auto_reply_enabled": True}
+
 
 @router.get("", response_model=list[ClientThreadResponse])
 def get_threads(
@@ -84,6 +172,8 @@ def get_threads(
                 resp.assigned_engineer_name = users_by_id[ord_obj.engineer_id].full_name
         if current_user.role == "company":
             resp.messages = [m for m in resp.messages if getattr(m, 'chat_type', 'client_dispatcher') != 'dispatcher_engineer']
+        elif current_user.role == "engineer":
+            resp.messages = [m for m in resp.messages if getattr(m, 'chat_type', 'dispatcher_engineer') != 'client_dispatcher']
         results.append(resp)
     return results
 
@@ -229,6 +319,8 @@ def get_thread(
                 resp.assigned_engineer_name = eng_user.full_name
     if current_user.role == "company":
         resp.messages = [m for m in resp.messages if getattr(m, 'chat_type', 'client_dispatcher') != 'dispatcher_engineer']
+    elif current_user.role == "engineer":
+        resp.messages = [m for m in resp.messages if getattr(m, 'chat_type', 'dispatcher_engineer') != 'client_dispatcher']
     return resp
 
 @router.post("/{thread_id}/messages", response_model=MessageResponse)

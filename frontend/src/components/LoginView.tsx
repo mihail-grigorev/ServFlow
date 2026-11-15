@@ -135,7 +135,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
   const companies = demoUsers.filter((u) => u.role === 'company');
 
   return (
-    <div className="min-h-screen bg-[#080A09] text-[#F0F5F2] flex flex-col items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-[#0C0D0F] text-[#F3F4F6] flex flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* Background ambient dark glows inspired by Web3 Dark aesthetic (Photo 1) */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <div className="absolute -top-[120px] left-[10%] w-[580px] h-[580px] bg-gradient-to-br from-[#1C4332]/25 via-[#23533E]/15 to-transparent rounded-full blur-[140px]" />
@@ -145,7 +145,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
 
       <div className="relative z-10 w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Card: Main Form */}
-        <div className="lg:col-span-7 bg-[#17231D] rounded-2xl border border-white/[0.08] shadow-apple p-7 sm:p-8">
+        <div className="lg:col-span-7 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple p-7 sm:p-8">
           <div className="flex items-center space-x-3.5 mb-6">
             <img
               src={logoImg}
@@ -471,7 +471,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
 
         {/* Right Card: Quick 1-Click Jury Demo Accounts */}
         <div className="lg:col-span-5 space-y-3">
-          <div className="bg-[#17231D] rounded-2xl border border-white/[0.08] shadow-apple p-6 space-y-4">
+          <div className="bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple p-6 space-y-4">
             <div>
               <div className="flex items-center space-x-2">
                 <ShieldCheck className="w-4 h-4 text-[#6E9078]" />

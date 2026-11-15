@@ -127,7 +127,7 @@ def get_engineer_recommendations(
     results.sort(key=lambda x: (x["city_match"], x["score"], -x["active_orders"]), reverse=True)
     if results and results[0]["city_match"]:
         results[0]["is_recommended"] = True
-        results[0]["recommendation_reason"] = "⭐ Рекомендуется первым: " + results[0]["recommendation_reason"]
+        results[0]["recommendation_reason"] = "Рекомендуется первым: " + results[0]["recommendation_reason"]
 
     return results
 
@@ -193,6 +193,8 @@ def get_order_thread(
             resp.assigned_engineer_name = eng_user.full_name
     if current_user.role == "company":
         resp.messages = [m for m in resp.messages if getattr(m, 'chat_type', 'client_dispatcher') != 'dispatcher_engineer']
+    elif current_user.role == "engineer":
+        resp.messages = [m for m in resp.messages if getattr(m, 'chat_type', 'dispatcher_engineer') != 'client_dispatcher']
     return resp
 
 @router.post("", response_model=ServiceOrderResponse)

@@ -25,7 +25,7 @@ export const SparePartsInventoryView: React.FC<SparePartsInventoryViewProps> = (
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-5 text-[#F0F5F2]">
       {/* Top Header Card */}
-      <div className="bg-[#17231D] p-5 rounded-2xl border border-white/[0.08] shadow-apple flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="bg-[#16171B] p-5 rounded-2xl border border-white/[0.08] shadow-apple flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center space-x-2.5">
             <div className="p-2 rounded-xl bg-[#4A6751]/15 text-[#6E9078]">
@@ -93,7 +93,7 @@ export const SparePartsInventoryView: React.FC<SparePartsInventoryViewProps> = (
       </div>
 
       {/* Parts Table */}
-      <div className="bg-[#17231D] rounded-2xl border border-white/[0.08] shadow-apple overflow-hidden">
+      <div className="bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-black/30 text-[#8E9E94] font-semibold uppercase tracking-wider border-b border-white/[0.06]">

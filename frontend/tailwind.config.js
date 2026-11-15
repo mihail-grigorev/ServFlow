@@ -9,9 +9,9 @@ export default {
     extend: {
       colors: {
         apple: {
-          bg: "#0B0C0E",
-          card: "#16181F",
-          cardHover: "#1E202A",
+          bg: "#0C0D0F",
+          card: "#16171B",
+          cardHover: "#1E2026",
           lightBg: "#F5F5F7",
           lightCard: "#FFFFFF",
           blue: "#0A84FF",
@@ -21,8 +21,8 @@ export default {
           red: "#FF453A",
           border: "rgba(255, 255, 255, 0.08)",
           lightBorder: "rgba(0, 0, 0, 0.08)",
-          subtext: "#8E8E93",
-          text: "#F5F5F7",
+          subtext: "#9CA3AF",
+          text: "#F3F4F6",
           lightText: "#1D1D1F"
         }
       },
@@ -35,9 +35,9 @@ export default {
         ],
       },
       boxShadow: {
-        apple: "0 4px 20px rgba(0, 0, 0, 0.25)",
+        apple: "0 4px 20px rgba(0, 0, 0, 0.35)",
         "apple-light": "0 4px 20px rgba(0, 0, 0, 0.04)",
-        modal: "0 20px 60px rgba(0, 0, 0, 0.5)",
+        modal: "0 20px 60px rgba(0, 0, 0, 0.65)",
       },
       borderRadius: {
         "2xl": "16px",

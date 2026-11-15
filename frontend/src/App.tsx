@@ -5,7 +5,6 @@ import { Navbar } from './components/Navbar';
 import { LoginView } from './components/LoginView';
 import { DispatcherDashboard } from './components/DispatcherDashboard';
 import { OrderModal } from './components/OrderModal';
-import { SimulatorModal } from './components/SimulatorModal';
 import { ExcelResetModal } from './components/ExcelResetModal';
 import { EngineerCabinet } from './components/EngineerCabinet';
 import { OrdersListView } from './components/OrdersListView';
@@ -41,11 +40,14 @@ export function App() {
   const [allParts, setAllParts] = useState<SparePart[]>([]);
   const [ordersRefreshCount, setOrdersRefreshCount] = useState<number>(0);
 
+  // Global Auto-Reply state
+  const [autoReplyEnabled, setAutoReplyEnabled] = useState(true);
+  const [isAutoReplying, setIsAutoReplying] = useState(false);
+
   // Modals state
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const [modalThread, setModalThread] = useState<ClientThread | null>(null);
   const [modalAiData, setModalAiData] = useState<AIAnalysisResult | null>(null);
-  const [isSimulatorModalOpen, setIsSimulatorModalOpen] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
@@ -64,6 +66,37 @@ export function App() {
       });
     }
   }, [currentUser?.role, currentUser?.id]);
+
+  // Load auto-reply setting
+  useEffect(() => {
+    api.getAutoReplySetting()
+      .then((res) => setAutoReplyEnabled(res.auto_reply_enabled))
+      .catch((err) => console.error('Failed to load auto-reply setting:', err));
+  }, []);
+
+  const handleToggleAutoReply = async () => {
+    const nextVal = !autoReplyEnabled;
+    setAutoReplyEnabled(nextVal);
+    try {
+      await api.setAutoReplySetting(nextVal);
+    } catch (err) {
+      console.error('Failed to update auto-reply setting:', err);
+    }
+  };
+
+  const handleAutoReplyAll = async () => {
+    setIsAutoReplying(true);
+    try {
+      const res = await api.autoReplyAll();
+      setAutoReplyEnabled(true);
+      await handleRefreshThreads();
+      alert(`ИИ ответил во всех чатах (обработано диалогов: ${res.replied_count})`);
+    } catch (err: any) {
+      alert(err.message || 'Ошибка автоответа');
+    } finally {
+      setIsAutoReplying(false);
+    }
+  };
 
   // Load initial global data
   const loadGlobalData = async () => {
@@ -84,8 +117,10 @@ export function App() {
   };
 
   useEffect(() => {
-    loadGlobalData();
-  }, []);
+    if (currentUser) {
+      loadGlobalData();
+    }
+  }, [currentUser]);
 
   const handleRefreshThreads = async () => {
     try {
@@ -98,16 +133,32 @@ export function App() {
 
   const handleRefreshPartsAndEq = async () => {
     try {
-      const [eqList, pList] = await Promise.all([
-        api.getEquipment(),
-        api.getParts(),
-      ]);
-      setAllEquipment(eqList);
+      const [pList, eqList] = await Promise.all([api.getParts(), api.getEquipment()]);
       setAllParts(pList);
+      setAllEquipment(eqList);
       setOrdersRefreshCount((prev) => prev + 1);
     } catch (err) {
       console.error('Failed to refresh parts and equipment:', err);
     }
+  };
+
+  const handleLoginSuccess = (user: User) => {
+    setCurrentUser(user);
+    const valid = getValidTabForRole(user.role);
+    setActiveTab(valid);
+    localStorage.setItem('kofe_active_tab', valid);
+  };
+
+  const handleLogout = () => {
+    clearToken();
+    setCurrentUser(null);
+  };
+
+  const handleSwitchUser = (user: User) => {
+    setCurrentUser(user);
+    const valid = getValidTabForRole(user.role);
+    setActiveTab(valid);
+    localStorage.setItem('kofe_active_tab', valid);
   };
 
   const handleOpenOrderModal = (thread?: ClientThread, aiData?: AIAnalysisResult | null) => {
@@ -119,55 +170,20 @@ export function App() {
   const handleOrderCreated = () => {
     handleRefreshThreads();
     handleRefreshPartsAndEq();
-    handleSetActiveTab('orders');
-  };
-
-  const handleSwitchUser = async (user: User) => {
-    try {
-      localStorage.removeItem('kofe_explicit_logout');
-      const res = await api.switchUser(user.id);
-      setCurrentUser(res.user);
-      const defaultTab = getValidTabForRole(res.user.role, null);
-      handleSetActiveTab(defaultTab);
-    } catch (err) {
-      console.error('Failed to switch user:', err);
-    }
-  };
-
-  const handleLogout = () => {
-    clearToken();
-    localStorage.setItem('kofe_explicit_logout', 'true');
-    localStorage.removeItem('kofe_active_tab');
-    setCurrentUser(null);
+    setActiveTab('orders');
   };
 
   if (!currentUser) {
-    return (
-      <LoginView
-        onLoginSuccess={(user) => {
-          localStorage.removeItem('kofe_explicit_logout');
-          setCurrentUser(user);
-          const defaultTab = getValidTabForRole(user.role, null);
-          handleSetActiveTab(defaultTab);
-          loadGlobalData();
-        }}
-        demoUsers={demoUsers}
-      />
-    );
+    return <LoginView onLoginSuccess={handleLoginSuccess} demoUsers={demoUsers} />;
   }
 
   return (
-    <div className="min-h-screen bg-[#080A09] text-[#F0F5F2] flex flex-col font-sans relative overflow-x-hidden selection:bg-[#4A6751]/30 selection:text-white">
-      {/* Background ambient dark glows inspired by Web3 Dark aesthetic (Photo 1) */}
+    <div className="min-h-screen bg-[#0C0D0F] text-[#F3F4F6] flex flex-col font-sans relative overflow-x-hidden selection:bg-blue-600/30 selection:text-white">
+      {/* Background ambient dark glows in neutral graphite and subtle slate */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        {/* Top-left deep emerald/teal glow */}
-        <div className="absolute -top-[120px] left-[5%] w-[580px] h-[580px] bg-gradient-to-br from-[#1C4332]/25 via-[#23533E]/15 to-transparent rounded-full blur-[140px]" />
-        {/* Top-right warm amber/orange web3 glow */}
-        <div className="absolute top-[5%] -right-[100px] w-[620px] h-[620px] bg-gradient-to-bl from-[#7D4A22]/20 via-[#5E381A]/15 to-transparent rounded-full blur-[150px]" />
-        {/* Center-bottom cool indigo/cyan glow */}
-        <div className="absolute -bottom-[180px] left-[30%] w-[720px] h-[720px] bg-gradient-to-tr from-[#1B3545]/20 via-[#1E2E25]/15 to-transparent rounded-full blur-[160px]" />
-        {/* Middle-left ambient accent */}
-        <div className="absolute top-[50%] -left-[120px] w-[480px] h-[480px] bg-gradient-to-r from-[#224536]/20 to-transparent rounded-full blur-[130px]" />
+        <div className="absolute -top-[120px] left-[10%] w-[580px] h-[580px] bg-gradient-to-br from-blue-900/10 via-neutral-800/10 to-transparent rounded-full blur-[140px]" />
+        <div className="absolute top-[10%] -right-[100px] w-[620px] h-[620px] bg-gradient-to-bl from-neutral-800/15 via-slate-900/10 to-transparent rounded-full blur-[150px]" />
+        <div className="absolute -bottom-[180px] left-[30%] w-[720px] h-[720px] bg-gradient-to-tr from-slate-950/20 via-neutral-900/15 to-transparent rounded-full blur-[160px]" />
       </div>
 
       <div className="relative z-10 flex flex-col min-h-screen">
@@ -177,7 +193,10 @@ export function App() {
           setActiveTab={handleSetActiveTab}
           onOpenResetModal={() => setIsResetModalOpen(true)}
           onOpenProfileModal={() => setIsProfileModalOpen(true)}
-          onOpenSimulatorModal={() => setIsSimulatorModalOpen(true)}
+          autoReplyEnabled={autoReplyEnabled}
+          onToggleAutoReply={handleToggleAutoReply}
+          onAutoReplyAll={handleAutoReplyAll}
+          isAutoReplying={isAutoReplying}
           onSwitchUser={handleSwitchUser}
           allDemoUsers={demoUsers}
           onLogout={handleLogout}
@@ -188,11 +207,11 @@ export function App() {
           {activeTab === 'dispatcher' && currentUser.role === 'dispatcher' && (
             <DispatcherDashboard
               onOpenOrderModal={handleOpenOrderModal}
-              onOpenSimulatorModal={() => setIsSimulatorModalOpen(true)}
               threads={threads}
               onRefreshThreads={handleRefreshThreads}
               allEquipment={allEquipment}
               allParts={allParts}
+              autoReplyEnabled={autoReplyEnabled}
             />
           )}
 
@@ -243,40 +262,26 @@ export function App() {
         onOrderCreated={handleOrderCreated}
       />
 
-      {/* Simulator Modal */}
-      <SimulatorModal
-        isOpen={isSimulatorModalOpen}
-        onClose={() => setIsSimulatorModalOpen(false)}
-        onSimulationSuccess={() => {
-          handleRefreshThreads();
-          setActiveTab('dispatcher');
-        }}
-      />
-
       {/* Excel / Reset Modal */}
       <ExcelResetModal
         isOpen={isResetModalOpen}
         onClose={() => setIsResetModalOpen(false)}
         onDataReset={() => {
-          loadGlobalData();
+          handleRefreshThreads();
+          handleRefreshPartsAndEq();
         }}
       />
 
-      {/* User Profile Modal */}
-      <ProfileModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-        currentUser={currentUser}
-        onProfileUpdated={(updated) => {
-          setCurrentUser(updated);
-          setDemoUsers((prev) => prev.map((u) => (u.id === updated.id ? updated : u)));
-        }}
-        onProfileDeleted={() => {
-          handleLogout();
-          loadGlobalData();
-        }}
-        onLogout={handleLogout}
-      />
+      {/* Profile Modal */}
+      {currentUser && (
+        <ProfileModal
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          currentUser={currentUser}
+          onProfileUpdated={(updated) => setCurrentUser(updated)}
+          onProfileDeleted={handleLogout}
+        />
+      )}
     </div>
   );
 }
