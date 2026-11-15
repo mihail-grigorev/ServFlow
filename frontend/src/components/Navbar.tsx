@@ -29,6 +29,9 @@ interface NavbarProps {
   allDemoUsers: User[];
   onLogout: () => void;
   onOpenLogin?: () => void;
+  demoMode?: boolean;
+  onOpenDemoQrModal?: () => void;
+  onResetDemoData?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -45,6 +48,9 @@ export const Navbar: React.FC<NavbarProps> = ({
   allDemoUsers,
   onLogout,
   onOpenLogin,
+  demoMode = true,
+  onOpenDemoQrModal,
+  onResetDemoData,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -61,6 +67,11 @@ export const Navbar: React.FC<NavbarProps> = ({
           <span className="font-bold text-base tracking-tight text-white">
             ServFlow
           </span>
+          {demoMode && (
+            <span className="text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-white/10 text-neutral-300 border border-white/15">
+              Демо-режим
+            </span>
+          )}
         </div>
 
         {/* Center: Clean Core Tabs */}
@@ -189,6 +200,29 @@ export const Navbar: React.FC<NavbarProps> = ({
             >
               <RotateCcw className="w-3.5 h-3.5 text-[#9CA3AF]" />
               <span className="hidden md:inline">Сброс / Excel</span>
+            </button>
+          )}
+
+          {/* Demo QR button for dispatcher */}
+          {currentUser?.role === 'dispatcher' && demoMode && onOpenDemoQrModal && (
+            <button
+              onClick={onOpenDemoQrModal}
+              title="Показать QR-коды для входа зрителей"
+              className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/15 border border-white/20 text-white transition-colors"
+            >
+              <span>QR для зрителей</span>
+            </button>
+          )}
+
+          {/* Reset Demo Data Button */}
+          {currentUser?.role === 'dispatcher' && demoMode && onResetDemoData && (
+            <button
+              onClick={onResetDemoData}
+              title="Сбросить обращения зрителей и восстановить остатки запчастей"
+              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-medium bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-neutral-300 hover:text-white transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-[#9CA3AF]" />
+              <span className="hidden lg:inline">Сбросить демо</span>
             </button>
           )}
 

@@ -14,6 +14,7 @@ from backend.auth import get_current_user, require_dispatcher, oauth2_scheme
 from backend.rules_engine import RulesEngine
 from backend.ai_service import AIService
 from backend.seed import get_company_id_for_client
+from backend.rate_limiter import check_company_message_limit, check_company_thread_limit
 
 logger = logging.getLogger(__name__)
 
@@ -247,6 +248,20 @@ def create_thread(
     and automatically registers a corresponding ServiceOrder so it shows up in "Заявки на выезд".
     """
     client_name = current_user.full_name if current_user.role == "company" else (req.client_name or "Новый клиент")
+
+    # Security check Section 3: Audience anti-spam
+    if current_user.role == "company":
+        if len(req.content) > 1000:
+            raise HTTPException(
+                status_code=400,
+                detail="Длина сообщения не должна превышать 1000 символов."
+            )
+        if not check_company_thread_limit(current_user.company_id):
+            raise HTTPException(
+                status_code=429,
+                detail="Превышен лимит создания обращений (максимум 30 в час). Пожалуйста, подождите."
+            )
+
     all_eq = db.query(Equipment).all()
     eq = None
     if req.equipment_code and req.equipment_code.strip():
@@ -425,6 +440,18 @@ async def add_message(
         )
         if not is_owner:
             raise HTTPException(status_code=404, detail="Обращение не найдено")
+
+        # Security check Section 3: Audience anti-spam
+        if len(msg_in.content) > 1000:
+            raise HTTPException(
+                status_code=400,
+                detail="Длина сообщения не должна превышать 1000 символов."
+            )
+        if not check_company_message_limit(current_user.company_id):
+            raise HTTPException(
+                status_code=429,
+                detail="Пожалуйста, подождите минуту перед следующим сообщением."
+            )
     elif current_user.role == "engineer":
         ord_assigned = db.query(ServiceOrder).filter(
             ServiceOrder.thread_id == thread.id,

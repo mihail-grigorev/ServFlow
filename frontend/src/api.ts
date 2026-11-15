@@ -6,7 +6,8 @@ import {
   Message,
   ServiceOrder,
   AIAnalysisResult,
-  ReservedPartItem
+  ReservedPartItem,
+  DemoCompanyItem
 } from './types';
 
 const API_BASE = '/api';
@@ -410,6 +411,50 @@ export const api = {
     });
     if (!res.ok) throw new Error('Ошибка загрузки Excel файла');
     return res.json();
+  },
+
+  // Demo Mode & Audience QR
+  getDemoConfig: async (): Promise<{ demo_mode: boolean; public_base_url: string }> => {
+    return request<{ demo_mode: boolean; public_base_url: string }>('/demo/config');
+  },
+
+  getDemoCompanies: async (): Promise<DemoCompanyItem[]> => {
+    return request<DemoCompanyItem[]>('/demo/companies');
+  },
+
+  issueAllDemoQr: async (): Promise<{ status: string; message: string }> => {
+    return request<{ status: string; message: string }>('/demo/qr/issue-all', {
+      method: 'POST',
+    });
+  },
+
+  revokeAllDemoQr: async (): Promise<{ status: string; message: string }> => {
+    return request<{ status: string; message: string }>('/demo/qr/revoke-all', {
+      method: 'POST',
+    });
+  },
+
+  exchangeDemoQr: async (token: string): Promise<{ access_token: string; user: User }> => {
+    const res = await request<{ access_token: string; user: User }>('/demo/exchange', {
+      method: 'POST',
+      body: JSON.stringify({ token }),
+    });
+    setToken(res.access_token);
+    saveUser(res.user);
+    return res;
+  },
+
+  verifyStaffPin: async (pin: string): Promise<{ valid: boolean }> => {
+    return request<{ valid: boolean }>('/demo/verify-staff-pin', {
+      method: 'POST',
+      body: JSON.stringify({ pin }),
+    });
+  },
+
+  resetDemoData: async (): Promise<{ status: string; message: string }> => {
+    return request<{ status: string; message: string }>('/demo/reset-data', {
+      method: 'POST',
+    });
   },
 };
 

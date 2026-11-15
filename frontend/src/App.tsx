@@ -11,6 +11,7 @@ import { OrdersListView } from './components/OrdersListView';
 import { ProfileModal } from './components/ProfileModal';
 import { SparePartsInventoryView } from './components/SparePartsInventoryView';
 import { CompanyCabinet } from './components/CompanyCabinet';
+import { DemoQrModal } from './components/DemoQrModal';
 
 type TabType = 'dispatcher' | 'orders' | 'engineer' | 'warehouse' | 'company';
 
@@ -50,6 +51,34 @@ export function App() {
   const [modalAiData, setModalAiData] = useState<AIAnalysisResult | null>(null);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isDemoQrModalOpen, setIsDemoQrModalOpen] = useState(false);
+  const [demoMode, setDemoMode] = useState(true);
+
+  // Load demo config on start
+  useEffect(() => {
+    api.getDemoConfig()
+      .then((cfg) => setDemoMode(cfg.demo_mode))
+      .catch(() => setDemoMode(false));
+  }, []);
+
+  // Handle direct QR URL entry: /demo/enter?t=<token> or ?t=<token>
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('t');
+    if (token) {
+      api.exchangeDemoQr(token)
+        .then((res) => {
+          setCurrentUser(res.user);
+          setActiveTab('company');
+          localStorage.setItem('kofe_active_tab', 'company');
+          window.history.replaceState({}, '', window.location.pathname.replace(/\/demo\/enter\/?$/, '') || '/');
+        })
+        .catch((err) => {
+          alert('Ошибка входа по QR-коду: ' + (err.message || 'Срок действия истёк'));
+          window.history.replaceState({}, '', '/');
+        });
+    }
+  }, []);
 
   const handleSetActiveTab = (tab: TabType) => {
     const valid = getValidTabForRole(currentUser?.role, tab);
@@ -187,8 +216,21 @@ export function App() {
     setActiveTab('orders');
   };
 
+  const handleResetDemoData = async () => {
+    if (!confirm('Вы уверены? Это очистит обращения и заказы, созданные зрителями, и восстановит исходные остатки деталей.')) {
+      return;
+    }
+    try {
+      await api.resetDemoData();
+      await Promise.all([handleRefreshThreads(), handleRefreshPartsAndEq()]);
+      alert('Демо-данные успешно сброшены к начальному состоянию!');
+    } catch (err: any) {
+      alert(err.message || 'Ошибка сброса демо-данных');
+    }
+  };
+
   if (!currentUser) {
-    return <LoginView onLoginSuccess={handleLoginSuccess} demoUsers={demoUsers} />;
+    return <LoginView onLoginSuccess={handleLoginSuccess} demoUsers={demoUsers} demoMode={demoMode} />;
   }
 
   return (
@@ -215,6 +257,9 @@ export function App() {
           allDemoUsers={demoUsers}
           onLogout={handleLogout}
           onOpenLogin={handleLogout}
+          demoMode={demoMode}
+          onOpenDemoQrModal={() => setIsDemoQrModalOpen(true)}
+          onResetDemoData={handleResetDemoData}
         />
 
         <main className="flex-1">
@@ -296,6 +341,11 @@ export function App() {
           onProfileDeleted={handleLogout}
         />
       )}
+      {/* Demo QR Modal for Dispatcher */}
+      <DemoQrModal
+        isOpen={isDemoQrModalOpen}
+        onClose={() => setIsDemoQrModalOpen(false)}
+      />
     </div>
   );
 }
