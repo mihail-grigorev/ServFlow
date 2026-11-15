@@ -245,8 +245,8 @@ def create_thread(
     db: Session = Depends(get_db)
 ):
     """
-    Creates a new service ticket / chat thread from client/company or dispatcher,
-    and automatically registers a corresponding ServiceOrder so it shows up in "Заявки на выезд".
+    Creates a new service ticket / chat thread from client/company or dispatcher.
+    Service orders are NOT created automatically here; only dispatchers create them.
     """
     client_name = current_user.full_name if current_user.role == "company" else (req.client_name or "Новый клиент")
 
@@ -289,7 +289,7 @@ def create_thread(
     elif not eq or eq_info.get("is_ambiguous"):
         initial_status = "needs_clarification"
     else:
-        initial_status = "order_created"
+        initial_status = "ready_for_order"
 
     activity_time = settings.SYSTEM_REFERENCE_DATE + timedelta(minutes=max_num)
 
@@ -323,32 +323,6 @@ def create_thread(
     )
     db.add(msg)
 
-    # Automatically create service order so it shows up in "Заявки на выезд"
-    user_city = getattr(current_user, 'city', '') or 'Москва'
-    order_num = f"ЗВ-{max_num:03d}"
-    order = ServiceOrder(
-        order_number=order_num,
-        thread_id=thread.id,
-        client_name=client_name,
-        company_id=company_id,
-        equipment_id=eq.id if eq else None,
-        equipment_code=eq.code if eq else (req.equipment_code or None),
-        address=eq.address if eq else (f"г. {user_city}" if user_city else "Адрес уточняется"),
-        model=eq.model if eq else "Кофемашина",
-        serial_number=eq.serial_number if eq else "—",
-        symptom=req.content,
-        client_assumption=None,
-        is_warranty=is_warranty,
-        warranty_reason=warranty_reason,
-        is_sales_transfer=eq_info.get("is_unregistered", False),
-        status="Новая" if not eq_info.get("is_unregistered") else "Вне договора",
-        engineer_id=None,
-        reserved_parts=[],
-        created_by_id=current_user.id,
-        created_at=activity_time
-    )
-    db.add(order)
-
     thread.last_activity = activity_time
 
     # Auto-Reply for newly created threads if created by client/company
@@ -372,8 +346,12 @@ def create_thread(
             )
             db.add(auto_msg)
             thread.last_activity = auto_msg.created_at
-            if "уточните" in ai_reply.lower() or "подскажите" in ai_reply.lower() or eq_info.get("is_ambiguous"):
+            if eq_info.get("is_unregistered"):
+                thread.status = "sales_transfer"
+            elif "уточните" in ai_reply.lower() or "подскажите" in ai_reply.lower() or eq_info.get("is_ambiguous") or not eq:
                 thread.status = "needs_clarification"
+            else:
+                thread.status = "ready_for_order"
 
     db.commit()
     db.refresh(thread)
