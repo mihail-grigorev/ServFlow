@@ -21,6 +21,7 @@ import {
 interface LoginViewProps {
   onLoginSuccess: (user: User) => void;
   demoUsers: User[];
+  demoMode?: boolean;
 }
 
 const AVATAR_PRESETS = [
@@ -34,7 +35,7 @@ const AVATAR_PRESETS = [
   'https://api.dicebear.com/7.x/notionists/svg?seed=Zerno',
 ];
 
-export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers }) => {
+export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers, demoMode = true }) => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [regStep, setRegStep] = useState<'form' | 'code'>('form');
   const [email, setEmail] = useState('');
@@ -52,6 +53,12 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
   const [verificationCode, setVerificationCode] = useState('');
   const [resendCountdown, setResendCountdown] = useState(0);
   const [codeSentMsg, setCodeSentMsg] = useState<string | null>(null);
+
+  // Staff demo PIN verification
+  const [pinModalUser, setPinModalUser] = useState<User | null>(null);
+  const [staffPinInput, setStaffPinInput] = useState('');
+  const [pinError, setPinError] = useState<string | null>(null);
+  const [pinLoading, setPinLoading] = useState(false);
 
   const [activeDemoUsers, setActiveDemoUsers] = useState<User[]>(demoUsers);
 
@@ -186,6 +193,16 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
 
   const handleQuickLogin = async (demoUser: User) => {
     setError(null);
+    if (demoUser.role === 'dispatcher' || demoUser.role === 'engineer') {
+      const isVerified = sessionStorage.getItem('demo_staff_pin_verified') === 'true';
+      if (!isVerified) {
+        setPinModalUser(demoUser);
+        setStaffPinInput('');
+        setPinError(null);
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const res = await api.switchUser(demoUser.id);
@@ -193,6 +210,27 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
     } catch (err: any) {
       setError(err.message || 'Ошибка входа');
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyStaffPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pinModalUser) return;
+    setPinError(null);
+    setPinLoading(true);
+    try {
+      await api.verifyStaffPin(staffPinInput.trim());
+      sessionStorage.setItem('demo_staff_pin_verified', 'true');
+      const targetUser = pinModalUser;
+      setPinModalUser(null);
+      setLoading(true);
+      const res = await api.switchUser(targetUser.id);
+      onLoginSuccess(res.user);
+    } catch (err: any) {
+      setPinError(err.message || 'Неверный PIN-код сотрудника');
+    } finally {
+      setPinLoading(false);
       setLoading(false);
     }
   };
@@ -218,9 +256,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
         <div className="absolute -bottom-[150px] left-[25%] w-[680px] h-[680px] bg-gradient-to-tr from-zinc-900/20 via-zinc-900/15 to-transparent rounded-full blur-[160px]" />
       </div>
 
-      <div className="relative z-10 w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className={`relative z-10 w-full ${demoMode ? 'max-w-5xl grid grid-cols-1 lg:grid-cols-12 gap-6' : 'max-w-xl mx-auto flex flex-col'} items-start`}>
         {/* Left Card: Main Form */}
-        <div className="lg:col-span-7 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple p-7 sm:p-8">
+        <div className={`${demoMode ? 'lg:col-span-7' : 'w-full'} bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple p-7 sm:p-8`}>
           <div className="flex items-center space-x-3.5 mb-6">
             <img
               src={logoImg}
@@ -626,126 +664,179 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
         </div>
 
         {/* Right Card: Quick 1-Click Jury Demo Accounts */}
-        <div className="lg:col-span-5 space-y-3">
-          <div className="bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple p-6 space-y-4">
-            <div>
-              <div className="flex items-center space-x-2">
-                <ShieldCheck className="w-4 h-4 text-white" />
-                <h2 className="text-sm font-semibold tracking-tight text-white">
-                  Быстрый вход для жюри (1 клик)
-                </h2>
+        {demoMode && (
+          <div className="lg:col-span-5 space-y-3">
+            <div className="bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple p-6 space-y-4">
+              <div>
+                <div className="flex items-center space-x-2">
+                  <ShieldCheck className="w-4 h-4 text-white" />
+                  <h2 className="text-sm font-semibold tracking-tight text-white">
+                    Быстрый вход для жюри (1 клик)
+                  </h2>
+                </div>
+                <p className="text-xs text-[#8E9E94] mt-1">
+                  Готовые тестовые аккаунты всех типов ролей:
+                </p>
               </div>
-              <p className="text-xs text-[#8E9E94] mt-1">
-                Готовые тестовые аккаунты всех типов ролей:
-              </p>
-            </div>
 
-            {/* 1. Dispatchers */}
-            <div>
-              <div className="text-[10px] font-semibold text-[#8E9E94] uppercase tracking-wider mb-1.5 flex items-center space-x-1">
-                <Sparkles className="w-3 h-3 text-white" />
-                <span>Диспетчеры</span>
-              </div>
-              <div className="space-y-1.5">
-                {dispatchers.map((u) => (
-                  <button
-                    key={u.id}
-                    onClick={() => handleQuickLogin(u)}
-                    className="w-full text-left p-2.5 rounded-xl border border-white/[0.06] hover:border-white/30 hover:bg-white/[0.05] transition-all group flex items-center justify-between"
-                  >
-                    <div className="flex items-center space-x-2.5 min-w-0">
-                      <img
-                        src={u.avatar_url || 'https://api.dicebear.com/7.x/notionists/svg?seed=Anna'}
-                        alt={u.full_name}
-                        className="w-7 h-7 rounded-lg object-cover bg-white/10 flex-shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <div className="text-xs font-semibold text-white group-hover:text-white transition-colors truncate">
-                          {u.full_name}
-                        </div>
-                        <div className="text-[10px] text-[#8E9E94] truncate">Диспетчер · {u.email}</div>
-                      </div>
-                    </div>
-                    <ArrowRight className="w-3 h-3 text-[#8E9E94] group-hover:text-white" />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 2. Engineers (All standard engineers, no senior) */}
-            <div>
-              <div className="text-[10px] font-semibold text-[#8E9E94] uppercase tracking-wider mb-1.5 flex items-center space-x-1">
-                <Wrench className="w-3 h-3 text-white" />
-                <span>Сервисные инженеры</span>
-              </div>
-              <div className="space-y-1.5">
-                {engineers.map((u) => (
-                  <button
-                    key={u.id}
-                    onClick={() => handleQuickLogin(u)}
-                    className="w-full text-left p-2.5 rounded-xl border border-white/[0.06] hover:border-white/30 hover:bg-white/[0.05] transition-all group flex items-center justify-between"
-                  >
-                    <div className="flex items-center space-x-2.5 min-w-0">
-                      <img
-                        src={u.avatar_url || 'https://api.dicebear.com/7.x/notionists/svg?seed=Alex'}
-                        alt={u.full_name}
-                        className="w-7 h-7 rounded-lg object-cover bg-white/10 flex-shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <div className="text-xs font-semibold text-white group-hover:text-white transition-colors truncate">
-                          {u.full_name}
-                        </div>
-                        <div className="text-[10px] text-[#8E9E94] truncate">
-                          {u.email} · {u.city} {u.qualifications && `(${u.qualifications.join(', ')})`}
+              {/* 1. Dispatchers */}
+              <div>
+                <div className="text-[10px] font-semibold text-[#8E9E94] uppercase tracking-wider mb-1.5 flex items-center space-x-1">
+                  <Sparkles className="w-3 h-3 text-white" />
+                  <span>Диспетчеры</span>
+                </div>
+                <div className="space-y-1.5">
+                  {dispatchers.map((u) => (
+                    <button
+                      key={u.id}
+                      onClick={() => handleQuickLogin(u)}
+                      className="w-full text-left p-2.5 rounded-xl border border-white/[0.06] hover:border-white/30 hover:bg-white/[0.05] transition-all group flex items-center justify-between"
+                    >
+                      <div className="flex items-center space-x-2.5 min-w-0">
+                        <img
+                          src={u.avatar_url || 'https://api.dicebear.com/7.x/notionists/svg?seed=Anna'}
+                          alt={u.full_name}
+                          className="w-7 h-7 rounded-lg object-cover bg-white/10 flex-shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold text-white group-hover:text-white transition-colors truncate">
+                            {u.full_name}
+                          </div>
+                          <div className="text-[10px] text-[#8E9E94] truncate">Диспетчер · {u.email}</div>
                         </div>
                       </div>
-                    </div>
-                    <ArrowRight className="w-3 h-3 text-[#8E9E94] group-hover:text-white" />
-                  </button>
-                ))}
+                      <ArrowRight className="w-3 h-3 text-[#8E9E94] group-hover:text-white" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 2. Engineers (All standard engineers, no senior) */}
+              <div>
+                <div className="text-[10px] font-semibold text-[#8E9E94] uppercase tracking-wider mb-1.5 flex items-center space-x-1">
+                  <Wrench className="w-3 h-3 text-white" />
+                  <span>Сервисные инженеры</span>
+                </div>
+                <div className="space-y-1.5">
+                  {engineers.map((u) => (
+                    <button
+                      key={u.id}
+                      onClick={() => handleQuickLogin(u)}
+                      className="w-full text-left p-2.5 rounded-xl border border-white/[0.06] hover:border-white/30 hover:bg-white/[0.05] transition-all group flex items-center justify-between"
+                    >
+                      <div className="flex items-center space-x-2.5 min-w-0">
+                        <img
+                          src={u.avatar_url || 'https://api.dicebear.com/7.x/notionists/svg?seed=Alex'}
+                          alt={u.full_name}
+                          className="w-7 h-7 rounded-lg object-cover bg-white/10 flex-shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold text-white group-hover:text-white transition-colors truncate">
+                            {u.full_name}
+                          </div>
+                          <div className="text-[10px] text-[#8E9E94] truncate">
+                            {u.email} · {u.city} {u.qualifications && `(${u.qualifications.join(', ')})`}
+                          </div>
+                        </div>
+                      </div>
+                      <ArrowRight className="w-3 h-3 text-[#8E9E94] group-hover:text-white" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* 3. Companies / Clients */}
+              <div>
+                <div className="text-[10px] font-semibold text-[#8E9E94] uppercase tracking-wider mb-1.5 flex items-center space-x-1">
+                  <Building className="w-3 h-3 text-white" />
+                  <span>Компании (Клиенты и чат)</span>
+                </div>
+                <div className="space-y-1.5">
+                  {companies.map((u) => (
+                    <button
+                      key={u.id}
+                      onClick={() => handleQuickLogin(u)}
+                      className="w-full text-left p-2.5 rounded-xl border border-white/[0.06] hover:border-white/30 hover:bg-white/[0.05] transition-all group flex items-center justify-between"
+                    >
+                      <div className="flex items-center space-x-2.5 min-w-0">
+                        <img
+                          src={u.avatar_url || 'https://api.dicebear.com/7.x/notionists/svg?seed=Kedr'}
+                          alt={u.full_name}
+                          className="w-7 h-7 rounded-lg object-cover bg-white/10 flex-shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <div className="text-xs font-semibold text-white group-hover:text-white transition-colors truncate">
+                            {u.full_name}
+                          </div>
+                          <div className="text-[10px] text-[#8E9E94] truncate">{u.email} · {u.city}</div>
+                        </div>
+                      </div>
+                      <ArrowRight className="w-3 h-3 text-[#8E9E94] group-hover:text-white" />
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
-            {/* 3. Companies / Clients */}
-            <div>
-              <div className="text-[10px] font-semibold text-[#8E9E94] uppercase tracking-wider mb-1.5 flex items-center space-x-1">
-                <Building className="w-3 h-3 text-white" />
-                <span>Компании (Клиенты и чат)</span>
-              </div>
-              <div className="space-y-1.5">
-                {companies.map((u) => (
-                  <button
-                    key={u.id}
-                    onClick={() => handleQuickLogin(u)}
-                    className="w-full text-left p-2.5 rounded-xl border border-white/[0.06] hover:border-white/30 hover:bg-white/[0.05] transition-all group flex items-center justify-between"
-                  >
-                    <div className="flex items-center space-x-2.5 min-w-0">
-                      <img
-                        src={u.avatar_url || 'https://api.dicebear.com/7.x/notionists/svg?seed=Kedr'}
-                        alt={u.full_name}
-                        className="w-7 h-7 rounded-lg object-cover bg-white/10 flex-shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <div className="text-xs font-semibold text-white group-hover:text-white transition-colors truncate">
-                          {u.full_name}
-                        </div>
-                        <div className="text-[10px] text-[#8E9E94] truncate">{u.email} · {u.city}</div>
-                      </div>
-                    </div>
-                    <ArrowRight className="w-3 h-3 text-[#8E9E94] group-hover:text-white" />
-                  </button>
-                ))}
-              </div>
+            {/* Reference Info */}
+            <div className="p-3.5 rounded-xl bg-black/30 border border-white/[0.06] text-[11px] text-[#8E9E94] flex justify-between items-center">
+              <span>Опорная дата: 16.11.2026 11:30</span>
+              <span className="text-white font-medium">Сервис 2.0</span>
             </div>
           </div>
+        )}
+      </div>
 
-          {/* Reference Info */}
-          <div className="p-3.5 rounded-xl bg-black/30 border border-white/[0.06] text-[11px] text-[#8E9E94] flex justify-between items-center">
-            <span>Опорная дата: 16.11.2026 11:30</span>
-            <span className="text-white font-medium">Сервис 2.0</span>
+      {/* Staff PIN Modal */}
+      {pinModalUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-sm bg-[#16171B] border border-neutral-700 rounded-2xl p-6 shadow-2xl space-y-4">
+            <div className="flex items-center space-x-2 text-white">
+              <Lock className="w-5 h-5 text-neutral-300" />
+              <h3 className="text-base font-semibold">Доступ сотрудника</h3>
+            </div>
+            <p className="text-xs text-neutral-400">
+              Вход под аккаунтом <span className="text-white font-medium">{pinModalUser.full_name}</span> ({pinModalUser.role === 'dispatcher' ? 'Диспетчер' : 'Инженер'}) защищён PIN-кодом.
+            </p>
+
+            <form onSubmit={handleVerifyStaffPin} className="space-y-3">
+              <div>
+                <input
+                  type="password"
+                  autoFocus
+                  placeholder="Введите PIN (по умолчанию 2026)"
+                  value={staffPinInput}
+                  onChange={(e) => setStaffPinInput(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm placeholder:text-neutral-500 focus:outline-none focus:border-white/30 tracking-widest text-center"
+                />
+              </div>
+
+              {pinError && (
+                <div className="p-2.5 rounded-lg bg-neutral-900 border border-red-500/40 text-red-400 text-xs text-center">
+                  {pinError}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPinModalUser(null)}
+                  className="flex-1 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-neutral-300 text-xs font-medium border border-neutral-700 transition-colors"
+                >
+                  Отмена
+                </button>
+                <button
+                  type="submit"
+                  disabled={pinLoading || !staffPinInput.trim()}
+                  className="flex-1 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-semibold transition-colors disabled:opacity-50"
+                >
+                  {pinLoading ? 'Проверка...' : 'Войти'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

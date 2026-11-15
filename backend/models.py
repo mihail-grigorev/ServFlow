@@ -162,6 +162,7 @@ class DemoQrToken(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     company_id = Column(String(50), nullable=False, index=True)
+    token = Column(String(128), nullable=True, index=True)
     token_hash = Column(String(128), nullable=False, unique=True, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     expires_at = Column(DateTime, nullable=False)

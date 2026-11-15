@@ -11,4 +11,5 @@ openpyxl>=3.1.5
 httpx>=0.28.0
 python-dotenv>=1.0.1
 Pillow>=11.0.0
+segno>=1.6.0
 

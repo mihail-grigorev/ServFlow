@@ -10,7 +10,7 @@ from backend.config import settings
 from backend.database import init_db, SessionLocal
 from backend.models import User
 from backend.seed import seed_database
-from backend.routers import auth, equipment, parts, threads, orders, ai, seed
+from backend.routers import auth, equipment, parts, threads, orders, ai, seed, demo
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +106,7 @@ app.include_router(threads.router, prefix=settings.API_PREFIX)
 app.include_router(orders.router, prefix=settings.API_PREFIX)
 app.include_router(ai.router, prefix=settings.API_PREFIX)
 app.include_router(seed.router, prefix=settings.API_PREFIX)
+app.include_router(demo.router, prefix=settings.API_PREFIX)
 
 @app.get("/api/health")
 def health_check():

@@ -588,3 +588,85 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
         "message": "База данных успешно заполнена исходными данными: 5 пользователей, 12 единиц оборудования, 10 запчастей, 13 веток обращений (23 утренних сообщения)."
     }
 
+
+def reset_demo_data(db: Session):
+    """
+    Resets demo threads, messages, orders, and spare part stocks to initial seed state
+    WITHOUT deleting user accounts, equipment, or active DemoQrTokens.
+    """
+    db.query(ServiceOrder).delete()
+    db.query(Message).delete()
+    db.query(ClientThread).delete()
+
+    # Reset spare parts stock
+    for part_data in PARTS_DATA:
+        sp = db.query(SparePart).filter(SparePart.code == part_data["code"]).first()
+        if sp:
+            sp.moscow_stock = part_data["moscow_stock"]
+            sp.moscow_reserved = part_data["moscow_reserved"]
+            sp.tula_stock = part_data["tula_stock"]
+            sp.tula_reserved = part_data["tula_reserved"]
+
+    # Map equipment by code
+    eq_objs = {eq.code: eq for eq in db.query(Equipment).all()}
+
+    # Map company users by company_id
+    users_by_company = {u.company_id: u for u in db.query(User).filter(User.company_id.isnot(None)).all()}
+
+    requests_map = {r["code"]: r for r in RAW_REQUESTS}
+
+    # Recreate 13 initial threads and messages
+    for t_def in THREAD_DEFINITIONS:
+        eq = eq_objs.get(t_def["equipment_code"]) if t_def["equipment_code"] else None
+
+        is_warranty = False
+        warranty_reason = None
+        if eq:
+            msgs_text = " ".join([requests_map[c]["text"] for c in t_def["request_codes"] if c in requests_map])
+            is_warranty, warranty_reason = RulesEngine.check_warranty(
+                eq.installation_date,
+                eq.last_visit_date,
+                eq.last_visit_result,
+                msgs_text
+            )
+
+        cid = get_company_id_for_client(t_def["client_name"])
+        owner = users_by_company.get(cid)
+        thread = ClientThread(
+            thread_number=t_def["thread_number"],
+            client_name=t_def["client_name"],
+            company_id=cid,
+            owner_user_id=owner.id if owner else None,
+            equipment_id=eq.id if eq else None,
+            equipment_code=eq.code if eq else None,
+            status=t_def["status"],
+            channel=t_def["channel"],
+            is_warranty=is_warranty,
+            warranty_reason=warranty_reason,
+            is_unregistered=(eq is None and ("ромашка" in t_def["client_name"].lower() or t_def["thread_number"] == 12)),
+            last_activity=datetime(2026, 11, 16, 11, 29)
+        )
+        db.add(thread)
+        db.flush()
+
+        for req_code in t_def["request_codes"]:
+            req = requests_map.get(req_code)
+            if req:
+                time_parts = req["time"].split(" ")[1].split(":")
+                msg_time = datetime(2026, 11, 16, int(time_parts[0]), int(time_parts[1]))
+
+                msg = Message(
+                    thread_id=thread.id,
+                    request_code=req["code"],
+                    channel=req["channel"],
+                    sender_type="client",
+                    sender_name=req["sender"],
+                    content=req["text"],
+                    created_at=msg_time
+                )
+                db.add(msg)
+
+    db.commit()
+    return {"status": "success", "message": "Демо-данные успешно сброшены к начальному состоянию"}
+
+

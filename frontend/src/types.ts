@@ -143,3 +143,16 @@ export interface ServiceOrder {
   updated_at: string;
 }
 
+export interface DemoCompanyItem {
+  company_id: string;
+  company_name: string;
+  city?: string | null;
+  token: string;
+  url: string;
+  qr_svg: string;
+  expires_at: string;
+  uses: number;
+  max_uses: number;
+}
+
+

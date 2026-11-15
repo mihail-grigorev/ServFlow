@@ -55,7 +55,32 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
   const [inputText, setInputText] = useState<string>('');
   const [sendingMsg, setSendingMsg] = useState<boolean>(false);
   const [isAiSuggestionCollapsed, setIsAiSuggestionCollapsed] = useState<boolean>(false);
+  const [newThreadIds, setNewThreadIds] = useState<Set<number>>(new Set());
+  const initialThreadIdsRef = useRef<Set<number> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Track newly arrived threads during live demo
+  useEffect(() => {
+    if (threads.length === 0) return;
+    if (!initialThreadIdsRef.current) {
+      initialThreadIdsRef.current = new Set(threads.map((t) => t.id));
+      return;
+    }
+
+    const brandNew = threads.filter((t) => !initialThreadIdsRef.current!.has(t.id)).map((t) => t.id);
+    if (brandNew.length > 0) {
+      setNewThreadIds((prev) => new Set([...prev, ...brandNew]));
+      brandNew.forEach((id) => initialThreadIdsRef.current!.add(id));
+      const timer = setTimeout(() => {
+        setNewThreadIds((prev) => {
+          const next = new Set(prev);
+          brandNew.forEach((id) => next.delete(id));
+          return next;
+        });
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [threads]);
 
   // Auto-scroll chat to bottom when messages change
   useEffect(() => {
@@ -254,6 +279,12 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
     return true;
   });
 
+  const sortedThreads = [...filteredThreads].sort((a, b) => {
+    const timeA = new Date(a.last_activity || a.created_at).getTime();
+    const timeB = new Date(b.last_activity || b.created_at).getTime();
+    return timeB - timeA;
+  });
+
   const getChannelIcon = (ch: string) => {
     switch (ch) {
       case 'Почта':
@@ -325,13 +356,19 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                   {f.label}
                 </button>
               ))}
+              {newThreadIds.size > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-black whitespace-nowrap animate-pulse">
+                  +{newThreadIds.size} нов.
+                </span>
+              )}
             </div>
           </div>
 
           {/* Threads Scrollable List */}
           <div className="flex-1 overflow-y-auto divide-y divide-white/[0.04]">
-            {filteredThreads.map((t) => {
+            {sortedThreads.map((t) => {
               const isSelected = t.id === selectedThreadId;
+              const isBrandNew = newThreadIds.has(t.id);
               const lastMsg = t.messages[t.messages.length - 1];
 
               return (
@@ -339,7 +376,9 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                   key={t.id}
                   onClick={() => setSelectedThreadId(t.id)}
                   className={`p-3.5 cursor-pointer transition-all ${
-                    isSelected
+                    isBrandNew
+                      ? 'bg-white/10 ring-1 ring-white/30 border-l-4 border-white'
+                      : isSelected
                       ? 'bg-white/[0.08] border-l-4 border-white'
                       : 'hover:bg-white/[0.03]'
                   }`}
@@ -351,9 +390,16 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                         {t.client_name}
                       </span>
                     </div>
-                    <span className="text-[10px] text-[#9CA3AF] flex-shrink-0">
-                      #{t.thread_number}
-                    </span>
+                    <div className="flex items-center space-x-1 flex-shrink-0">
+                      {isBrandNew && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-white text-black">
+                          Новое
+                        </span>
+                      )}
+                      <span className="text-[10px] text-[#9CA3AF]">
+                        #{t.thread_number}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Badges row */}
