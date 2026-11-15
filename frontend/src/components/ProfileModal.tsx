@@ -63,7 +63,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   // Account deletion verification code states
   const [deleteStep, setDeleteStep] = useState<'initial' | 'code'>('initial');
   const [deleteCode, setDeleteCode] = useState('');
-  const [deleteDevCode, setDeleteDevCode] = useState<string | null>(null);
   const [deleteCountdown, setDeleteCountdown] = useState(0);
   const [sendingDeleteCode, setSendingDeleteCode] = useState(false);
 
@@ -81,12 +80,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     setErrorMsg(null);
     setSendingDeleteCode(true);
     try {
-      const res = await api.sendDeleteCode();
-      if (res.dev_code) {
-        setDeleteDevCode(res.dev_code);
-      } else {
-        setDeleteDevCode(null);
-      }
+      await api.sendDeleteCode();
       setDeleteStep('code');
       setDeleteCountdown(60);
       setSuccessMsg(`Код подтверждения отправлен с Яндекс Почты на ${currentUser.email}`);
@@ -413,11 +407,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   </div>
                 </div>
 
-                {deleteDevCode && (
-                  <div className="p-2.5 rounded-lg bg-[#F59E0B]/10 border border-[#F59E0B]/30 text-[11px] text-[#FBBF24]">
-                    Тестовый код: <span className="font-mono font-bold text-white bg-black/40 px-1.5 py-0.5 rounded">{deleteDevCode}</span> (Яндекс SMTP не настроен в .env)
-                  </div>
-                )}
+
 
                 <div className="flex items-center space-x-2">
                   <input

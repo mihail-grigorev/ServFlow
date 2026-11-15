@@ -22,7 +22,6 @@ class SendCodeRequest(BaseModel):
 class SendCodeResponse(BaseModel):
     status: str
     message: str
-    dev_code: Optional[str] = None
 
 class ConfirmCodeRequest(BaseModel):
     code: str

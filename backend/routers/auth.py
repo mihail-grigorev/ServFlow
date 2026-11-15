@@ -94,11 +94,14 @@ def send_register_code(req: SendCodeRequest, db: Session = Depends(get_db)):
     db.commit()
 
     success, msg = send_yandex_verification_email(clean_email, code, purpose="register")
-    dev_code = None if success else code
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=msg
+        )
     return SendCodeResponse(
-        status="success" if success else "warning",
-        message=msg,
-        dev_code=dev_code
+        status="success",
+        message=msg
     )
 
 @router.post("/register", response_model=TokenResponse)
@@ -111,7 +114,7 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
             detail="Пользователь с таким email уже существует"
         )
 
-    # Check 6-digit confirmation code
+    # Check 6-digit confirmation code from email
     if not user_in.code or not user_in.code.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -127,14 +130,13 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
         VerificationCode.expires_at > datetime.utcnow()
     ).order_by(VerificationCode.id.desc()).first()
 
-    if not vcode and clean_code not in ["000000", "123456"]:
+    if not vcode:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Неверный или просроченный код подтверждения"
+            detail="Неверный или просроченный код подтверждения. Проверьте почту."
         )
 
-    if vcode:
-        vcode.is_used = True
+    vcode.is_used = True
 
     user = User(
         email=clean_email,
@@ -220,11 +222,14 @@ def send_delete_account_code(
     db.commit()
 
     success, msg = send_yandex_verification_email(clean_email, code, purpose="delete_account")
-    dev_code = None if success else code
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=msg
+        )
     return SendCodeResponse(
-        status="success" if success else "warning",
-        message=msg,
-        dev_code=dev_code
+        status="success",
+        message=msg
     )
 
 @router.post("/delete-account/confirm")
@@ -244,14 +249,13 @@ def confirm_delete_account(
         VerificationCode.expires_at > datetime.utcnow()
     ).order_by(VerificationCode.id.desc()).first()
 
-    if not vcode and clean_code not in ["000000", "123456"]:
+    if not vcode:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Неверный или просроченный код подтверждения удаления"
+            detail="Неверный или просроченный код подтверждения удаления. Проверьте почту."
         )
 
-    if vcode:
-        vcode.is_used = True
+    vcode.is_used = True
 
     user = db.query(User).filter(User.id == current_user.id).first()
     if not user:

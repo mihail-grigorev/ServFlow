@@ -50,7 +50,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
 
   // Email verification code states
   const [verificationCode, setVerificationCode] = useState('');
-  const [devCodeNotice, setDevCodeNotice] = useState<string | null>(null);
   const [resendCountdown, setResendCountdown] = useState(0);
   const [codeSentMsg, setCodeSentMsg] = useState<string | null>(null);
 
@@ -71,7 +70,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
     setConfirmPassword('');
     setRegStep('form');
     setVerificationCode('');
-    setDevCodeNotice(null);
     setCodeSentMsg(null);
   };
 
@@ -116,11 +114,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
     try {
       const res = await api.sendRegisterCode(cleanEmail);
       setCodeSentMsg(res.message);
-      if (res.dev_code) {
-        setDevCodeNotice(res.dev_code);
-      } else {
-        setDevCodeNotice(null);
-      }
       setRegStep('code');
       setResendCountdown(60);
     } catch (err: any) {
@@ -137,9 +130,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
     try {
       const res = await api.sendRegisterCode(email.trim().toLowerCase());
       setCodeSentMsg(res.message);
-      if (res.dev_code) {
-        setDevCodeNotice(res.dev_code);
-      }
       setResendCountdown(60);
     } catch (err: any) {
       setError(err.message || 'Ошибка повторной отправки кода');
@@ -341,16 +331,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                 </div>
               )}
 
-              {devCodeNotice && (
-                <div className="p-3 rounded-xl bg-[#F59E0B]/10 border border-[#F59E0B]/30 text-xs text-[#FBBF24] space-y-1">
-                  <div className="font-semibold flex items-center space-x-1.5">
-                    <Sparkles className="w-4 h-4 flex-shrink-0" />
-                    <span>Тестовый режим (Яндекс SMTP)</span>
-                  </div>
-                  <div>Код подтверждения: <span className="font-mono font-bold text-white bg-black/40 px-2 py-0.5 rounded">{devCodeNotice}</span></div>
-                  <div className="text-[11px] opacity-80">Для реальной отправки укажите пароль приложения в .env</div>
-                </div>
-              )}
+
 
               <div>
                 <label className="block text-xs font-medium text-[#8E9E94] mb-1.5 text-center">
