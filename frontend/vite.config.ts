@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: '0.0.0.0', // Exposes Vite on local network for mobile phone access
     port: 5173,
     proxy: {
       '/api': {

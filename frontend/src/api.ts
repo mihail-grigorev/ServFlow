@@ -53,6 +53,9 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearToken();
+    }
     let errorDetail = 'Произошла ошибка при выполнении запроса';
     try {
       const errJson = await response.json();

@@ -80,10 +80,10 @@ async def security_headers_middleware(request: Request, call_next):
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
         "img-src 'self' data: https://api.dicebear.com blob:; "
-        "style-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
         "script-src 'self' 'unsafe-inline'; "
-        "font-src 'self' data:; "
-        "connect-src 'self' ws: wss:; "
+        "font-src 'self' data: https://fonts.gstatic.com; "
+        "connect-src 'self' ws: wss: http: https:; "
         "frame-ancestors 'none';"
     )
     if settings.PUBLIC_BASE_URL.startswith("https://"):
@@ -100,10 +100,11 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"detail": "Внутренняя ошибка сервера", "request_id": req_id}
     )
 
-# CORS middleware
+# CORS middleware: support mobile phones on local Wi-Fi and cloud hosts
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+|.*\.onrender\.com|.*\.koyeb\.app)(:\d+)?$" if settings.DEMO_MODE else None,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
