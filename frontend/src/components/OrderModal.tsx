@@ -35,81 +35,116 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
-  const [selectedEqCode, setSelectedEqCode] = useState<string>(
-    aiData?.detected_equipment_code || thread?.equipment_code || 'EQ01'
-  );
-  const [clientName, setClientName] = useState<string>(thread?.client_name || '');
+  const [selectedEqCode, setSelectedEqCode] = useState<string>('EQ01');
+  const [clientName, setClientName] = useState<string>('');
   const [address, setAddress] = useState<string>('');
   const [model, setModel] = useState<string>('C100');
   const [serialNumber, setSerialNumber] = useState<string>('');
-  const [symptom, setSymptom] = useState<string>(
-    aiData?.draft_symptom || 'Требуется диагностика и осмотр кофемашины'
-  );
-  const [clientAssumption, setClientAssumption] = useState<string>(
-    aiData?.client_assumption || ''
-  );
-  const [isWarranty, setIsWarranty] = useState<boolean>(
-    aiData?.is_warranty || thread?.is_warranty || false
-  );
-  const [warrantyReason, setWarrantyReason] = useState<string>(
-    aiData?.warranty_reason || thread?.warranty_reason || ''
-  );
-  const [isSalesTransfer, setIsSalesTransfer] = useState<boolean>(
-    aiData?.is_unregistered_machine || thread?.is_unregistered || false
-  );
+  const [symptom, setSymptom] = useState<string>('Требуется диагностика и осмотр кофемашины');
+  const [clientAssumption, setClientAssumption] = useState<string>('');
+  const [isWarranty, setIsWarranty] = useState<boolean>(false);
+  const [warrantyReason, setWarrantyReason] = useState<string>('');
   const [selectedEngineerId, setSelectedEngineerId] = useState<number | null>(null);
   const [selectedParts, setSelectedParts] = useState<{ [code: string]: number }>({});
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [conflictError, setConflictError] = useState<{ message: string } | null>(null);
+  const [recommendedEngineers, setRecommendedEngineers] = useState<any[]>([]);
 
-  // Sync selected equipment
+  // Selected equipment object
+  const currentEq = allEquipment.find((e) => e.code === selectedEqCode) || allEquipment[0] || null;
+  const targetCity = currentEq?.city || 'Москва';
+
+  // Compatible parts for model (Rule П-7)
+  const compatibleParts = allParts.filter((p) => {
+    if (!model) return true;
+    return p.compatible_models.includes(model);
+  });
+
+  // Filter engineers by city & qualification
+  const cityEngineers = allUsers.filter((u) => {
+    if (u.role !== 'engineer') return false;
+    if (u.city && u.city !== targetCity) return false;
+    return true;
+  });
+
+  // Re-initialize state whenever modal opens or thread/aiData changes
   useEffect(() => {
-    const eq = allEquipment.find((e) => e.code === selectedEqCode);
+    if (!isOpen) return;
+
+    setError(null);
+    setConflictError(null);
+
+    const initialCode =
+      aiData?.detected_equipment_code ||
+      thread?.equipment_code ||
+      (allEquipment.length > 0 ? allEquipment[0].code : 'EQ01');
+    setSelectedEqCode(initialCode);
+
+    const eq = allEquipment.find((e) => e.code === initialCode) || (allEquipment.length > 0 ? allEquipment[0] : null);
     if (eq) {
-      setClientName(eq.client_name);
-      setAddress(eq.address);
-      setModel(eq.model);
-      setSerialNumber(eq.serial_number);
+      setClientName(thread?.client_name || eq.client_name || '');
+      setAddress(eq.address || '');
+      setModel(eq.model || 'C100');
+      setSerialNumber(eq.serial_number || '—');
+    } else {
+      setClientName(thread?.client_name || 'Новый клиент');
+      setAddress('Адрес уточняется');
+      setModel('C100');
+      setSerialNumber('—');
     }
-  }, [selectedEqCode, allEquipment]);
 
-  // Set initial equipment from thread/AI
-  useEffect(() => {
-    if (aiData?.detected_equipment_code) {
-      setSelectedEqCode(aiData.detected_equipment_code);
-    } else if (thread?.equipment_code) {
-      setSelectedEqCode(thread.equipment_code);
-    }
     if (aiData?.draft_symptom) {
       setSymptom(aiData.draft_symptom);
+    } else if (thread?.messages && thread.messages.length > 0) {
+      const clientMsg = thread.messages.find((m) => m.sender_type === 'client');
+      setSymptom(clientMsg?.content || 'Требуется диагностика и осмотр кофемашины');
+    } else {
+      setSymptom('Требуется диагностика и осмотр кофемашины');
     }
+
     if (aiData?.client_assumption) {
       setClientAssumption(aiData.client_assumption);
+    } else {
+      setClientAssumption('');
     }
+
     if (aiData?.is_warranty !== undefined) {
       setIsWarranty(aiData.is_warranty);
       setWarrantyReason(aiData.warranty_reason || '');
+    } else if (thread?.is_warranty !== undefined) {
+      setIsWarranty(thread.is_warranty);
+      setWarrantyReason(thread.warranty_reason || '');
+    } else {
+      setIsWarranty(false);
+      setWarrantyReason('');
     }
-    if (aiData?.is_unregistered_machine !== undefined) {
-      setIsSalesTransfer(aiData.is_unregistered_machine);
-    }
-  }, [aiData, thread]);
 
-  // Pre-select recommended parts from AI or dispatcher selection
-  useEffect(() => {
+    // Pre-select recommended parts from AI
     if (aiData?.recommended_parts && aiData.recommended_parts.length > 0) {
       const initial: { [code: string]: number } = {};
       aiData.recommended_parts.forEach((p) => {
         initial[p.code] = 1;
       });
       setSelectedParts(initial);
+    } else {
+      setSelectedParts({});
     }
-  }, [aiData]);
+  }, [isOpen, thread, aiData, allEquipment]);
 
-  // Selected equipment object
-  const currentEq = allEquipment.find((e) => e.code === selectedEqCode);
-  const targetCity = currentEq?.city || 'Москва';
+  // Sync selected equipment when dropdown changes
+  useEffect(() => {
+    if (!selectedEqCode) return;
+    const eq = allEquipment.find((e) => e.code === selectedEqCode);
+    if (eq) {
+      if (!thread?.client_name) {
+        setClientName(eq.client_name);
+      }
+      setAddress(eq.address);
+      setModel(eq.model);
+      setSerialNumber(eq.serial_number);
+    }
+  }, [selectedEqCode, allEquipment, thread?.client_name]);
 
   // 40-Day Warranty Auto-Check (Rule П-9)
   const [warrantyNotice, setWarrantyNotice] = useState<string | null>(null);
@@ -128,7 +163,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       const diffDays = Math.floor((refDate.getTime() - d.getTime()) / (1000 * 3600 * 24));
       if (diffDays >= 0 && diffDays <= 40) {
         isW = true;
-        reason = `Машина установлена ${diffDays} дн. назад (норматив до 40 дней, ввод в эксплуатацию ${d.toLocaleDateString()}). Предлагается оформить по гарантии без оплаты за работы.`;
+        reason = `Машина установлена ${diffDays} дн. назад (норматив до 40 дней, ввод в эксплуатацию ${d.toLocaleDateString()}). Выезд и работы оформляются по гарантии без оплаты.`;
       }
     }
 
@@ -150,30 +185,17 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     }
   }, [selectedEqCode, allEquipment, currentEq]);
 
-  // Compatible parts for model (Rule П-7)
-  const compatibleParts = allParts.filter((p) => {
-    if (!model) return true;
-    return p.compatible_models.includes(model);
-  });
-
-  // Filter engineers by city & qualification
-  const cityEngineers = allUsers.filter((u) => {
-    if (u.role !== 'engineer') return false;
-    if (u.city && u.city !== targetCity) return false;
-    return true;
-  });
-
-  const [recommendedEngineers, setRecommendedEngineers] = useState<any[]>([]);
-
-  // Smart Engineer Ranking: Prioritize fewest active orders + journal model/symptom experience
+  // Smart Engineer Ranking
   useEffect(() => {
     if (!model) return;
     api.getEngineerRecommendations(model, targetCity, symptom)
       .then((data) => {
         if (data && data.length > 0) {
           setRecommendedEngineers(data);
-          // Auto pre-select the highest ranked engineer (fewest orders + history experience)
-          setSelectedEngineerId(data[0].id);
+          const topId = data[0].id || data[0].engineer_id;
+          if (topId) {
+            setSelectedEngineerId(topId);
+          }
         }
       })
       .catch((err) => {
@@ -181,7 +203,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       });
   }, [model, targetCity, symptom]);
 
-  // Pre-select fallback if recommendations not loaded
+  // Pre-select fallback engineer if recommendations empty
   useEffect(() => {
     if (recommendedEngineers.length === 0 && cityEngineers.length > 0 && selectedEngineerId === null) {
       setSelectedEngineerId(cityEngineers[0].id);
@@ -200,12 +222,33 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     });
   };
 
+  // Find which selected parts are out of stock in Moscow
+  const outOfStockInMoscowParts = Object.keys(selectedParts)
+    .map((code) => allParts.find((p) => p.code === code))
+    .filter((p): p is SparePart => Boolean(p && (p.moscow_free ?? 0) <= 0));
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setConflictError(null);
     setLoading(true);
 
     try {
+      const finalClientName = (clientName || thread?.client_name || 'Новый клиент').trim();
+      const finalAddress = (address || currentEq?.address || 'Адрес уточняется').trim();
+      const finalModel = (model || currentEq?.model || 'C100').trim();
+      const finalSerial = (serialNumber || currentEq?.serial_number || '—').trim();
+      const finalSymptom = (symptom || 'Требуется диагностика и осмотр кофемашины').trim();
+
+      // Ensure engineer assignment
+      let engId = selectedEngineerId;
+      if (!engId) {
+        const fallbackEng = recommendedEngineers[0] || cityEngineers[0];
+        if (fallbackEng) {
+          engId = fallbackEng.id || fallbackEng.engineer_id;
+        }
+      }
+
       // Build reserved parts list
       const reservedList: ReservedPartItem[] = Object.entries(selectedParts).map(([code, qty]) => {
         const part = allParts.find((p) => p.code === code);
@@ -224,17 +267,17 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
       await api.createOrder({
         thread_id: thread?.id,
-        client_name: clientName,
-        equipment_code: isSalesTransfer ? null : selectedEqCode,
-        address,
-        model,
-        serial_number: serialNumber,
-        symptom,
+        client_name: finalClientName,
+        equipment_code: selectedEqCode || null,
+        address: finalAddress,
+        model: finalModel,
+        serial_number: finalSerial,
+        symptom: finalSymptom,
         client_assumption: clientAssumption || null,
         is_warranty: isWarranty,
         warranty_reason: warrantyReason || null,
-        is_sales_transfer: isSalesTransfer,
-        engineer_id: isSalesTransfer ? null : selectedEngineerId,
+        is_sales_transfer: false,
+        engineer_id: engId || null,
         reserved_parts: reservedList,
         created_at: new Date().toISOString(),
       });
@@ -242,8 +285,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       onOrderCreated();
       onClose();
     } catch (err: any) {
+      console.error('Order creation error:', err);
       const msg = err.message || 'Ошибка оформления заявки';
-      if (msg.includes('уже сформирована заявка') || msg.includes('409')) {
+      if (msg.includes('уже сформирована заявка') || msg.includes('409') || msg.includes('Conflict')) {
         setConflictError({ message: msg });
         onOrderCreated();
       } else {
@@ -255,43 +299,45 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/70 backdrop-blur-md">
-      <div className="bg-[#16171B] text-[#F3F4F6] rounded-2xl border border-white/[0.08] shadow-modal max-w-3xl w-full max-h-[94vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/80 backdrop-blur-md">
+      <div className="bg-[#16171B] text-[#F3F4F6] rounded-2xl border border-white/[0.08] shadow-2xl max-w-3xl w-full max-h-[94vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         {/* Header */}
-        <div className="p-5 border-b border-white/[0.08] flex items-center justify-between">
+        <div className="p-5 border-b border-white/[0.08] flex items-center justify-between bg-[#191A20]">
           <div className="flex items-center space-x-2.5">
-            <div className="p-2 rounded-xl bg-white/10 text-white">
+            <div className="p-2 rounded-xl bg-white/10 text-white border border-white/10">
               <Wrench className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-base font-bold text-white">
                 Оформление заявки на выезд и назначение инженера
               </h2>
-              <p className="text-xs text-[#8E9E94]">
-                {thread ? `На основе обращения #${thread.thread_number} (${thread.client_name})` : 'Создание заявки в 1 клик'}
+              <p className="text-xs text-[#9CA3AF]">
+                {thread ? `На основе обращения #${thread.thread_number} (${thread.client_name})` : 'Создание сервисной заявки'}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-white/[0.06] text-[#8E9E94] hover:text-white transition-colors"
+            className="p-1.5 rounded-lg hover:bg-white/[0.06] text-[#9CA3AF] hover:text-white transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
+        {/* Global Error Banner */}
         {error && (
           <div className="mx-5 mt-4 p-3 rounded-xl bg-white/[0.06] border border-white/20 flex items-center space-x-2 text-xs text-neutral-200">
-            <AlertCircle className="w-4 h-4 flex-shrink-0 text-neutral-300" />
+            <AlertCircle className="w-4 h-4 flex-shrink-0 text-white" />
             <span>{error}</span>
           </div>
         )}
 
+        {/* Conflict Error Banner */}
         {conflictError && (
           <div className="mx-5 mt-4 p-4 rounded-xl bg-white/[0.06] border border-white/20 flex flex-col space-y-2 text-xs text-white">
             <div className="flex items-center space-x-2">
               <AlertCircle className="w-4 h-4 text-white flex-shrink-0" />
-              <span className="font-semibold text-white">Заявка уже была создана другим диспетчером</span>
+              <span className="font-semibold text-white">Заявка уже зарегистрирована в системе</span>
             </div>
             <p className="text-neutral-300 text-[11px] leading-relaxed">
               {conflictError.message}
@@ -303,9 +349,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   onOrderCreated();
                   onClose();
                 }}
-                className="px-3.5 py-1.5 rounded-lg bg-white hover:bg-neutral-200 text-black text-xs font-semibold transition-colors"
+                className="px-3.5 py-1.5 rounded-lg bg-white hover:bg-neutral-200 text-black text-xs font-semibold transition-colors cursor-pointer"
               >
-                Открыть существующую заявку
+                Перейти к заявкам на выезд
               </button>
             </div>
           </div>
@@ -315,17 +361,16 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-5 text-xs">
           {/* 1. Equipment Selection */}
           <div className="space-y-3">
-            <h3 className="font-bold text-white uppercase tracking-wider text-[11px] text-[#8E9E94]">
+            <h3 className="font-bold text-white uppercase tracking-wider text-[11px] text-[#9CA3AF]">
               1. Данные оборудования
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[#8E9E94] mb-1">
+                <label className="block text-[#9CA3AF] mb-1">
                   Машина из реестра договора
                 </label>
                 <select
-                  disabled={isSalesTransfer}
                   value={selectedEqCode}
                   onChange={(e) => setSelectedEqCode(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/20"
@@ -339,51 +384,49 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-[#8E9E94] mb-1">
+                <label className="block text-[#9CA3AF] mb-1">
                   Клиент / Заведение
                 </label>
                 <input
                   type="text"
-                  required
                   value={clientName}
                   onChange={(e) => setClientName(e.target.value)}
+                  placeholder="Наименование клиента"
                   className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/20"
                 />
               </div>
 
               <div>
-                <label className="block text-[#8E9E94] mb-1">
+                <label className="block text-[#9CA3AF] mb-1">
                   Адрес заведения
                 </label>
                 <input
                   type="text"
-                  required
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Адрес заведения"
                   className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/20"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[#8E9E94] mb-1">
+                  <label className="block text-[#9CA3AF] mb-1">
                     Модель
                   </label>
                   <input
                     type="text"
-                    required
                     value={model}
                     onChange={(e) => setModel(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[#8E9E94] mb-1">
+                  <label className="block text-[#9CA3AF] mb-1">
                     Серийный №
                   </label>
                   <input
                     type="text"
-                    required
                     value={serialNumber}
                     onChange={(e) => setSerialNumber(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none font-mono"
@@ -392,8 +435,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
               </div>
             </div>
 
-            {/* Checkboxes row: Warranty & Sales transfer */}
-            <div className="flex flex-wrap items-center gap-4 pt-1">
+            {/* Warranty check */}
+            <div className="flex items-center gap-4 pt-1">
               <label className="flex items-center space-x-2 text-white cursor-pointer">
                 <input
                   type="checkbox"
@@ -402,18 +445,6 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   className="rounded text-white focus:ring-white bg-[#1F2026]"
                 />
                 <span className="font-semibold text-white">Гарантийный визит (Правило П-9)</span>
-              </label>
-
-              <label className="flex items-center space-x-2 text-white cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isSalesTransfer}
-                  onChange={(e) => setIsSalesTransfer(e.target.checked)}
-                  className="rounded text-white focus:ring-white bg-[#1F2026]"
-                />
-                <span className="font-semibold text-neutral-300">
-                  Передать в отдел продаж (машина вне реестра П-2)
-                </span>
               </label>
             </div>
 
@@ -429,7 +460,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
             {isWarranty && (
               <div className="p-3 rounded-xl bg-white/10 border border-white/20 text-white flex items-start space-x-2">
-                <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5 text-white" />
                 <div>
                   <span className="font-bold">Основание гарантии (Правило П-9): </span>
                   <span className="text-neutral-300">{warrantyReason || 'Обращение в течение 40 дней после ремонта / установки'}</span>
@@ -440,207 +471,269 @@ export const OrderModal: React.FC<OrderModalProps> = ({
 
           {/* 2. Symptom and Assumption (Rule П-4) */}
           <div className="space-y-3">
-            <h3 className="font-bold text-white uppercase tracking-wider text-[11px] text-[#8E9E94]">
+            <h3 className="font-bold text-white uppercase tracking-wider text-[11px] text-[#9CA3AF]">
               2. Описание проблемы (Правило П-4)
             </h3>
 
             <div>
-              <label className="block text-[#8E9E94] mb-1">
-                Фактический симптом (что происходит, когда и в каком месте машины)
+              <label className="block text-[#9CA3AF] mb-1">
+                Фактический симптом (что происходит, когда и в каком узле)
               </label>
               <textarea
-                required
                 rows={2}
                 value={symptom}
                 onChange={(e) => setSymptom(e.target.value)}
-                placeholder="Например: течь справа после завершения приготовления..."
+                placeholder="Например: протечка воды снизу, непрерывно..."
                 className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/20"
               />
             </div>
 
             <div>
-              <label className="block text-[#8E9E94] mb-1">
+              <label className="block text-[#9CA3AF] mb-1">
                 Догадка / комментарий клиента (отдельно от симптома)
               </label>
               <input
                 type="text"
                 value={clientAssumption}
                 onChange={(e) => setClientAssumption(e.target.value)}
-                placeholder="Например: клиент просит сразу привезти новый насос..."
+                placeholder="Например: клиент предполагает поломку помпы..."
                 className="w-full px-3 py-1.5 rounded-xl border border-white/[0.08] bg-black/30 text-white outline-none"
               />
             </div>
           </div>
 
           {/* 3. Spare Parts Reservation (Rules П-7 & П-8) */}
-          {!isSalesTransfer && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-white uppercase tracking-wider text-[11px] text-[#8E9E94]">
-                  3. Резерв деталей со склада (П-7, П-8)
-                </h3>
-                <span className="text-[11px] text-[#8E9E94]">
-                  Склад города: <strong className="text-white">{targetCity}</strong>
-                </span>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1 border border-white/[0.06] rounded-xl bg-black/20">
-                {compatibleParts.map((p) => {
-                  const isChecked = Boolean(selectedParts[p.code]);
-                  const localStock = targetCity === 'Москва' ? p.moscow_stock : p.tula_stock;
-                  const localRes = targetCity === 'Москва' ? p.moscow_reserved : p.tula_reserved;
-                  const localFree = Math.max(0, localStock - localRes);
-                  const otherFree = targetCity === 'Москва' ? p.tula_free : p.moscow_free;
-                  const transferReq = localFree === 0 && otherFree > 0;
-
-                  return (
-                    <div
-                      key={p.code}
-                      onClick={() => togglePartSelection(p.code)}
-                      className={`p-2.5 rounded-xl border cursor-pointer transition-all flex items-start space-x-2.5 ${
-                        isChecked
-                          ? 'border-white bg-white/10'
-                          : 'border-white/[0.08] bg-[#1F2026] hover:bg-white/[0.04]'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => {}}
-                        className="mt-0.5 rounded accent-white text-white focus:ring-white bg-[#16171B]"
-                      />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold text-white truncate">
-                            {p.code} · {p.name}
-                          </span>
-                          <span
-                            className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
-                              localFree > 0
-                                ? 'bg-white/15 text-white'
-                                : transferReq
-                                ? 'bg-white/10 text-neutral-300 border border-white/10'
-                                : 'bg-white/[0.06] text-[#8E9E94]'
-                            }`}
-                          >
-                            {localFree > 0 ? `Свободно: ${localFree}` : transferReq ? 'Перевозка' : '0'}
-                          </span>
-                        </div>
-
-                        {transferReq && (
-                          <div className="mt-1 flex items-center space-x-1 text-[10px] text-neutral-300">
-                            <Truck className="w-3 h-3" />
-                            <span>Доступно со склада др. города (+1 раб. день)</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-white uppercase tracking-wider text-[11px] text-[#9CA3AF]">
+                3. Резерв деталей со склада (П-7, П-8)
+              </h3>
+              <span className="text-[11px] text-[#9CA3AF]">
+                Основной склад: <strong className="text-white">{targetCity}</strong>
+              </span>
             </div>
-          )}
+
+            {/* Notification Banner: Parts out of stock in Moscow */}
+            {outOfStockInMoscowParts.length > 0 && (
+              <div className="p-3.5 rounded-xl bg-white/[0.06] border border-white/20 text-neutral-200 text-xs flex items-start space-x-2.5">
+                <AlertCircle className="w-4 h-4 text-white flex-shrink-0 mt-0.5" />
+                <div className="space-y-1 w-full">
+                  <div className="font-bold text-white">Оповещение по наличию деталей на складе:</div>
+                  <div className="space-y-1 pt-0.5">
+                    {outOfStockInMoscowParts.map((p) => {
+                      const hasTula = (p.tula_free ?? 0) > 0;
+                      return (
+                        <div key={p.code} className="text-[11px] leading-relaxed p-1.5 rounded bg-black/30 border border-white/[0.06]">
+                          {hasTula ? (
+                            <span>
+                              Детали <strong className="text-white">{p.code} ({p.name})</strong> <span className="text-neutral-300 font-semibold">нет на складе в Москве</span>. Необходимо <strong className="text-white underline">привезти из Тулы</strong> (в наличии {p.tula_free} шт., +1 раб. день на перемещение).
+                            </span>
+                          ) : (
+                            <span>
+                              Детали <strong className="text-white">{p.code} ({p.name})</strong> <span className="text-neutral-300 font-semibold">нет на складе ни в Москве, ни в Туле</span>. Необходимо <strong className="text-white underline">срочно купить у поставщика</strong>!
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto p-1.5 border border-white/[0.06] rounded-xl bg-black/20">
+              {compatibleParts.map((p) => {
+                const isChecked = Boolean(selectedParts[p.code]);
+                const localStock = targetCity === 'Москва' ? p.moscow_stock : p.tula_stock;
+                const localRes = targetCity === 'Москва' ? p.moscow_reserved : p.tula_reserved;
+                const localFree = Math.max(0, localStock - localRes);
+                const otherFree = targetCity === 'Москва' ? p.tula_free : p.moscow_free;
+                const transferReq = localFree === 0 && otherFree > 0;
+                const outOfAllStock = localFree === 0 && otherFree === 0;
+
+                return (
+                  <div
+                    key={p.code}
+                    onClick={() => togglePartSelection(p.code)}
+                    className={`p-2.5 rounded-xl border cursor-pointer transition-all flex items-start space-x-2.5 ${
+                      isChecked
+                        ? 'border-white bg-white/10 ring-1 ring-white/20'
+                        : 'border-white/[0.08] bg-[#1F2026] hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => {}}
+                      className="mt-0.5 rounded accent-white text-white focus:ring-white bg-[#16171B]"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-white truncate text-[11px]">
+                          {p.code} · {p.name}
+                        </span>
+                        <span
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                            localFree > 0
+                              ? 'bg-white/15 text-white'
+                              : transferReq
+                              ? 'bg-white/10 text-neutral-200 border border-white/20'
+                              : 'bg-white/[0.05] text-neutral-400 border border-white/10'
+                          }`}
+                        >
+                          {localFree > 0
+                            ? `МСК: ${localFree} шт.`
+                            : transferReq
+                            ? 'Везти из Тулы'
+                            : 'Купить (0 шт.)'}
+                        </span>
+                      </div>
+
+                      {/* Stock alerts per part */}
+                      {transferReq && (
+                        <div className="mt-1 flex items-center space-x-1 text-[10px] text-neutral-300">
+                          <Truck className="w-3 h-3 text-white flex-shrink-0" />
+                          <span>Нет в МСК: привезти из Тулы ({otherFree} шт., +1 день)</span>
+                        </div>
+                      )}
+
+                      {outOfAllStock && (
+                        <div className="mt-1 flex items-center space-x-1 text-[10px] text-neutral-400">
+                          <AlertCircle className="w-3 h-3 text-neutral-400 flex-shrink-0" />
+                          <span>Нет на складе: необходимо докупить у поставщика</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
           {/* 4. Engineer Assignment */}
-          {!isSalesTransfer && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-white uppercase tracking-wider text-[11px] text-[#8E9E94]">
-                  4. Выбор сервисного инженера ({targetCity})
-                </h3>
-              </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-white uppercase tracking-wider text-[11px] text-[#9CA3AF]">
+                4. Выбор сервисного инженера ({targetCity})
+              </h3>
+            </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {(recommendedEngineers.length > 0 ? recommendedEngineers : cityEngineers).map((eng) => {
-                  const isSelected = selectedEngineerId === eng.id;
-                  const hasModelQual = eng.qualifications.includes(model);
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {(recommendedEngineers.length > 0 ? recommendedEngineers : cityEngineers).map((eng) => {
+                const engId = eng.id || eng.engineer_id;
+                const isSelected = selectedEngineerId === engId;
+                const quals: string[] = eng.qualifications || [];
+                const hasModelQual = quals.includes(model) || eng.has_model_qualification;
+                const activeOrders = eng.active_orders !== undefined ? eng.active_orders : eng.active_orders_count;
 
-                  return (
-                    <div
-                      key={eng.id}
-                      onClick={() => setSelectedEngineerId(eng.id)}
-                      className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
-                        isSelected
-                          ? 'border-white bg-white/15 ring-2 ring-white/25'
-                          : 'border-white/[0.08] bg-[#1F2026] hover:bg-white/[0.04]'
-                      }`}
-                    >
-                      <div className="flex-1 min-w-0 pr-2">
-                        {eng.is_recommended && (
-                          <div className="text-[10px] text-white font-bold flex items-center space-x-1 mb-1">
-                            <Sparkles className="w-3 h-3 text-white flex-shrink-0" />
-                            <span className="truncate">{eng.recommendation_reason}</span>
-                          </div>
+                return (
+                  <div
+                    key={engId}
+                    onClick={() => setSelectedEngineerId(engId)}
+                    className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+                      isSelected
+                        ? 'border-white bg-white/15 ring-2 ring-white/25'
+                        : 'border-white/[0.08] bg-[#1F2026] hover:bg-white/[0.04]'
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0 pr-2">
+                      {eng.is_recommended && (
+                        <div className="text-[10px] text-white font-bold flex items-center space-x-1 mb-1">
+                          <Sparkles className="w-3 h-3 text-white flex-shrink-0" />
+                          <span className="truncate">{eng.recommendation_reason || 'Рекомендован ИИ'}</span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center space-x-2">
+                        <span className="font-semibold text-white">{eng.full_name}</span>
+                        {activeOrders !== undefined && (
+                          <span
+                            className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                              activeOrders === 0
+                                ? 'bg-white/15 text-white'
+                                : 'bg-white/10 text-neutral-300'
+                            }`}
+                          >
+                            {activeOrders === 0 ? '0 заявок' : `${activeOrders} заявк.`}
+                          </span>
                         )}
-
-                        <div className="flex items-center space-x-2">
-                          <span className="font-semibold text-white">{eng.full_name}</span>
-                          {eng.active_orders !== undefined && (
-                            <span
-                              className={`text-[10px] font-semibold px-1.5 py-0.2 rounded ${
-                                eng.active_orders === 0
-                                  ? 'bg-white/15 text-white'
-                                  : 'bg-white/10 text-neutral-300'
-                              }`}
-                            >
-                              {eng.active_orders === 0 ? '0 заявок' : `${eng.active_orders} заявк.`}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-1 mt-1 text-[11px] text-[#8E9E94]">
-                          <span>Допуски: {eng.qualifications.join(', ')}</span>
-                          {hasModelQual ? (
-                            <span className="text-white font-medium">(допущен)</span>
-                          ) : (
-                            <span className="text-neutral-400 font-medium">(нет допуска к {model})</span>
-                          )}
-                          {eng.model_experience_count > 0 && (
-                            <span className="text-neutral-300 font-medium">
-                              • {eng.model_experience_count} рем. {model} в журнале
-                            </span>
-                          )}
-                          {eng.symptom_match_count > 0 && (
-                            <span className="text-white font-medium">
-                              • опыт по симптому
-                            </span>
-                          )}
-                        </div>
                       </div>
 
-                      <div
-                        className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 ${
-                          isSelected
-                            ? 'border-white bg-white'
-                            : 'border-white/[0.2]'
-                        }`}
-                      >
-                        {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
+                      <div className="flex flex-wrap items-center gap-1 mt-1 text-[11px] text-[#9CA3AF]">
+                        <span>Допуски: {quals.length > 0 ? quals.join(', ') : model}</span>
+                        {hasModelQual ? (
+                          <span className="text-white font-medium">(допущен)</span>
+                        ) : (
+                          <span className="text-neutral-400 font-medium">(нет допуска к {model})</span>
+                        )}
+                        {eng.model_experience_count > 0 && (
+                          <span className="text-neutral-300 font-medium">
+                            • {eng.model_experience_count} рем. {model}
+                          </span>
+                        )}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
-          {/* Submit buttons */}
-          <div className="pt-2 border-t border-white/[0.08] flex items-center justify-end space-x-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl border border-white/[0.1] hover:bg-white/[0.05] text-[#F0F5F2] transition-colors"
-            >
-              Отмена
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="px-5 py-2.5 font-bold rounded-xl bg-white hover:bg-neutral-200 text-black shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer"
-            >
-              <span>{loading ? 'Сохранение...' : 'Подтвердить и назначить инженера'}</span>
-              <CheckCircle2 className="w-4 h-4 text-black" />
-            </button>
+                    <div
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center flex-shrink-0 ${
+                        isSelected
+                          ? 'border-white bg-white'
+                          : 'border-white/[0.2]'
+                      }`}
+                    >
+                      {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Action Footer: Error and Submit */}
+          <div className="pt-3 border-t border-white/[0.08] space-y-2">
+            {error && (
+              <div className="p-2.5 rounded-xl bg-white/[0.08] border border-white/20 text-xs text-neutral-200 flex items-center space-x-2">
+                <AlertCircle className="w-4 h-4 text-white flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {conflictError && (
+              <div className="p-2.5 rounded-xl bg-white/[0.08] border border-white/20 text-xs text-neutral-200 flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <AlertCircle className="w-4 h-4 text-white flex-shrink-0" />
+                  <span>{conflictError.message}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onOrderCreated();
+                    onClose();
+                  }}
+                  className="px-2.5 py-1 rounded bg-white text-black font-semibold text-[11px] ml-2 cursor-pointer"
+                >
+                  Перейти в заявки
+                </button>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end space-x-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2.5 rounded-xl border border-white/[0.1] hover:bg-white/[0.05] text-[#F0F5F2] transition-colors cursor-pointer"
+              >
+                Отмена
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-5 py-2.5 font-bold rounded-xl bg-white hover:bg-neutral-200 text-black shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <span>{loading ? 'Оформление...' : 'Подтвердить и назначить инженера'}</span>
+                <CheckCircle2 className="w-4 h-4 text-black" />
+              </button>
+            </div>
           </div>
         </form>
       </div>

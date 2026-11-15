@@ -64,33 +64,6 @@ def get_orders(
     return [ServiceOrderResponse.model_validate(o) for o in orders]
 
 
-@router.get("/{order_id}", response_model=ServiceOrderResponse)
-def get_order_by_id(
-    order_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Security check K5 & K6:
-    Orders can only be inspected by owner company, assigned engineer, or dispatcher.
-    Returns 404 for unauthorized users to prevent IDOR scanning.
-    """
-    order = db.query(ServiceOrder).filter(ServiceOrder.id == order_id).first()
-    if not order:
-        raise HTTPException(status_code=404, detail="Заявка не найдена")
-
-    if current_user.role == "company":
-        matches_comp = (order.company_id and order.company_id == current_user.company_id)
-        matches_name = (order.client_name == current_user.full_name.strip())
-        if not (matches_comp or matches_name):
-            raise HTTPException(status_code=404, detail="Заявка не найдена")
-    elif current_user.role == "engineer":
-        if order.engineer_id != current_user.id:
-            raise HTTPException(status_code=404, detail="Заявка не найдена")
-
-    return ServiceOrderResponse.model_validate(order)
-
-
 @router.get("/engineer-recommendations")
 def get_engineer_recommendations(
     model: str = Query(...),
@@ -155,15 +128,20 @@ def get_engineer_recommendations(
         status_text = "Рекомендован" if score >= 120 else ("Доступен" if city_match else "Межгород")
 
         results.append({
+            "id": eng.id,
             "engineer_id": eng.id,
             "full_name": eng.full_name,
             "city": eng.city,
             "is_senior": eng.is_senior,
+            "qualifications": eng.qualifications or [],
+            "active_orders": active_orders,
             "active_orders_count": active_orders,
             "completed_orders_count": completed_orders,
             "model_experience_count": model_experience_count,
             "has_model_qualification": has_qual,
             "city_match": city_match,
+            "is_recommended": score >= 120,
+            "recommendation_reason": reasons[0] if reasons else "Доступен",
             "score": score,
             "status_text": status_text,
             "recommendation_reasons": reasons
@@ -171,6 +149,33 @@ def get_engineer_recommendations(
 
     results.sort(key=lambda x: x["score"], reverse=True)
     return results
+
+
+@router.get("/{order_id}", response_model=ServiceOrderResponse)
+def get_order_by_id(
+    order_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Security check K5 & K6:
+    Orders can only be inspected by owner company, assigned engineer, or dispatcher.
+    Returns 404 for unauthorized users to prevent IDOR scanning.
+    """
+    order = db.query(ServiceOrder).filter(ServiceOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Заявка не найдена")
+
+    if current_user.role == "company":
+        matches_comp = (order.company_id and order.company_id == current_user.company_id)
+        matches_name = (order.client_name == current_user.full_name.strip())
+        if not (matches_comp or matches_name):
+            raise HTTPException(status_code=404, detail="Заявка не найдена")
+    elif current_user.role == "engineer":
+        if order.engineer_id != current_user.id:
+            raise HTTPException(status_code=404, detail="Заявка не найдена")
+
+    return ServiceOrderResponse.model_validate(order)
 
 
 @router.post("", response_model=ServiceOrderResponse)

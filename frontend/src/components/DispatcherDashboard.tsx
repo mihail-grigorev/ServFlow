@@ -152,6 +152,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
     status_note?: string;
     diagnostic_reason?: string | null;
     local_free?: number;
+    other_city_free?: number;
     transfer_required?: boolean;
     is_compatible?: boolean;
   }[]>([]);
@@ -169,6 +170,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
           status_note: p.status_note,
           diagnostic_reason: p.diagnostic_reason,
           local_free: p.local_free,
+          other_city_free: p.other_city_free,
           transfer_required: p.transfer_required,
           is_compatible: p.is_compatible,
         }))
@@ -219,6 +221,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
           status_note: localFree > 0 ? `Свободно: ${localFree} шт.` : (otherFree > 0 ? 'Склад 0 (есть в другом городе)' : 'Нет на складах'),
           diagnostic_reason: 'Добавлено диспетчером вручную',
           local_free: localFree,
+          other_city_free: otherFree,
           transfer_required: localFree <= 0 && otherFree > 0,
           is_compatible: selectedThread?.equipment?.model ? part.compatible_models.includes(selectedThread.equipment.model) : true,
         },
@@ -1117,9 +1120,9 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                           >
                             {(p.local_free ?? 0) > 0
                               ? `Свободно: ${p.local_free} шт.`
-                              : p.transfer_required
-                              ? 'Склад 0 (есть в др. городе)'
-                              : 'Нет остатка'}
+                              : p.transfer_required || (p.other_city_free ?? 0) > 0
+                              ? 'Везти из Тулы'
+                              : 'Нет на складе (купить)'}
                           </span>
                           <button
                             type="button"
@@ -1136,6 +1139,23 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                       {p.diagnostic_reason && (
                         <div className="text-[11px] text-[#9CA3AF] leading-relaxed">
                           <span className="text-neutral-300 font-medium">Диагностика:</span> {p.diagnostic_reason}
+                        </div>
+                      )}
+
+                      {/* Out of stock alert */}
+                      {(p.local_free ?? 0) <= 0 && (
+                        <div className="p-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-[10px] text-neutral-300 flex items-center space-x-1.5">
+                          {p.transfer_required || (p.other_city_free ?? 0) > 0 ? (
+                            <>
+                              <Truck className="w-3.5 h-3.5 text-white flex-shrink-0" />
+                              <span>Нет на складе в МСК: привезти из Тулы (+1 раб. день)</span>
+                            </>
+                          ) : (
+                            <>
+                              <AlertCircle className="w-3.5 h-3.5 text-neutral-300 flex-shrink-0" />
+                              <span>Нет на складе в МСК и Туле: необходимо купить у поставщика</span>
+                            </>
+                          )}
                         </div>
                       )}
 
