@@ -121,3 +121,16 @@ class ServiceOrder(Base):
     equipment = relationship("Equipment", back_populates="orders")
     engineer = relationship("User", back_populates="orders", foreign_keys=[engineer_id])
 
+
+class VerificationCode(Base):
+    __tablename__ = "verification_codes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String(255), index=True, nullable=False)
+    code = Column(String(10), nullable=False)
+    purpose = Column(String(50), nullable=False)  # "register", "delete_account"
+    expires_at = Column(DateTime, nullable=False)
+    is_used = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+

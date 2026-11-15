@@ -14,6 +14,18 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    code: Optional[str] = None
+
+class SendCodeRequest(BaseModel):
+    email: str
+
+class SendCodeResponse(BaseModel):
+    status: str
+    message: str
+    dev_code: Optional[str] = None
+
+class ConfirmCodeRequest(BaseModel):
+    code: str
 
 class UserProfileUpdate(BaseModel):
     full_name: Optional[str] = None

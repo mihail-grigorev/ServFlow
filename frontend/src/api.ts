@@ -84,11 +84,19 @@ export const api = {
     return res;
   },
 
+  sendRegisterCode: async (email: string): Promise<{ status: string; message: string; dev_code?: string }> => {
+    return await request<{ status: string; message: string; dev_code?: string }>('/auth/register/send-code', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+  },
+
   register: async (userData: {
     email: string;
     full_name: string;
     role: string;
     password: string;
+    code?: string;
     city?: string;
     is_senior?: boolean;
     qualifications?: string[];
@@ -100,6 +108,21 @@ export const api = {
     });
     setToken(res.access_token);
     saveUser(res.user);
+    return res;
+  },
+
+  sendDeleteCode: async (): Promise<{ status: string; message: string; dev_code?: string }> => {
+    return await request<{ status: string; message: string; dev_code?: string }>('/auth/delete-account/send-code', {
+      method: 'POST',
+    });
+  },
+
+  confirmDeleteAccount: async (code: string): Promise<{ status: string; message: string }> => {
+    const res = await request<{ status: string; message: string }>('/auth/delete-account/confirm', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    });
+    clearToken();
     return res;
   },
 
@@ -126,8 +149,9 @@ export const api = {
     return user;
   },
 
-  deleteProfile: async (): Promise<{ status: string; message: string }> => {
-    const res = await request<{ status: string; message: string }>('/auth/profile', {
+  deleteProfile: async (code?: string): Promise<{ status: string; message: string }> => {
+    const url = code ? `/auth/profile?code=${encodeURIComponent(code)}` : '/auth/profile';
+    const res = await request<{ status: string; message: string }>(url, {
       method: 'DELETE',
     });
     clearToken();

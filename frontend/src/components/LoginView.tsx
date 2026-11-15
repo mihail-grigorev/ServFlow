@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '../api';
 import { User } from '../types';
 import logoImg from '../assets/logo.png';
@@ -13,7 +13,9 @@ import {
   Building,
   Wrench,
   Sparkles,
-  MapPin
+  MapPin,
+  ChevronLeft,
+  RefreshCw
 } from 'lucide-react';
 
 interface LoginViewProps {
@@ -34,6 +36,7 @@ const AVATAR_PRESETS = [
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers }) => {
   const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [regStep, setRegStep] = useState<'form' | 'code'>('form');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -45,11 +48,31 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Email verification code states
+  const [verificationCode, setVerificationCode] = useState('');
+  const [devCodeNotice, setDevCodeNotice] = useState<string | null>(null);
+  const [resendCountdown, setResendCountdown] = useState(0);
+  const [codeSentMsg, setCodeSentMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    let timer: any;
+    if (resendCountdown > 0) {
+      timer = setInterval(() => {
+        setResendCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [resendCountdown]);
+
   const handleModeChange = (newMode: 'login' | 'register') => {
     setMode(newMode);
     setError(null);
     setPassword('');
     setConfirmPassword('');
+    setRegStep('form');
+    setVerificationCode('');
+    setDevCodeNotice(null);
+    setCodeSentMsg(null);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -66,7 +89,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
     }
   };
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRequestRegisterCode = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -74,8 +97,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
     const cleanPwd = password.trim();
     const cleanConfirm = confirmPassword.trim();
 
-    if (!cleanEmail) {
-      setError('Укажите адрес электронной почты');
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setError('Укажите корректный адрес электронной почты');
       return;
     }
 
@@ -91,6 +114,55 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
 
     setLoading(true);
     try {
+      const res = await api.sendRegisterCode(cleanEmail);
+      setCodeSentMsg(res.message);
+      if (res.dev_code) {
+        setDevCodeNotice(res.dev_code);
+      } else {
+        setDevCodeNotice(null);
+      }
+      setRegStep('code');
+      setResendCountdown(60);
+    } catch (err: any) {
+      setError(err.message || 'Ошибка отправки проверочного кода');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendRegisterCode = async () => {
+    if (resendCountdown > 0) return;
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await api.sendRegisterCode(email.trim().toLowerCase());
+      setCodeSentMsg(res.message);
+      if (res.dev_code) {
+        setDevCodeNotice(res.dev_code);
+      }
+      setResendCountdown(60);
+    } catch (err: any) {
+      setError(err.message || 'Ошибка повторной отправки кода');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPwd = password.trim();
+    const cleanCode = verificationCode.trim();
+
+    if (!cleanCode) {
+      setError('Введите 6-значный проверочный код из письма');
+      return;
+    }
+
+    setLoading(true);
+    try {
       const res = await api.register({
         email: cleanEmail,
         password: cleanPwd,
@@ -100,10 +172,11 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
         is_senior: false,
         qualifications: role === 'engineer' ? qualifications : [],
         avatar_url: avatarUrl,
+        code: cleanCode,
       });
       onLoginSuccess(res.user);
     } catch (err: any) {
-      setError(err.message || 'Ошибка регистрации');
+      setError(err.message || 'Ошибка проверки кода или регистрации');
     } finally {
       setLoading(false);
     }
@@ -249,8 +322,93 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                 <ArrowRight className="w-4 h-4" />
               </button>
             </form>
+          ) : regStep === 'code' ? (
+            <form onSubmit={handleConfirmRegister} className="space-y-4">
+              <div className="p-4 rounded-xl border border-[#2E7D47]/30 bg-[#16251C] space-y-2 text-center">
+                <div className="w-12 h-12 mx-auto rounded-full bg-[#2E7D47]/20 border border-[#2E7D47]/40 flex items-center justify-center text-[#48BB78]">
+                  <Mail className="w-6 h-6" />
+                </div>
+                <h3 className="text-sm font-bold text-white">Проверка электронной почты</h3>
+                <p className="text-xs text-[#9CA3AF]">
+                  Код подтверждения отправлен с Яндекс Почты на адрес <span className="font-semibold text-white">{email}</span>
+                </p>
+              </div>
+
+              {codeSentMsg && (
+                <div className="p-2.5 rounded-xl bg-[#2E7D47]/10 border border-[#2E7D47]/25 text-xs text-[#48BB78] flex items-center space-x-2">
+                  <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
+                  <span>{codeSentMsg}</span>
+                </div>
+              )}
+
+              {devCodeNotice && (
+                <div className="p-3 rounded-xl bg-[#F59E0B]/10 border border-[#F59E0B]/30 text-xs text-[#FBBF24] space-y-1">
+                  <div className="font-semibold flex items-center space-x-1.5">
+                    <Sparkles className="w-4 h-4 flex-shrink-0" />
+                    <span>Тестовый режим (Яндекс SMTP)</span>
+                  </div>
+                  <div>Код подтверждения: <span className="font-mono font-bold text-white bg-black/40 px-2 py-0.5 rounded">{devCodeNotice}</span></div>
+                  <div className="text-[11px] opacity-80">Для реальной отправки укажите пароль приложения в .env</div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-medium text-[#8E9E94] mb-1.5 text-center">
+                  Введите 6-значный проверочный код
+                </label>
+                <div className="relative max-w-xs mx-auto">
+                  <input
+                    type="text"
+                    required
+                    autoFocus
+                    maxLength={6}
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
+                    placeholder="123456"
+                    className="w-full text-center tracking-[0.4em] text-2xl font-mono font-bold py-2.5 rounded-xl border border-white/[0.15] bg-[#1D2E24] text-white focus:border-[#48BB78] outline-none transition-all"
+                  />
+                </div>
+                <p className="text-[11px] text-center text-[#8E9E94] mt-1.5">
+                  Срок действия кода: 15 минут
+                </p>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || verificationCode.length < 6}
+                className="w-full py-2.5 rounded-xl bg-[#2E7D47] hover:bg-[#25663A] disabled:opacity-50 text-white text-sm font-semibold transition-colors shadow-sm flex items-center justify-center space-x-1.5 cursor-pointer active:scale-95"
+              >
+                <span>{loading ? 'Проверка...' : 'Подтвердить и войти'}</span>
+                <CheckCircle2 className="w-4 h-4" />
+              </button>
+
+              <div className="pt-2 flex items-center justify-between text-xs text-[#8E9E94]">
+                <button
+                  type="button"
+                  onClick={() => setRegStep('form')}
+                  className="hover:text-white transition-colors flex items-center space-x-1 cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Назад к данным</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={resendCountdown > 0 || loading}
+                  onClick={handleResendRegisterCode}
+                  className="hover:text-white transition-colors disabled:opacity-50 flex items-center space-x-1 cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                  <span>
+                    {resendCountdown > 0
+                      ? `Повтор через ${resendCountdown}с`
+                      : 'Отправить код снова'}
+                  </span>
+                </button>
+              </div>
+            </form>
           ) : (
-            <form onSubmit={handleRegister} className="space-y-4">
+            <form onSubmit={handleRequestRegisterCode} className="space-y-4">
               {/* Avatar Preset Picker in Register */}
               <div className="p-3 rounded-xl border border-white/[0.06] bg-black/20 flex items-center space-x-3">
                 <img
@@ -462,8 +620,8 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                 disabled={loading}
                 className="w-full py-2.5 rounded-xl bg-[#4A6751] hover:bg-[#3D5643] text-white text-sm font-semibold transition-colors shadow-sm flex items-center justify-center space-x-1.5 cursor-pointer active:scale-95"
               >
-                <span>{loading ? 'Создание...' : 'Зарегистрировать'}</span>
-                <CheckCircle2 className="w-4 h-4" />
+                <span>{loading ? 'Отправка кода...' : 'Получить проверочный код'}</span>
+                <ArrowRight className="w-4 h-4" />
               </button>
             </form>
           )}

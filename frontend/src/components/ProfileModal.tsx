@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api } from '../api';
 import { User } from '../types';
 import {
@@ -13,7 +13,10 @@ import {
   MapPin,
   ShieldCheck,
   Camera,
-  LogOut
+  LogOut,
+  RefreshCw,
+  Sparkles,
+  KeyRound
 } from 'lucide-react';
 
 interface ProfileModalProps {
@@ -52,11 +55,66 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [qualifications, setQualifications] = useState<string[]>(currentUser.qualifications || []);
   const [avatarUrl, setAvatarUrl] = useState(currentUser.avatar_url || AVATAR_PRESETS[0]);
   const [newPassword, setNewPassword] = useState('');
-  const [confirmDelete, setConfirmDelete] = useState(false);
   const [loading, setLoading] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Account deletion verification code states
+  const [deleteStep, setDeleteStep] = useState<'initial' | 'code'>('initial');
+  const [deleteCode, setDeleteCode] = useState('');
+  const [deleteDevCode, setDeleteDevCode] = useState<string | null>(null);
+  const [deleteCountdown, setDeleteCountdown] = useState(0);
+  const [sendingDeleteCode, setSendingDeleteCode] = useState(false);
+
+  useEffect(() => {
+    let timer: any;
+    if (deleteCountdown > 0) {
+      timer = setInterval(() => {
+        setDeleteCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [deleteCountdown]);
+
+  const handleRequestDeleteCode = async () => {
+    setErrorMsg(null);
+    setSendingDeleteCode(true);
+    try {
+      const res = await api.sendDeleteCode();
+      if (res.dev_code) {
+        setDeleteDevCode(res.dev_code);
+      } else {
+        setDeleteDevCode(null);
+      }
+      setDeleteStep('code');
+      setDeleteCountdown(60);
+      setSuccessMsg(`Код подтверждения отправлен с Яндекс Почты на ${currentUser.email}`);
+      setTimeout(() => setSuccessMsg(null), 4000);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Ошибка отправки кода подтверждения');
+    } finally {
+      setSendingDeleteCode(false);
+    }
+  };
+
+  const handleConfirmDeleteAccount = async () => {
+    const cleanCode = deleteCode.trim();
+    if (!cleanCode) {
+      setErrorMsg('Введите 6-значный проверочный код из письма');
+      return;
+    }
+
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      await api.confirmDeleteAccount(cleanCode);
+      onProfileDeleted();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Неверный или просроченный проверочный код');
+      setLoading(false);
+    }
+  };
 
   const toggleQual = (q: string) => {
     if (qualifications.includes(q)) {
@@ -113,21 +171,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     }
   };
 
-  const handleDeleteAccount = async () => {
-    if (!confirmDelete) {
-      setConfirmDelete(true);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await api.deleteProfile();
-      onProfileDeleted();
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Ошибка удаления аккаунта');
-      setLoading(false);
-    }
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
@@ -338,23 +381,93 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             <label className="block text-xs font-semibold text-[#FF453A] uppercase tracking-wider">
               Опасная зона
             </label>
-            <div className="p-3.5 rounded-xl border border-[#FF453A]/20 bg-[#FF453A]/[0.06] flex items-center justify-between">
-              <div>
-                <div className="font-semibold text-white">Удаление профиля</div>
-                <div className="text-[11px] text-[#8E9E94]">
-                  Безвозвратное удаление аккаунта из базы данных
+
+            {deleteStep === 'initial' ? (
+              <div className="p-3.5 rounded-xl border border-[#FF453A]/20 bg-[#FF453A]/[0.06] flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-white">Удаление профиля</div>
+                  <div className="text-[11px] text-[#8E9E94]">
+                    Для удаления потребуется подтверждение через проверочный код из Яндекс Почты
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={sendingDeleteCode}
+                  onClick={handleRequestDeleteCode}
+                  className="px-3 py-1.5 rounded-xl bg-[#FF453A] hover:bg-[#FF453A]/90 disabled:opacity-50 text-white font-semibold transition-all flex items-center space-x-1.5 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{sendingDeleteCode ? 'Отправка кода...' : 'Удалить аккаунт'}</span>
+                </button>
+              </div>
+            ) : (
+              <div className="p-4 rounded-xl border border-[#FF453A]/40 bg-[#2D1515] space-y-3">
+                <div className="flex items-start space-x-2.5">
+                  <AlertCircle className="w-5 h-5 text-[#FF453A] flex-shrink-0 mt-0.5" />
+                  <div>
+                    <div className="font-bold text-white text-xs">Подтверждение удаления аккаунта</div>
+                    <div className="text-[11px] text-[#D1D5DB] mt-0.5">
+                      Код подтверждения отправлен с Яндекс Почты на <span className="text-white font-semibold">{currentUser.email}</span>. Введите 6 цифр для подтверждения:
+                    </div>
+                  </div>
+                </div>
+
+                {deleteDevCode && (
+                  <div className="p-2.5 rounded-lg bg-[#F59E0B]/10 border border-[#F59E0B]/30 text-[11px] text-[#FBBF24]">
+                    Тестовый код: <span className="font-mono font-bold text-white bg-black/40 px-1.5 py-0.5 rounded">{deleteDevCode}</span> (Яндекс SMTP не настроен в .env)
+                  </div>
+                )}
+
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    maxLength={6}
+                    autoFocus
+                    value={deleteCode}
+                    onChange={(e) => setDeleteCode(e.target.value.replace(/\D/g, ''))}
+                    placeholder="123456"
+                    className="w-36 text-center tracking-[0.3em] font-mono font-bold text-base py-1.5 px-3 rounded-lg border border-white/[0.2] bg-black/40 text-white outline-none focus:border-[#FF453A]"
+                  />
+                  <button
+                    type="button"
+                    disabled={loading || deleteCode.length < 6}
+                    onClick={handleConfirmDeleteAccount}
+                    className="px-4 py-1.5 rounded-lg bg-[#FF453A] hover:bg-[#FF453A]/90 disabled:opacity-50 text-white font-semibold text-xs transition-all flex items-center space-x-1.5 cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>{loading ? 'Удаление...' : 'Подтвердить удаление'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeleteStep('initial');
+                      setDeleteCode('');
+                    }}
+                    className="px-3 py-1.5 rounded-lg border border-white/[0.1] hover:bg-white/[0.05] text-[#9CA3AF] text-xs transition-colors cursor-pointer"
+                  >
+                    Отмена
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-[#8E9E94] pt-1 border-t border-white/[0.06]">
+                  <span>Срок действия кода: 15 минут</span>
+                  <button
+                    type="button"
+                    disabled={deleteCountdown > 0 || sendingDeleteCode}
+                    onClick={handleRequestDeleteCode}
+                    className="hover:text-white transition-colors disabled:opacity-50 flex items-center space-x-1 cursor-pointer"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${sendingDeleteCode ? 'animate-spin' : ''}`} />
+                    <span>
+                      {deleteCountdown > 0
+                        ? `Повтор через ${deleteCountdown}с`
+                        : 'Отправить код снова'}
+                    </span>
+                  </button>
                 </div>
               </div>
-
-              <button
-                type="button"
-                onClick={handleDeleteAccount}
-                className="px-3 py-1.5 rounded-xl bg-[#FF453A] hover:bg-[#FF453A]/90 text-white font-semibold transition-all flex items-center space-x-1.5"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>{confirmDelete ? 'Подтвердить удаление' : 'Удалить аккаунт'}</span>
-              </button>
-            </div>
+            )}
           </div>
 
           {/* Footer Save & Logout Buttons */}

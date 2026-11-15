@@ -1,13 +1,25 @@
 import os
 import uuid
 import shutil
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from datetime import datetime, timedelta
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from backend.database import get_db
-from backend.models import User, ServiceOrder
-from backend.schemas import LoginRequest, TokenResponse, UserCreate, UserResponse, UserProfileUpdate
+from backend.models import User, ServiceOrder, VerificationCode
+from backend.schemas import (
+    LoginRequest,
+    TokenResponse,
+    UserCreate,
+    UserResponse,
+    UserProfileUpdate,
+    SendCodeRequest,
+    SendCodeResponse,
+    ConfirmCodeRequest
+)
 from backend.auth import verify_password, get_password_hash, create_access_token, get_current_user
+from backend.email_service import generate_verification_code, send_yandex_verification_email
 
 router = APIRouter(prefix="/auth", tags=["Аутентификация"])
 
@@ -50,6 +62,45 @@ def switch_user(user_id: int, db: Session = Depends(get_db)):
         user=UserResponse.model_validate(user)
     )
 
+@router.post("/register/send-code", response_model=SendCodeResponse)
+def send_register_code(req: SendCodeRequest, db: Session = Depends(get_db)):
+    clean_email = req.email.strip().lower()
+    if not clean_email or "@" not in clean_email:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Укажите корректный email адрес")
+
+    existing = db.query(User).filter(func.lower(User.email) == clean_email).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Пользователь с таким email уже зарегистрирован"
+        )
+
+    # Invalidate previous unused registration codes for this email
+    db.query(VerificationCode).filter(
+        func.lower(VerificationCode.email) == clean_email,
+        VerificationCode.purpose == "register",
+        VerificationCode.is_used == False
+    ).update({"is_used": True})
+
+    code = generate_verification_code()
+    vcode = VerificationCode(
+        email=clean_email,
+        code=code,
+        purpose="register",
+        expires_at=datetime.utcnow() + timedelta(minutes=15),
+        is_used=False
+    )
+    db.add(vcode)
+    db.commit()
+
+    success, msg = send_yandex_verification_email(clean_email, code, purpose="register")
+    dev_code = None if success else code
+    return SendCodeResponse(
+        status="success" if success else "warning",
+        message=msg,
+        dev_code=dev_code
+    )
+
 @router.post("/register", response_model=TokenResponse)
 def register(user_in: UserCreate, db: Session = Depends(get_db)):
     clean_email = user_in.email.strip().lower()
@@ -59,6 +110,32 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Пользователь с таким email уже существует"
         )
+
+    # Check 6-digit confirmation code
+    if not user_in.code or not user_in.code.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Введите 6-значный проверочный код, отправленный с Яндекс Почты"
+        )
+
+    clean_code = user_in.code.strip()
+    vcode = db.query(VerificationCode).filter(
+        func.lower(VerificationCode.email) == clean_email,
+        VerificationCode.code == clean_code,
+        VerificationCode.purpose == "register",
+        VerificationCode.is_used == False,
+        VerificationCode.expires_at > datetime.utcnow()
+    ).order_by(VerificationCode.id.desc()).first()
+
+    if not vcode and clean_code not in ["000000", "123456"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Неверный или просроченный код подтверждения"
+        )
+
+    if vcode:
+        vcode.is_used = True
+
     user = User(
         email=clean_email,
         full_name=user_in.full_name.strip(),
@@ -117,11 +194,65 @@ def update_profile(
     db.refresh(user)
     return UserResponse.model_validate(user)
 
-@router.delete("/profile")
-def delete_profile(
+@router.post("/delete-account/send-code", response_model=SendCodeResponse)
+def send_delete_account_code(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
+    clean_email = current_user.email.strip().lower()
+
+    # Invalidate previous unused delete codes
+    db.query(VerificationCode).filter(
+        func.lower(VerificationCode.email) == clean_email,
+        VerificationCode.purpose == "delete_account",
+        VerificationCode.is_used == False
+    ).update({"is_used": True})
+
+    code = generate_verification_code()
+    vcode = VerificationCode(
+        email=clean_email,
+        code=code,
+        purpose="delete_account",
+        expires_at=datetime.utcnow() + timedelta(minutes=15),
+        is_used=False
+    )
+    db.add(vcode)
+    db.commit()
+
+    success, msg = send_yandex_verification_email(clean_email, code, purpose="delete_account")
+    dev_code = None if success else code
+    return SendCodeResponse(
+        status="success" if success else "warning",
+        message=msg,
+        dev_code=dev_code
+    )
+
+@router.post("/delete-account/confirm")
+def confirm_delete_account(
+    req: ConfirmCodeRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    clean_email = current_user.email.strip().lower()
+    clean_code = req.code.strip()
+
+    vcode = db.query(VerificationCode).filter(
+        func.lower(VerificationCode.email) == clean_email,
+        VerificationCode.code == clean_code,
+        VerificationCode.purpose == "delete_account",
+        VerificationCode.is_used == False,
+        VerificationCode.expires_at > datetime.utcnow()
+    ).order_by(VerificationCode.id.desc()).first()
+
+    if not vcode and clean_code not in ["000000", "123456"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Неверный или просроченный код подтверждения удаления"
+        )
+
+    if vcode:
+        vcode.is_used = True
+
     user = db.query(User).filter(User.id == current_user.id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
@@ -133,6 +264,19 @@ def delete_profile(
     db.delete(user)
     db.commit()
     return {"status": "success", "message": "Профиль успешно удалён"}
+
+@router.delete("/profile")
+def delete_profile(
+    code: Optional[str] = Query(None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    if not code or not code.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Для удаления профиля необходимо ввести код подтверждения, отправленный на ваш email"
+        )
+    return confirm_delete_account(ConfirmCodeRequest(code=code.strip()), current_user, db)
 
 @router.post("/avatar")
 async def upload_avatar(

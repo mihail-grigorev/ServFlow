@@ -34,6 +34,13 @@ class Settings(BaseSettings):
         "*"
     ]
 
+    # Yandex Mail SMTP settings for verification codes
+    YANDEX_SMTP_HOST: str = os.getenv("YANDEX_SMTP_HOST", "smtp.yandex.ru")
+    YANDEX_SMTP_PORT: int = int(os.getenv("YANDEX_SMTP_PORT", "465"))
+    YANDEX_SMTP_USER: str = os.getenv("YANDEX_SMTP_USER", "")
+    YANDEX_SMTP_PASSWORD: str = os.getenv("YANDEX_SMTP_PASSWORD", "")
+    YANDEX_SMTP_FROM_NAME: str = os.getenv("YANDEX_SMTP_FROM_NAME", "ServFlow")
+
     class Config:
         env_file = ".env"
         extra = "allow"
