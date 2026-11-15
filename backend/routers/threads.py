@@ -15,6 +15,7 @@ from backend.rules_engine import RulesEngine
 from backend.ai_service import AIService
 from backend.seed import get_company_id_for_client
 from backend.rate_limiter import check_company_message_limit, check_company_thread_limit
+from backend.analytics import track_event
 
 logger = logging.getLogger(__name__)
 
@@ -376,6 +377,14 @@ def create_thread(
 
     db.commit()
     db.refresh(thread)
+    track_event(
+        "thread_created",
+        thread_id=thread.id,
+        user_id=current_user.id if current_user else None,
+        company_id=thread.company_id,
+        payload={"client_name": thread.client_name, "channel": thread.channel},
+        db=db
+    )
     return ClientThreadResponse.model_validate(thread)
 
 @router.get("/{thread_id}", response_model=ClientThreadResponse)
@@ -683,6 +692,14 @@ def simulate_customer_message(
     thread.last_activity = msg_time
     db.commit()
     db.refresh(thread)
+    track_event(
+        "thread_created",
+        thread_id=thread.id,
+        user_id=None,
+        company_id=thread.company_id,
+        payload={"client_name": thread.client_name, "channel": thread.channel, "simulated": True},
+        db=db
+    )
 
     return ClientThreadResponse.model_validate(thread)
 

@@ -7,7 +7,9 @@ import {
   ServiceOrder,
   AIAnalysisResult,
   ReservedPartItem,
-  DemoCompanyItem
+  DemoCompanyItem,
+  AnalyticsSummary,
+  AnalyticsTimeseries
 } from './types';
 
 const API_BASE = '/api';
@@ -453,6 +455,21 @@ export const api = {
 
   resetDemoData: async (): Promise<{ status: string; message: string }> => {
     return request<{ status: string; message: string }>('/demo/reset-data', {
+      method: 'POST',
+    });
+  },
+
+  // Analytics
+  getAnalyticsSummary: async (): Promise<AnalyticsSummary> => {
+    return request<AnalyticsSummary>('/analytics/summary');
+  },
+
+  getAnalyticsTimeseries: async (): Promise<AnalyticsTimeseries> => {
+    return request<AnalyticsTimeseries>('/analytics/timeseries');
+  },
+
+  triggerAnalyticsSync: async (): Promise<{ status: string; synced_count: number }> => {
+    return request<{ status: string; synced_count: number }>('/analytics/sync', {
       method: 'POST',
     });
   },

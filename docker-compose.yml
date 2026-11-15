@@ -32,11 +32,28 @@ services:
       DEMO_MODE: ${DEMO_MODE:-true}
       DEMO_STAFF_PIN: ${DEMO_STAFF_PIN:-2026}
       PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8000}
+      CLICKHOUSE_URL: ${CLICKHOUSE_URL:-http://clickhouse:8123}
     ports:
       - "127.0.0.1:8000:8000"
     depends_on:
       db:
         condition: service_healthy
 
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3-alpine
+    container_name: kofeservice-clickhouse
+    profiles:
+      - analytics
+    ports:
+      - "127.0.0.1:8123:8123"
+      - "127.0.0.1:9000:9000"
+    environment:
+      CLICKHOUSE_DB: kofeservice
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    volumes:
+      - chdata:/var/lib/clickhouse
+
 volumes:
   pgdata:
+  chdata:

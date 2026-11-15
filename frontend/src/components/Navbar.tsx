@@ -12,13 +12,14 @@ import {
   ChevronDown,
   Package,
   Building,
-  Zap
+  Zap,
+  BarChart3
 } from 'lucide-react';
 
 interface NavbarProps {
   currentUser: User | null;
-  activeTab: 'dispatcher' | 'orders' | 'engineer' | 'warehouse' | 'company';
-  setActiveTab: (tab: 'dispatcher' | 'orders' | 'engineer' | 'warehouse' | 'company') => void;
+  activeTab: 'dispatcher' | 'orders' | 'engineer' | 'warehouse' | 'company' | 'analytics';
+  setActiveTab: (tab: 'dispatcher' | 'orders' | 'engineer' | 'warehouse' | 'company' | 'analytics') => void;
   onOpenResetModal: () => void;
   onOpenProfileModal: () => void;
   autoReplyEnabled?: boolean;
@@ -113,6 +114,18 @@ export const Navbar: React.FC<NavbarProps> = ({
                 >
                   <Package className="w-3.5 h-3.5" />
                   <span>Склад запчастей</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('analytics')}
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                    activeTab === 'analytics'
+                      ? 'bg-white text-black shadow-sm font-semibold'
+                      : 'text-[#9CA3AF] hover:text-white'
+                  }`}
+                >
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  <span>Аналитика</span>
                 </button>
               </>
             ) : currentUser.role === 'company' ? (

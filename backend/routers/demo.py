@@ -14,6 +14,7 @@ from backend.models import User, DemoQrToken
 from backend.auth import require_dispatcher, create_access_token
 from backend.audit import log_audit
 from backend.seed import reset_demo_data
+from backend.analytics import track_event
 
 router = APIRouter(prefix="/demo", tags=["demo"])
 
@@ -274,6 +275,13 @@ def exchange_qr_token(
         action="DEMO_QR_EXCHANGE",
         object=user.company_id,
         details={"uses": token_rec.uses, "max_uses": token_rec.max_uses}
+    )
+    track_event(
+        "qr_login",
+        user_id=user.id,
+        company_id=user.company_id,
+        payload={"uses": token_rec.uses, "company_name": user.full_name, "city": user.city},
+        db=db
     )
 
     return {

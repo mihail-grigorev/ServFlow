@@ -155,4 +155,42 @@ export interface DemoCompanyItem {
   max_uses: number;
 }
 
+export interface AnalyticsSummary {
+  avoided_empty_visits: number;
+  auto_handled_ratio: number;
+  total_threads: number;
+  auto_handled_threads: number;
+  ai_latency: {
+    p50_ms: number;
+    p95_ms: number;
+  };
+  rules_frequency: Record<string, number>;
+  parts_deficit: Array<{
+    code: string;
+    name: string;
+    moscow_free: number;
+    tula_free: number;
+    is_critical: boolean;
+  }>;
+  demo_requests_count: number;
+  qr_logins_count: number;
+  ch_active: boolean;
+}
+
+export interface AnalyticsTimeseries {
+  daily_trend: Array<{
+    date: string;
+    full_date: string;
+    tickets: number;
+    orders: number;
+    avg_latency_ms: number;
+  }>;
+  rules_distribution: Array<{
+    rule: string;
+    name: string;
+    count: number;
+  }>;
+}
+
+
 

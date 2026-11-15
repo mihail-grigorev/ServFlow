@@ -1,6 +1,7 @@
 import os
 import uuid
 import logging
+import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,7 +11,8 @@ from backend.config import settings
 from backend.database import init_db, SessionLocal
 from backend.models import User
 from backend.seed import seed_database
-from backend.routers import auth, equipment, parts, threads, orders, ai, seed, demo
+from backend.routers import auth, equipment, parts, threads, orders, ai, seed, demo, analytics
+from backend.analytics import init_clickhouse, clickhouse_sync_background_worker
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +42,22 @@ async def lifespan(app: FastAPI):
         logger.error(f"Ошибка проверки базы данных при старте: {e}")
     finally:
         db.close()
+
+    # Initialize ClickHouse analytics and start background sync worker if configured
+    sync_task = None
+    if settings.CLICKHOUSE_URL:
+        try:
+            init_clickhouse()
+            sync_task = asyncio.create_task(clickhouse_sync_background_worker())
+            logger.info("ClickHouse analytics sync worker started.")
+        except Exception as e:
+            logger.warning(f"Could not start ClickHouse worker: {e}")
     
     yield
+
+    if sync_task:
+        sync_task.cancel()
+
 
 # Security check B5: Swagger/OpenAPI docs exposed only in DEMO_MODE
 app = FastAPI(
@@ -107,6 +123,7 @@ app.include_router(orders.router, prefix=settings.API_PREFIX)
 app.include_router(ai.router, prefix=settings.API_PREFIX)
 app.include_router(seed.router, prefix=settings.API_PREFIX)
 app.include_router(demo.router, prefix=settings.API_PREFIX)
+app.include_router(analytics.router, prefix=settings.API_PREFIX)
 
 @app.get("/api/health")
 def health_check():

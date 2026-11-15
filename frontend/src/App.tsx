@@ -12,8 +12,9 @@ import { ProfileModal } from './components/ProfileModal';
 import { SparePartsInventoryView } from './components/SparePartsInventoryView';
 import { CompanyCabinet } from './components/CompanyCabinet';
 import { DemoQrModal } from './components/DemoQrModal';
+import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 
-type TabType = 'dispatcher' | 'orders' | 'engineer' | 'warehouse' | 'company';
+type TabType = 'dispatcher' | 'orders' | 'engineer' | 'warehouse' | 'company' | 'analytics';
 
 function getValidTabForRole(role?: string, tab?: string | null): TabType {
   if (role === 'engineer') {
@@ -24,7 +25,7 @@ function getValidTabForRole(role?: string, tab?: string | null): TabType {
     return 'company';
   }
   // dispatcher or default
-  if (tab === 'orders' || tab === 'warehouse') return tab;
+  if (tab === 'orders' || tab === 'warehouse' || tab === 'analytics') return tab;
   return 'dispatcher';
 }
 
@@ -295,6 +296,10 @@ export function App() {
 
           {activeTab === 'warehouse' && currentUser.role === 'dispatcher' && (
             <SparePartsInventoryView partsList={allParts} />
+          )}
+
+          {activeTab === 'analytics' && currentUser.role === 'dispatcher' && (
+            <AnalyticsDashboard />
           )}
 
           {activeTab === 'orders' && (currentUser.role === 'dispatcher' || currentUser.role === 'company') && (
