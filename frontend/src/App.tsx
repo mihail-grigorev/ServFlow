@@ -271,6 +271,7 @@ export function App() {
               allEquipment={allEquipment}
               allParts={allParts}
               autoReplyEnabled={autoReplyEnabled}
+              onNavigateToOrders={() => handleSetActiveTab('orders')}
             />
           )}
 

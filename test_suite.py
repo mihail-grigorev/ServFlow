@@ -14,6 +14,9 @@ token = r.json()['access_token']
 headers = {'Authorization': f'Bearer {token}'}
 print('2. Dispatcher login passed, user:', r.json()['user']['full_name'])
 
+# Ensure clean seed state before test assertions
+requests.post(f'{BASE}/api/seed/reset', headers=headers)
+
 # Get demo users dynamically
 r_users = requests.get(f'{BASE}/api/auth/demo-users', headers=headers)
 demo_users = r_users.json()

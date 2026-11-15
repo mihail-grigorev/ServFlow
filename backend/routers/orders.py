@@ -1,8 +1,10 @@
 from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, func
+from sqlalchemy.exc import IntegrityError
 from backend.config import settings
 from backend.database import get_db
 from backend.models import ServiceOrder, ClientThread, SparePart, Equipment, User, Message
@@ -177,8 +179,40 @@ def create_order(
     db: Session = Depends(get_db)
 ):
     """
-    Creates a new service order and reserves requested spare parts.
+    Creates a new service order and reserves requested spare parts atomically.
+    Implements Section 4 Duplicate Dispatch Prevention:
+    - Locks thread row (FOR UPDATE)
+    - Returns HTTP 409 Conflict if an active order already exists for this thread
+    - Locks spare parts and validates stock before reservation (HTTP 409 if insufficient)
+    - Atomically updates thread status to 'order_created'
     """
+    bind = db.get_bind()
+    is_sqlite = bind.dialect.name == "sqlite" if bind else True
+
+    # 1. Thread concurrency check & row locking
+    thread = None
+    if order_in.thread_id:
+        thread_query = db.query(ClientThread).filter(ClientThread.id == order_in.thread_id)
+        if not is_sqlite:
+            thread_query = thread_query.with_for_update()
+        thread = thread_query.first()
+
+        # Check for active (non-cancelled) existing order
+        existing_active = db.query(ServiceOrder).filter(
+            ServiceOrder.thread_id == order_in.thread_id,
+            ServiceOrder.status.notin_(["Отменен", "Отменён"])
+        ).first()
+
+        if existing_active:
+            return JSONResponse(
+                status_code=status.HTTP_409_CONFLICT,
+                content={
+                    "detail": f"По этому обращению уже сформирована заявка №{existing_active.order_number}",
+                    "order_id": existing_active.id,
+                    "order_number": existing_active.order_number
+                }
+            )
+
     # Look for equipment if code or serial provided
     equipment = None
     if order_in.equipment_code:
@@ -186,18 +220,36 @@ def create_order(
     if not equipment and order_in.serial_number:
         equipment = db.query(Equipment).filter(Equipment.serial_number == order_in.serial_number).first()
 
-    # Reserve parts
+    # 2. Atomic spare parts stock verification & reservation
     reserved_parts_json = []
     if order_in.reserved_parts:
         for item in order_in.reserved_parts:
-            part = db.query(SparePart).filter(SparePart.code == item.code).first()
+            part_query = db.query(SparePart).filter(SparePart.code == item.code)
+            if not is_sqlite:
+                part_query = part_query.with_for_update()
+            part = part_query.first()
             if not part:
                 continue
 
             qty = max(1, min(10, item.quantity))
-            city = str(item.source_city).strip().lower()
+            city = str(item.source_city or "Москва").strip().lower()
+            is_moscow = "москва" in city
 
-            if "москва" in city:
+            if is_moscow:
+                free = (part.moscow_stock or 0) - (part.moscow_reserved or 0)
+            else:
+                free = (part.tula_stock or 0) - (part.tula_reserved or 0)
+
+            if free < qty:
+                db.rollback()
+                return JSONResponse(
+                    status_code=status.HTTP_409_CONFLICT,
+                    content={
+                        "detail": f"Недостаточно деталей на складе ({part.name} [{part.code}]: свободно {free}, запрошено {qty})"
+                    }
+                )
+
+            if is_moscow:
                 part.moscow_reserved = (part.moscow_reserved or 0) + qty
             else:
                 part.tula_reserved = (part.tula_reserved or 0) + qty
@@ -210,13 +262,9 @@ def create_order(
                 "transfer_required": item.transfer_required
             })
 
-    existing_order = None
-    if order_in.thread_id:
-        existing_order = db.query(ServiceOrder).filter(ServiceOrder.thread_id == order_in.thread_id).first()
-
     # Automatic 40-day warranty verification (Rule П-9)
     order_is_warranty = order_in.is_warranty
-    order_warranty_reason = order_warranty_reason = order_in.warranty_reason
+    order_warranty_reason = order_in.warranty_reason
     if not order_is_warranty and equipment:
         from backend.rules_engine import RulesEngine
         is_warr, warr_reason = RulesEngine.check_warranty(
@@ -243,60 +291,57 @@ def create_order(
     company_id = get_company_id_for_client(order_in.client_name)
     order_created_at = datetime.utcnow()
 
-    if existing_order:
-        existing_order.client_name = order_in.client_name
-        existing_order.company_id = company_id
-        existing_order.equipment_id = equipment.id if equipment else existing_order.equipment_id
-        existing_order.equipment_code = order_in.equipment_code or (equipment.code if equipment else existing_order.equipment_code)
-        existing_order.address = order_in.address or existing_order.address
-        existing_order.model = order_in.model or existing_order.model
-        existing_order.serial_number = order_in.serial_number or existing_order.serial_number
-        existing_order.symptom = order_in.symptom or existing_order.symptom
-        existing_order.client_assumption = order_in.client_assumption
-        existing_order.is_warranty = order_is_warranty
-        existing_order.warranty_reason = order_warranty_reason
-        existing_order.is_sales_transfer = order_in.is_sales_transfer
-        existing_order.status = "Назначен" if order_in.engineer_id else ("В работе" if existing_order.status == "В работе" else "Создана")
-        existing_order.engineer_id = order_in.engineer_id
-        if reserved_parts_json:
-            existing_order.reserved_parts = reserved_parts_json
-        existing_order.updated_at = datetime.utcnow()
-        order = existing_order
-    else:
-        today_str = datetime.utcnow().strftime("%Y%m%d")
-        count = db.query(ServiceOrder).count() + 1
-        order_number = f"ORD-{today_str}-{count:03d}"
-        order = ServiceOrder(
-            order_number=order_number,
-            thread_id=order_in.thread_id,
-            client_name=order_in.client_name,
-            company_id=company_id,
-            equipment_id=equipment.id if equipment else None,
-            equipment_code=order_in.equipment_code or (equipment.code if equipment else None),
-            address=order_in.address,
-            model=order_in.model,
-            serial_number=order_in.serial_number,
-            symptom=order_in.symptom,
-            client_assumption=order_in.client_assumption,
-            is_warranty=order_is_warranty,
-            warranty_reason=order_warranty_reason,
-            is_sales_transfer=order_in.is_sales_transfer,
-            status="Назначен" if order_in.engineer_id else "Создана",
-            engineer_id=order_in.engineer_id,
-            reserved_parts=reserved_parts_json,
-            created_by_id=current_user.id,
-            created_at=order_created_at
+    today_str = datetime.utcnow().strftime("%Y%m%d")
+    count = db.query(ServiceOrder).count() + 1
+    order_number = f"ORD-{today_str}-{count:03d}"
+
+    order = ServiceOrder(
+        order_number=order_number,
+        thread_id=order_in.thread_id,
+        client_name=order_in.client_name,
+        company_id=company_id,
+        equipment_id=equipment.id if equipment else None,
+        equipment_code=order_in.equipment_code or (equipment.code if equipment else None),
+        address=order_in.address,
+        model=order_in.model,
+        serial_number=order_in.serial_number,
+        symptom=order_in.symptom,
+        client_assumption=order_in.client_assumption,
+        is_warranty=order_is_warranty,
+        warranty_reason=order_warranty_reason,
+        is_sales_transfer=order_in.is_sales_transfer,
+        status="Назначен" if order_in.engineer_id else "Создана",
+        engineer_id=order_in.engineer_id,
+        reserved_parts=reserved_parts_json,
+        created_by_id=current_user.id,
+        created_at=order_created_at
+    )
+    db.add(order)
+
+    # Atomically update thread status to 'order_created'
+    if thread:
+        thread.status = "order_created"
+
+    try:
+        db.commit()
+        db.refresh(order)
+    except IntegrityError:
+        db.rollback()
+        existing_active = db.query(ServiceOrder).filter(
+            ServiceOrder.thread_id == order_in.thread_id,
+            ServiceOrder.status.notin_(["Отменен", "Отменён"])
+        ).first()
+        order_num = existing_active.order_number if existing_active else "—"
+        order_id = existing_active.id if existing_active else None
+        return JSONResponse(
+            status_code=status.HTTP_409_CONFLICT,
+            content={
+                "detail": f"По этому обращению уже сформирована заявка №{order_num}",
+                "order_id": order_id,
+                "order_number": order_num
+            }
         )
-        db.add(order)
 
-    # Update associated thread status if present
-    if order_in.thread_id:
-        thread = db.query(ClientThread).filter(ClientThread.id == order_in.thread_id).first()
-        if thread:
-            thread.status = "order_created"
-
-    db.commit()
-    db.refresh(order)
     log_audit(db, action="order_create", user_id=current_user.id, object=order.order_number, details={"order_id": order.id})
     return ServiceOrderResponse.model_validate(order)
 

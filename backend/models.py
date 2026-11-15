@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlalchemy import (
-    Column, Integer, String, Boolean, DateTime, Text, ForeignKey, JSON
+    Column, Integer, String, Boolean, DateTime, Text, ForeignKey, JSON, Index, text
 )
 from sqlalchemy.orm import relationship
 from backend.database import Base
@@ -102,6 +102,15 @@ class Message(Base):
 
 class ServiceOrder(Base):
     __tablename__ = "service_orders"
+    __table_args__ = (
+        Index(
+            "uq_orders_active_thread",
+            "thread_id",
+            unique=True,
+            postgresql_where=text("status NOT IN ('Отменен', 'Отменён') AND thread_id IS NOT NULL"),
+            sqlite_where=text("status NOT IN ('Отменен', 'Отменён') AND thread_id IS NOT NULL")
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     order_number = Column(String(100), unique=True, index=True, nullable=False)
