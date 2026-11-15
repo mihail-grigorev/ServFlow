@@ -132,17 +132,87 @@ class RulesEngine:
         return (False, None)
 
     @staticmethod
+    @staticmethod
+    def normalize_client_name(name: Optional[str]) -> str:
+        if not name:
+            return ""
+        s = name.lower().replace("ё", "е")
+        for char in ['«', '»', '"', "'", '“', '”', '„', '`', '—', '-', '–', '.', ',']:
+            s = s.replace(char, " ")
+        import re
+        return re.sub(r'\s+', ' ', s).strip()
+
+    @staticmethod
+    def get_client_equipments(
+        client_name: str,
+        all_equipments: List[Any],
+        current_eq: Optional[Any] = None
+    ) -> List[Any]:
+        if not all_equipments:
+            return []
+
+        # If current equipment is already confirmed, match all machines for the same client
+        if current_eq:
+            eq_norm = RulesEngine.normalize_client_name(current_eq.client_name)
+            matched = [e for e in all_equipments if RulesEngine.normalize_client_name(e.client_name) == eq_norm]
+            if matched:
+                return matched
+
+        query_norm = RulesEngine.normalize_client_name(client_name)
+        if not query_norm:
+            return []
+
+        # 1. Exact normalized match
+        matched = [e for e in all_equipments if RulesEngine.normalize_client_name(e.client_name) == query_norm]
+        if matched:
+            return matched
+
+        # 2. Substring match
+        matched = [
+            e for e in all_equipments
+            if query_norm in RulesEngine.normalize_client_name(e.client_name) or RulesEngine.normalize_client_name(e.client_name) in query_norm
+        ]
+        if matched:
+            return matched
+
+        # 3. Token match by brand keywords (excluding generic coffee/shop words)
+        STOP_WORDS = {"кафе", "кофейня", "пекарня", "гостиница", "бар", "ресторан", "ооо", "зао", "пао", "ип", "клуб"}
+        query_tokens = {w for w in query_norm.split() if len(w) >= 3 and w not in STOP_WORDS}
+        if query_tokens:
+            matched = []
+            for e in all_equipments:
+                e_tokens = {w for w in RulesEngine.normalize_client_name(e.client_name).split() if len(w) >= 3 and w not in STOP_WORDS}
+                if query_tokens & e_tokens:
+                    matched.append(e)
+            if matched:
+                return matched
+
+        return []
+
+    @staticmethod
     def identify_equipment(
         client_name: str,
         text_content: str,
-        all_equipments: List[Any]
+        all_equipments: List[Any],
+        current_equipment_code: Optional[str] = None,
+        current_equipment_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """
         Rule П-1: identify specific machine.
-        If multiple machines belong to client (Кедр: 101/205; Зерно: 121/124), verify serial/address.
+        If multiple machines belong to client (Кедр: 101/205; Зерно: 121/124), verify serial/address/model.
         Rule П-2: identify if machine is not in registry (Ромашка #230; Север #270).
         """
-        matched = [eq for eq in all_equipments if eq.client_name.strip().lower() == client_name.strip().lower()]
+        # 0. If equipment was already explicitly linked to thread / selected
+        if current_equipment_code or current_equipment_id:
+            for eq in all_equipments:
+                if (current_equipment_code and eq.code == current_equipment_code) or (current_equipment_id and eq.id == current_equipment_id):
+                    return {
+                        "equipment": eq,
+                        "is_ambiguous": False,
+                        "is_unregistered": False,
+                        "reason": f"Оборудование зафиксировано в заявке: {eq.model} №{eq.serial_number} ({eq.code})."
+                    }
+
         text_lower = text_content.lower()
 
         # 1. Check for equipment code identifier (EQ01..EQ12, eq01..eq12)
@@ -183,7 +253,10 @@ class RulesEngine:
                 "reason": "Кофемашина с номером 270 в баре Гостиницы «Север» не числится в реестре договора (в договоре только №207). Правило П-2: передать менеджеру по продажам."
             }
 
-        # Check if address is mentioned (e.g. Садовая or Ленина for Зерно)
+        # Find all machines belonging to this client using robust matching
+        matched = RulesEngine.get_client_equipments(client_name, all_equipments)
+
+        # Check if address is mentioned (e.g. Садовая or Ленина for Зерно, Лесная for Кедр)
         if "садов" in text_lower:
             for eq in matched:
                 if "садовая" in eq.address.lower():
@@ -201,6 +274,18 @@ class RulesEngine:
                         "is_ambiguous": False,
                         "is_unregistered": False,
                         "reason": f"Идентифицирована по адресу {eq.address} (сер. №{eq.serial_number})."
+                    }
+
+        # Check if model is mentioned (C100, C200, C300 with Latin or Cyrillic 'C'/'С')
+        for model_num in ["100", "200", "300"]:
+            if f"c{model_num}" in text_lower or f"с{model_num}" in text_lower:
+                model_matched = [e for e in matched if model_num in e.model]
+                if len(model_matched) == 1:
+                    return {
+                        "equipment": model_matched[0],
+                        "is_ambiguous": False,
+                        "is_unregistered": False,
+                        "reason": f"Идентифицирована по указанной клиентом модели {model_matched[0].model} (сер. №{model_matched[0].serial_number}, {model_matched[0].address})."
                     }
 
         if len(matched) == 1:

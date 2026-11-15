@@ -96,7 +96,7 @@ export const ExcelResetModal: React.FC<ExcelResetModalProps> = ({
         {/* Content */}
         <div className="p-5 space-y-4 text-xs">
           {successMsg && (
-            <div className="p-3 rounded-xl bg-[#30D158]/15 border border-[#30D158]/25 flex items-center space-x-2 text-[#30D158] font-medium">
+            <div className="p-3 rounded-xl bg-[#2E7D47]/15 border border-[#2E7D47]/25 flex items-center space-x-2 text-[#48BB78] font-medium">
               <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
               <span>{successMsg}</span>
             </div>

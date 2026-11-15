@@ -73,7 +73,13 @@ async def auto_reply_all_threads(
             
             eq_info = {"equipment": eq, "is_ambiguous": False, "is_unregistered": False}
             if not eq:
-                eq_info = RulesEngine.identify_equipment(thread.client_name, full_client_text, all_eq)
+                eq_info = RulesEngine.identify_equipment(
+                    thread.client_name,
+                    full_client_text,
+                    all_eq,
+                    current_equipment_code=thread.equipment_code,
+                    current_equipment_id=thread.equipment_id
+                )
                 eq = eq_info.get("equipment")
                 if eq:
                     thread.equipment_id = eq.id
@@ -99,7 +105,9 @@ async def auto_reply_all_threads(
                     messages_text=messages_context,
                     all_equipments=all_eq,
                     all_parts=all_parts,
-                    thread_channel=thread.channel
+                    thread_channel=thread.channel,
+                    current_equipment_code=thread.equipment_code,
+                    current_equipment_id=thread.equipment_id
                 )
                 ai_reply = analysis.reply_to_client
                 if analysis.is_warranty and not thread.is_warranty:
@@ -413,7 +421,13 @@ async def add_message(
 
         eq_info = {"equipment": eq, "is_ambiguous": False, "is_unregistered": False}
         if not eq:
-            eq_info = RulesEngine.identify_equipment(thread.client_name, full_client_text, all_eq)
+            eq_info = RulesEngine.identify_equipment(
+                thread.client_name,
+                full_client_text,
+                all_eq,
+                current_equipment_code=thread.equipment_code,
+                current_equipment_id=thread.equipment_id
+            )
             eq = eq_info.get("equipment")
             if eq:
                 thread.equipment_id = eq.id
@@ -450,7 +464,9 @@ async def add_message(
                 messages_text=messages_context,
                 all_equipments=all_eq,
                 all_parts=all_parts,
-                thread_channel=thread.channel
+                thread_channel=thread.channel,
+                current_equipment_code=thread.equipment_code,
+                current_equipment_id=thread.equipment_id
             )
             ai_reply = analysis.reply_to_client
             if analysis.is_warranty and not thread.is_warranty:

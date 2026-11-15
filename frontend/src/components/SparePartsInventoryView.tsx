@@ -51,11 +51,11 @@ export const SparePartsInventoryView: React.FC<SparePartsInventoryViewProps> = (
         <div className="flex items-center space-x-3 text-xs">
           <div className="p-2.5 rounded-xl bg-black/30 border border-white/[0.06] text-center">
             <div className="text-[10px] text-[#8E9E94] uppercase font-semibold">Москва свободно</div>
-            <div className="text-sm font-bold text-[#30D158]">{totalMoscowFree} шт.</div>
+            <div className="text-sm font-bold text-[#48BB78]">{totalMoscowFree} шт.</div>
           </div>
           <div className="p-2.5 rounded-xl bg-black/30 border border-white/[0.06] text-center">
             <div className="text-[10px] text-[#8E9E94] uppercase font-semibold">Тула свободно</div>
-            <div className="text-sm font-bold text-[#30D158]">{totalTulaFree} шт.</div>
+            <div className="text-sm font-bold text-[#48BB78]">{totalTulaFree} шт.</div>
           </div>
         </div>
       </div>
@@ -143,7 +143,7 @@ export const SparePartsInventoryView: React.FC<SparePartsInventoryViewProps> = (
                       <span
                         className={`font-bold px-2 py-0.5 rounded-md text-[11px] ${
                           p.moscow_free > 0
-                            ? 'bg-[#30D158]/15 text-[#30D158]'
+                            ? 'bg-[#2E7D47]/15 text-[#48BB78]'
                             : 'bg-[#FF453A]/15 text-[#FF453A]'
                         }`}
                       >
@@ -160,7 +160,7 @@ export const SparePartsInventoryView: React.FC<SparePartsInventoryViewProps> = (
                       <span
                         className={`font-bold px-2 py-0.5 rounded-md text-[11px] ${
                           p.tula_free > 0
-                            ? 'bg-[#30D158]/15 text-[#30D158]'
+                            ? 'bg-[#2E7D47]/15 text-[#48BB78]'
                             : 'bg-[#FF453A]/15 text-[#FF453A]'
                         }`}
                       >
@@ -182,7 +182,7 @@ export const SparePartsInventoryView: React.FC<SparePartsInventoryViewProps> = (
                         </span>
                       ) : (
                         <span className="text-[#8E9E94] text-[11px] flex items-center space-x-1">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-[#30D158]" />
+                          <CheckCircle2 className="w-3.5 h-3.5 text-[#48BB78]" />
                           <span>В наличии на месте</span>
                         </span>
                       )}

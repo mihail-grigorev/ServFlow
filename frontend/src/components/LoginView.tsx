@@ -391,7 +391,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                       className={`w-full pl-9 pr-3 py-2 text-sm rounded-xl border bg-[#1D2E24] text-white outline-none transition-all ${
                         confirmPassword
                           ? password === confirmPassword
-                            ? 'border-[#30D158] focus:border-[#30D158]'
+                            ? 'border-[#2E7D47] focus:border-[#2E7D47]'
                             : 'border-[#FF453A] focus:border-[#FF453A]'
                           : 'border-white/[0.1] focus:border-[#6E9078]'
                       }`}
@@ -400,7 +400,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
                   {confirmPassword && (
                     <div className="mt-1 text-[11px] flex items-center space-x-1">
                       {password === confirmPassword ? (
-                        <span className="text-[#30D158] flex items-center space-x-1">
+                        <span className="text-[#48BB78] flex items-center space-x-1">
                           <CheckCircle2 className="w-3 h-3" />
                           <span>Пароли совпадают</span>
                         </span>
@@ -519,7 +519,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers 
             {/* 2. Engineers (All standard engineers, no senior) */}
             <div>
               <div className="text-[10px] font-semibold text-[#8E9E94] uppercase tracking-wider mb-1.5 flex items-center space-x-1">
-                <Wrench className="w-3 h-3 text-[#30D158]" />
+                <Wrench className="w-3 h-3 text-[#48BB78]" />
                 <span>Сервисные инженеры</span>
               </div>
               <div className="space-y-1.5">

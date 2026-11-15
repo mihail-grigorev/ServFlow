@@ -277,7 +277,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                     <span
                       className={`font-semibold px-2.5 py-1 rounded-full text-[11px] border ${
                         o.status === 'Выполнен'
-                          ? 'bg-[#30D158]/15 text-[#30D158] border-[#30D158]/25'
+                          ? 'bg-[#2E7D47]/15 text-[#48BB78] border-[#2E7D47]/25'
                           : o.status === 'На месте'
                           ? 'bg-[#FF9F0A]/15 text-[#FF9F0A] border-[#FF9F0A]/25'
                           : o.status === 'В пути'

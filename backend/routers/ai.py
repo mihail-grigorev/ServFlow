@@ -24,7 +24,9 @@ async def analyze_thread(thread_id: int, db: Session = Depends(get_db)):
         messages_text=messages_text,
         all_equipments=all_eq,
         all_parts=all_parts,
-        thread_channel=thread.channel
+        thread_channel=thread.channel,
+        current_equipment_code=thread.equipment_code,
+        current_equipment_id=thread.equipment_id
     )
     return result
 
@@ -58,7 +60,9 @@ async def generate_reply(req: AIReplyGenerateRequest, db: Session = Depends(get_
         messages_text=messages_text,
         all_equipments=all_eq,
         all_parts=all_parts,
-        thread_channel=thread.channel
+        thread_channel=thread.channel,
+        current_equipment_code=thread.equipment_code,
+        current_equipment_id=thread.equipment_id
     )
     return {"reply": analysis.reply_to_client, "rules_applied": analysis.rules_applied}
 

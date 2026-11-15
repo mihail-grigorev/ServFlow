@@ -155,7 +155,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
         {/* Notifications */}
         {successMsg && (
-          <div className="mx-5 mt-4 p-3 rounded-xl bg-[#30D158]/10 border border-[#30D158]/20 flex items-center space-x-2 text-xs text-[#30D158] font-medium">
+          <div className="mx-5 mt-4 p-3 rounded-xl bg-[#2E7D47]/10 border border-[#2E7D47]/20 flex items-center space-x-2 text-xs text-[#48BB78] font-medium">
             <CheckCircle2 className="w-4 h-4 flex-shrink-0" />
             <span>{successMsg}</span>
           </div>

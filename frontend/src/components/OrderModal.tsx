@@ -387,8 +387,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             </div>
 
             {warrantyNotice && (
-              <div className="p-3 rounded-xl bg-[#30D158]/15 border border-[#30D158]/30 text-[#30D158] flex items-start space-x-2">
-                <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#30D158]" />
+              <div className="p-3 rounded-xl bg-[#2E7D47]/15 border border-[#2E7D47]/30 text-[#48BB78] flex items-start space-x-2">
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0 mt-0.5 text-[#48BB78]" />
                 <div>
                   <span className="font-bold">Рекомендация: случай гарантийный (правило 40 дней): </span>
                   <p className="text-[#D8F3E5] mt-0.5">{warrantyNotice}</p>
@@ -397,7 +397,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             )}
 
             {isWarranty && (
-              <div className="p-3 rounded-xl bg-[#30D158]/15 border border-[#30D158]/30 text-[#30D158] flex items-start space-x-2">
+              <div className="p-3 rounded-xl bg-[#2E7D47]/15 border border-[#2E7D47]/30 text-[#48BB78] flex items-start space-x-2">
                 <ShieldAlert className="w-4 h-4 flex-shrink-0 mt-0.5" />
                 <div>
                   <span className="font-bold">Основание гарантии (Правило П-9): </span>
@@ -476,7 +476,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => {}}
-                        className="mt-0.5 rounded accent-[#30D158] text-[#30D158] focus:ring-[#30D158] bg-[#16171B]"
+                        className="mt-0.5 rounded accent-[#2E7D47] text-[#48BB78] focus:ring-[#2E7D47] bg-[#16171B]"
                       />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
@@ -486,7 +486,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                           <span
                             className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
                               localFree > 0
-                                ? 'bg-[#30D158]/15 text-[#30D158]'
+                                ? 'bg-[#2E7D47]/15 text-[#48BB78]'
                                 : transferReq
                                 ? 'bg-[#FF9F0A]/15 text-[#FF9F0A]'
                                 : 'bg-white/[0.06] text-[#8E9E94]'
@@ -536,8 +536,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     >
                       <div className="flex-1 min-w-0 pr-2">
                         {eng.is_recommended && (
-                          <div className="text-[10px] text-[#30D158] font-bold flex items-center space-x-1 mb-1">
-                            <Sparkles className="w-3 h-3 text-[#30D158] flex-shrink-0" />
+                          <div className="text-[10px] text-[#48BB78] font-bold flex items-center space-x-1 mb-1">
+                            <Sparkles className="w-3 h-3 text-[#48BB78] flex-shrink-0" />
                             <span className="truncate">{eng.recommendation_reason}</span>
                           </div>
                         )}
@@ -548,7 +548,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                             <span
                               className={`text-[10px] font-semibold px-1.5 py-0.2 rounded ${
                                 eng.active_orders === 0
-                                  ? 'bg-[#30D158]/20 text-[#30D158]'
+                                  ? 'bg-[#2E7D47]/20 text-[#48BB78]'
                                   : 'bg-[#FF9F0A]/20 text-[#FF9F0A]'
                               }`}
                             >
@@ -560,7 +560,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                         <div className="flex flex-wrap items-center gap-1 mt-1 text-[11px] text-[#8E9E94]">
                           <span>Допуски: {eng.qualifications.join(', ')}</span>
                           {hasModelQual ? (
-                            <span className="text-[#30D158] font-medium">(допущен)</span>
+                            <span className="text-[#48BB78] font-medium">(допущен)</span>
                           ) : (
                             <span className="text-[#FF453A] font-medium">(нет допуска к {model})</span>
                           )}
@@ -570,7 +570,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                             </span>
                           )}
                           {eng.symptom_match_count > 0 && (
-                            <span className="text-[#30D158] font-medium">
+                            <span className="text-[#48BB78] font-medium">
                               • опыт по симптому
                             </span>
                           )}
@@ -605,7 +605,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2.5 font-bold rounded-xl bg-[#30D158] hover:bg-[#28B84B] text-black shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer"
+              className="px-5 py-2.5 font-bold rounded-xl bg-[#2E7D47] hover:bg-[#256B3C] text-white shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer"
             >
               <span>{loading ? 'Сохранение...' : 'Подтвердить и назначить инженера'}</span>
               <CheckCircle2 className="w-4 h-4 text-black" />
