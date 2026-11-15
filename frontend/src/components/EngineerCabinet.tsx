@@ -40,7 +40,9 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
   const [threadLoading, setThreadLoading] = useState<boolean>(false);
   const [chatMessage, setChatMessage] = useState<string>('');
   const [sendingMessage, setSendingMessage] = useState<boolean>(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevOrderIdRef = useRef<number | null>(null);
+  const prevMsgCountRef = useRef<number>(0);
 
   const loadOrderThread = async (orderId: number) => {
     try {
@@ -67,8 +69,24 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
   }, [selectedOrder?.id]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [orderThread?.messages, activeView, engineerChatTab]);
+    const msgCount = orderThread?.messages?.length || 0;
+
+    if (selectedOrder?.id !== prevOrderIdRef.current) {
+      prevOrderIdRef.current = selectedOrder?.id ?? null;
+      prevMsgCountRef.current = msgCount;
+      if (chatScrollContainerRef.current) {
+        chatScrollContainerRef.current.scrollTop = chatScrollContainerRef.current.scrollHeight;
+      }
+    } else if (msgCount > prevMsgCountRef.current) {
+      prevMsgCountRef.current = msgCount;
+      if (chatScrollContainerRef.current) {
+        chatScrollContainerRef.current.scrollTo({
+          top: chatScrollContainerRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+    }
+  }, [orderThread?.messages, activeView, engineerChatTab, selectedOrder?.id]);
 
   const handleSendEngineerMessage = async (textToSend?: string) => {
     const text = (textToSend || chatMessage).trim();
@@ -569,7 +587,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                   </div>
 
                   {/* Messages Feed */}
-                  <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#111215]">
+                  <div ref={chatScrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#111215]">
                     {threadLoading && !orderThread && (
                       <div className="h-full flex items-center justify-center text-xs text-[#9CA3AF]">
                         Загрузка сообщений треда...
@@ -673,7 +691,6 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                         );
                       });
                     })()}
-                    <div ref={messagesEndRef} />
                   </div>
 
                   {/* Fast Prompts & Input Area - NO EMOJIS */}

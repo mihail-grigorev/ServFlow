@@ -62,11 +62,13 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [inputText, setInputText] = useState<string>('');
   const [sendingMsg, setSendingMsg] = useState<boolean>(false);
-  const [isAiSuggestionCollapsed, setIsAiSuggestionCollapsed] = useState<boolean>(false);
+  const [isAiSuggestionCollapsed, setIsAiSuggestionCollapsed] = useState<boolean>(true);
   const [newThreadIds, setNewThreadIds] = useState<Set<number>>(new Set());
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
   const initialThreadIdsRef = useRef<Set<number> | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevThreadIdRef = useRef<number | null>(null);
+  const prevMsgCountRef = useRef<number>(0);
 
   const loadOrders = async () => {
     try {
@@ -104,10 +106,27 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
     }
   }, [threads]);
 
-  // Auto-scroll chat to bottom when messages change
+  // Auto-scroll chat to bottom ONLY inside the internal chat feed (NEVER touching window scroll)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [selectedThreadId, threads]);
+    const thread = threads.find((t) => t.id === selectedThreadId);
+    const msgCount = thread?.messages?.length || 0;
+
+    if (selectedThreadId !== prevThreadIdRef.current) {
+      prevThreadIdRef.current = selectedThreadId;
+      prevMsgCountRef.current = msgCount;
+      if (chatScrollContainerRef.current) {
+        chatScrollContainerRef.current.scrollTop = chatScrollContainerRef.current.scrollHeight;
+      }
+    } else if (msgCount > prevMsgCountRef.current) {
+      prevMsgCountRef.current = msgCount;
+      if (chatScrollContainerRef.current) {
+        chatScrollContainerRef.current.scrollTo({
+          top: chatScrollContainerRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+    }
+  }, [selectedThreadId, threads, dispatcherChatTab]);
 
   // Periodic polling to receive new client messages in real-time
   useEffect(() => {
@@ -280,6 +299,12 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
       );
       setInputText('');
       await onRefreshThreads();
+      if (chatScrollContainerRef.current) {
+        chatScrollContainerRef.current.scrollTo({
+          top: chatScrollContainerRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
       if (dispatcherChatTab === 'client') {
         loadAiAnalysis(selectedThread.id);
       }
@@ -346,39 +371,39 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
   return (
     <div className="min-h-[calc(100vh-4rem)] lg:h-[calc(100vh-4rem)] flex flex-col p-3 sm:p-6 max-w-[1700px] mx-auto w-full text-[#F3F4F6]">
       {/* Mobile Top Navigation Segmented Tabs */}
-      <div className="lg:hidden flex items-center bg-[#16171B] p-1.5 rounded-2xl border border-white/[0.08] mb-3 gap-1 shadow-lg">
+      <div className="sticky top-16 z-30 lg:hidden flex items-center bg-[#16171B]/95 backdrop-blur-md p-1 rounded-2xl border border-white/[0.08] mb-3 gap-1 shadow-lg">
         <button
           type="button"
           onClick={() => setMobileTab('threads')}
-          className={`flex-1 py-2 px-1 text-xs font-semibold rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
+          className={`flex-1 py-2 px-1 text-xs font-semibold rounded-xl transition-all flex items-center justify-center space-x-1 cursor-pointer ${
             mobileTab === 'threads' ? 'bg-white text-black shadow-md' : 'text-neutral-400 hover:text-white'
           }`}
         >
-          <span>📋 Обращения ({sortedThreads.length})</span>
+          <span>Обращения ({sortedThreads.length})</span>
         </button>
         <button
           type="button"
           onClick={() => setMobileTab('chat')}
-          className={`flex-1 py-2 px-1 text-xs font-semibold rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
+          className={`flex-1 py-2 px-1 text-xs font-semibold rounded-xl transition-all flex items-center justify-center space-x-1 cursor-pointer ${
             mobileTab === 'chat' ? 'bg-white text-black shadow-md' : 'text-neutral-400 hover:text-white'
           }`}
         >
-          <span>💬 Чат {selectedThread ? `(#${selectedThread.thread_number})` : ''}</span>
+          <span>Чат {selectedThread ? `(#${selectedThread.thread_number})` : ''}</span>
         </button>
         <button
           type="button"
           onClick={() => setMobileTab('ai')}
-          className={`flex-1 py-2 px-1 text-xs font-semibold rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
+          className={`flex-1 py-2 px-1 text-xs font-semibold rounded-xl transition-all flex items-center justify-center space-x-1 cursor-pointer ${
             mobileTab === 'ai' ? 'bg-white text-black shadow-md' : 'text-neutral-400 hover:text-white'
           }`}
         >
-          <span>⚡ ИИ & Детали</span>
+          <span>Заявка & ИИ</span>
         </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-0">
         {/* ================= COLUMN 1 (LEFT): THREADS & QUICK ORDER ================= */}
-        <div className={`${mobileTab === 'threads' ? 'flex' : 'hidden'} lg:flex h-[calc(100vh-14rem)] lg:h-auto lg:col-span-3 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex-col min-h-0 overflow-hidden`}>
+        <div className={`${mobileTab === 'threads' ? 'flex' : 'hidden'} lg:flex h-[calc(100dvh-10.5rem)] min-h-[500px] lg:h-auto lg:col-span-3 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex-col min-h-0 overflow-hidden`}>
           <div className="p-3.5 border-b border-white/[0.06] space-y-2.5">
             <div className="flex items-center space-x-2">
               <button
@@ -534,7 +559,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
         </div>
 
         {/* ================= COLUMN 2 (CENTER): CHAT & AI ASSISTANT ================= */}
-        <div className={`${mobileTab === 'chat' ? 'flex' : 'hidden'} lg:flex h-[calc(100vh-14rem)] lg:h-auto lg:col-span-5 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex-col min-h-0 overflow-hidden`}>
+        <div className={`${mobileTab === 'chat' ? 'flex' : 'hidden'} lg:flex h-[calc(100dvh-10.5rem)] min-h-[500px] lg:h-auto lg:col-span-5 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex-col min-h-0 overflow-hidden`}>
           {selectedThread ? (
             <>
               {/* Header */}
@@ -651,7 +676,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
               </div>
 
               {/* Messages feed - Strictly isolated */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#111215]">
+              <div ref={chatScrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#111215]">
                 {(() => {
                   const visibleMessages = (selectedThread.messages || []).filter((m) => {
                     if (dispatcherChatTab === 'client') {
@@ -730,7 +755,6 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                     );
                   });
                 })()}
-                <div ref={messagesEndRef} />
               </div>
 
               {/* Chat Bottom Controls */}
@@ -905,7 +929,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
         </div>
 
         {/* ================= COLUMN 3 (RIGHT): PROACTIVE AI EQUIPMENT & SPARE PARTS OR ACTIVE ORDER ================= */}
-        <div className={`${mobileTab === 'ai' ? 'flex' : 'hidden'} lg:flex h-[calc(100vh-14rem)] lg:h-auto lg:col-span-4 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex-col min-h-0 overflow-hidden`}>
+        <div className={`${mobileTab === 'ai' ? 'flex' : 'hidden'} lg:flex h-[calc(100dvh-10.5rem)] min-h-[500px] lg:h-auto lg:col-span-4 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex-col min-h-0 overflow-hidden`}>
           <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
             <div className="flex items-center space-x-2">
               <button

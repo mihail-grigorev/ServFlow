@@ -66,7 +66,9 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
   const [equipmentToDelete, setEquipmentToDelete] = useState<Equipment | null>(null);
   const [isDeletingEq, setIsDeletingEq] = useState(false);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollContainerRef = useRef<HTMLDivElement>(null);
+  const prevThreadIdRef = useRef<number | null>(null);
+  const prevMsgCountRef = useRef<number>(0);
 
   const cleanComp = currentUser.full_name
     .toLowerCase()
@@ -132,7 +134,24 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
   }, [currentUser, selectedThreadId]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const thread = threads.find((t) => t.id === selectedThreadId);
+    const msgCount = thread?.messages?.length || 0;
+
+    if (selectedThreadId !== prevThreadIdRef.current) {
+      prevThreadIdRef.current = selectedThreadId;
+      prevMsgCountRef.current = msgCount;
+      if (chatScrollContainerRef.current) {
+        chatScrollContainerRef.current.scrollTop = chatScrollContainerRef.current.scrollHeight;
+      }
+    } else if (msgCount > prevMsgCountRef.current) {
+      prevMsgCountRef.current = msgCount;
+      if (chatScrollContainerRef.current) {
+        chatScrollContainerRef.current.scrollTo({
+          top: chatScrollContainerRef.current.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
+    }
   }, [selectedThreadId, threads, clientChatTab]);
 
   const selectedThread = threads.find((t) => t.id === selectedThreadId);
@@ -589,7 +608,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
               </div>
 
               {/* Chat Messages Feed - Strictly Isolated */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-[#111215]">
+              <div ref={chatScrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3.5 bg-[#111215]">
                 {(() => {
                   const visibleMessages = (selectedThread.messages || []).filter((m) => {
                     if (clientChatTab === 'dispatcher') {
@@ -664,7 +683,6 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
                     );
                   });
                 })()}
-                <div ref={messagesEndRef} />
               </div>
 
               {/* Quick Inquiry Prompts for Client */}
