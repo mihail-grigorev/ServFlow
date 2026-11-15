@@ -177,11 +177,10 @@ async def clickhouse_sync_background_worker():
 
 def get_analytics_summary(db: Session) -> Dict[str, Any]:
     """
-    Calculates key performance metrics.
-    If ClickHouse is available and populated, queries ClickHouse;
-    otherwise computes seamlessly from PostgreSQL / SQLite.
+    Calculates key performance metrics 100% from real database records (PostgreSQL / SQLite).
+    No synthetic constants or artificial offsets.
     """
-    # 1. Avoided empty visits (orders created with non-empty reserved parts list)
+    # 1. Avoided empty visits (real active orders with diagnosed reserved parts)
     active_orders = db.query(ServiceOrder).filter(
         ServiceOrder.status.notin_(["Отменен", "Отменён"])
     ).all()
@@ -189,48 +188,56 @@ def get_analytics_summary(db: Session) -> Dict[str, Any]:
         1 for o in active_orders if o.reserved_parts and len(o.reserved_parts) > 0
     )
 
-    # 2. Automatically handled customer requests ratio
+    # 2. Automatically handled customer requests ratio from real threads & messages
     total_threads = db.query(ClientThread).count()
     auto_handled_threads = 0
     if total_threads > 0:
-        auto_messages = db.query(Message.thread_id).filter(
+        auto_handled_threads = db.query(Message.thread_id).filter(
             Message.sender_type.in_(["ai", "system"])
         ).distinct().count()
-        auto_handled_threads = auto_messages
 
-    auto_ratio = round((auto_handled_threads / total_threads * 100), 1) if total_threads > 0 else 85.0
+    auto_ratio = round((auto_handled_threads / total_threads * 100), 1) if total_threads > 0 else 0.0
 
-    # 3. Rules frequency (П-1 ... П-10)
-    # Collect from ai_analysis events
+    # 3. Rules frequency (П-1 ... П-10) computed strictly from real events and records
     rules_counts = {f"П-{i}": 0 for i in range(1, 11)}
-    
-    # Initialize baseline frequencies from business logic
-    rules_counts["П-1"] = 12  # Идентификация модели/серийного номера
-    rules_counts["П-2"] = 3   # Оборудование вне реестра (отдел продаж)
-    rules_counts["П-3"] = 8   # Уточнение симптома при неполных данных
-    rules_counts["П-4"] = 10  # Синтез четкого описания неисправности
-    rules_counts["П-5"] = 6   # Вопрос о безопасности (обесточить, перекрыть)
-    rules_counts["П-6"] = 7   # Комплектация ремкомплекта деталей
-    rules_counts["П-7"] = 5   # Проверка доступности запчасти на складе
-    rules_counts["П-8"] = 4   # Перемещение запчасти между складами
-    rules_counts["П-9"] = 9   # Гарантия 40 дней с прошлого выезда
-    rules_counts["П-10"] = 4  # Запрет самостоятельной разборки
 
+    # Scan real ai_analysis events
     ai_events = db.query(Event).filter(Event.type == "ai_analysis").all()
     for ev in ai_events:
         payload = ev.payload or {}
         trig = payload.get("rules_triggered") or []
         for r in trig:
             for k in rules_counts.keys():
-                if k in r:
+                if k in str(r):
                     rules_counts[k] += 1
 
-    # 4. AI Latency (p50 / p95)
+    # Also account for real thread states
+    all_threads = db.query(ClientThread).all()
+    for th in all_threads:
+        if th.equipment_code or th.equipment_id:
+            rules_counts["П-1"] += 1
+        if th.is_unregistered:
+            rules_counts["П-2"] += 1
+        if th.is_warranty:
+            rules_counts["П-9"] += 1
+
+    # Also account for real orders
+    for ord_obj in active_orders:
+        if ord_obj.is_warranty:
+            rules_counts["П-9"] += 1
+        if ord_obj.reserved_parts:
+            rules_counts["П-6"] += len(ord_obj.reserved_parts)
+            rules_counts["П-7"] += len(ord_obj.reserved_parts)
+            for rp in ord_obj.reserved_parts:
+                if isinstance(rp, dict) and rp.get("transfer_required"):
+                    rules_counts["П-8"] += 1
+
+    # 4. AI Latency (p50 / p95) from real recorded latency values
     latencies = []
     for ev in ai_events:
         lat = (ev.payload or {}).get("latency_ms")
-        if lat is not None and isinstance(lat, (int, float)):
-            latencies.append(lat)
+        if lat is not None and isinstance(lat, (int, float)) and lat > 0:
+            latencies.append(float(lat))
 
     if latencies:
         latencies.sort()
@@ -238,10 +245,10 @@ def get_analytics_summary(db: Session) -> Dict[str, Any]:
         p50 = latencies[int(n * 0.5)]
         p95 = latencies[min(int(n * 0.95), n - 1)]
     else:
-        p50 = 145.0
-        p95 = 380.0
+        p50 = 0.0
+        p95 = 0.0
 
-    # 5. Spare parts deficit
+    # 5. Spare parts deficit from real inventory
     all_parts = db.query(SparePart).all()
     deficit_parts = []
     for p in all_parts:
@@ -262,7 +269,7 @@ def get_analytics_summary(db: Session) -> Dict[str, Any]:
         ClientThread.company_id.in_(demo_companies)
     ).count()
 
-    # QR logins count
+    # QR logins count from real events
     qr_logins_count = db.query(Event).filter(Event.type == "qr_login").count()
 
     return {
@@ -284,32 +291,101 @@ def get_analytics_summary(db: Session) -> Dict[str, Any]:
 
 def get_analytics_timeseries(db: Session) -> Dict[str, Any]:
     """
-    Returns time-series and categorical breakdown for analytical charts.
+    Returns time-series and categorical breakdown for analytical charts,
+    computed 100% from real database tables and events across the last 7 days.
     """
-    # 7-day trend
     today = datetime.utcnow().date()
     daily_stats = []
-    
-    # Baseline 7 days
-    base_samples = [
-        {"day_offset": 6, "tickets": 4, "orders": 3, "avg_ai_latency_ms": 132},
-        {"day_offset": 5, "tickets": 6, "orders": 5, "avg_ai_latency_ms": 145},
-        {"day_offset": 4, "tickets": 8, "orders": 7, "avg_ai_latency_ms": 160},
-        {"day_offset": 3, "tickets": 7, "orders": 6, "avg_ai_latency_ms": 140},
-        {"day_offset": 2, "tickets": 11, "orders": 9, "avg_ai_latency_ms": 150},
-        {"day_offset": 1, "tickets": 13, "orders": 10, "avg_ai_latency_ms": 138},
-        {"day_offset": 0, "tickets": 15, "orders": 12, "avg_ai_latency_ms": 142},
-    ]
 
-    for s in base_samples:
-        dt = today - timedelta(days=s["day_offset"])
-        daily_stats.append({
-            "date": dt.strftime("%d.%m"),
-            "full_date": dt.strftime("%Y-%m-%d"),
-            "tickets": s["tickets"],
-            "orders": s["orders"],
-            "avg_latency_ms": s["avg_ai_latency_ms"]
-        })
+    # Check if ClickHouse has fact_events
+    ch_client = get_clickhouse_client()
+    ch_daily_map = {}
+    if ch_client:
+        try:
+            res = ch_client.query("""
+                SELECT
+                    toDate(ts) AS d,
+                    countIf(type = 'thread_created') AS tickets,
+                    countIf(type = 'order_created') AS orders,
+                    avgIf(JSONExtractFloat(payload, 'latency_ms'), type = 'ai_analysis') AS avg_lat
+                FROM fact_events
+                WHERE ts >= now() - INTERVAL 7 DAY
+                GROUP BY d
+                ORDER BY d ASC
+            """)
+            for row in res.result_rows:
+                d_str = row[0].strftime("%Y-%m-%d") if hasattr(row[0], 'strftime') else str(row[0])
+                ch_daily_map[d_str] = {
+                    "tickets": int(row[1]),
+                    "orders": int(row[2]),
+                    "avg_lat": round(float(row[3] or 0), 1)
+                }
+        except Exception as e:
+            logger.debug(f"ClickHouse timeseries query failed, fallback to DB: {e}")
+
+    for offset in range(6, -1, -1):
+        target_date = today - timedelta(days=offset)
+        d_str = target_date.strftime("%Y-%m-%d")
+        d_label = target_date.strftime("%d.%m")
+
+        if d_str in ch_daily_map:
+            ch_data = ch_daily_map[d_str]
+            daily_stats.append({
+                "date": d_label,
+                "full_date": d_str,
+                "tickets": ch_data["tickets"],
+                "orders": ch_data["orders"],
+                "avg_latency_ms": ch_data["avg_lat"]
+            })
+        else:
+            day_start = datetime.combine(target_date, datetime.min.time())
+            day_end = datetime.combine(target_date, datetime.max.time())
+
+            # Real tickets created on this date
+            tickets_cnt = db.query(Event).filter(
+                Event.type == "thread_created",
+                Event.ts >= day_start,
+                Event.ts <= day_end
+            ).count()
+            threads_cnt = db.query(ClientThread).filter(
+                ClientThread.created_at >= day_start,
+                ClientThread.created_at <= day_end
+            ).count()
+            total_day_tickets = tickets_cnt + threads_cnt
+
+            # Real orders created on this date
+            orders_cnt = db.query(Event).filter(
+                Event.type == "order_created",
+                Event.ts >= day_start,
+                Event.ts <= day_end
+            ).count()
+            db_orders_cnt = db.query(ServiceOrder).filter(
+                ServiceOrder.created_at >= day_start,
+                ServiceOrder.created_at <= day_end
+            ).count()
+            total_day_orders = orders_cnt + db_orders_cnt
+
+            # Real average latency on this date
+            day_ai_events = db.query(Event).filter(
+                Event.type == "ai_analysis",
+                Event.ts >= day_start,
+                Event.ts <= day_end
+            ).all()
+
+            latencies = [
+                float(ev.payload.get("latency_ms"))
+                for ev in day_ai_events
+                if ev.payload and ev.payload.get("latency_ms")
+            ]
+            avg_lat = round(sum(latencies) / len(latencies), 1) if latencies else 0.0
+
+            daily_stats.append({
+                "date": d_label,
+                "full_date": d_str,
+                "tickets": total_day_tickets,
+                "orders": total_day_orders,
+                "avg_latency_ms": avg_lat
+            })
 
     # Rules description mapping
     rules_info = [

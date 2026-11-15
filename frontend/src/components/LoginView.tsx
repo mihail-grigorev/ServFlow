@@ -669,100 +669,34 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers,
             <div className="bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple p-6 space-y-4">
               <div>
                 <div className="flex items-center space-x-2">
-                  <ShieldCheck className="w-4 h-4 text-white" />
+                  <Building className="w-4 h-4 text-white" />
                   <h2 className="text-sm font-semibold tracking-tight text-white">
-                    Быстрый вход для жюри (1 клик)
+                    Вход для клиентов и компаний
                   </h2>
                 </div>
                 <p className="text-xs text-[#8E9E94] mt-1">
-                  Готовые тестовые аккаунты всех типов ролей:
+                  Быстрый доступ к кабинету кофейни:
                 </p>
               </div>
 
-              {/* 1. Dispatchers */}
+              {/* Companies / Clients */}
               <div>
-                <div className="text-[10px] font-semibold text-[#8E9E94] uppercase tracking-wider mb-1.5 flex items-center space-x-1">
-                  <Sparkles className="w-3 h-3 text-white" />
-                  <span>Диспетчеры</span>
-                </div>
-                <div className="space-y-1.5">
-                  {dispatchers.map((u) => (
-                    <button
-                      key={u.id}
-                      onClick={() => handleQuickLogin(u)}
-                      className="w-full text-left p-2.5 rounded-xl border border-white/[0.06] hover:border-white/30 hover:bg-white/[0.05] transition-all group flex items-center justify-between"
-                    >
-                      <div className="flex items-center space-x-2.5 min-w-0">
-                        <img
-                          src={u.avatar_url || 'https://api.dicebear.com/7.x/notionists/svg?seed=Anna'}
-                          alt={u.full_name}
-                          className="w-7 h-7 rounded-lg object-cover bg-white/10 flex-shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <div className="text-xs font-semibold text-white group-hover:text-white transition-colors truncate">
-                            {u.full_name}
-                          </div>
-                          <div className="text-[10px] text-[#8E9E94] truncate">Диспетчер · {u.email}</div>
-                        </div>
-                      </div>
-                      <ArrowRight className="w-3 h-3 text-[#8E9E94] group-hover:text-white" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 2. Engineers (All standard engineers, no senior) */}
-              <div>
-                <div className="text-[10px] font-semibold text-[#8E9E94] uppercase tracking-wider mb-1.5 flex items-center space-x-1">
-                  <Wrench className="w-3 h-3 text-white" />
-                  <span>Сервисные инженеры</span>
-                </div>
-                <div className="space-y-1.5">
-                  {engineers.map((u) => (
-                    <button
-                      key={u.id}
-                      onClick={() => handleQuickLogin(u)}
-                      className="w-full text-left p-2.5 rounded-xl border border-white/[0.06] hover:border-white/30 hover:bg-white/[0.05] transition-all group flex items-center justify-between"
-                    >
-                      <div className="flex items-center space-x-2.5 min-w-0">
-                        <img
-                          src={u.avatar_url || 'https://api.dicebear.com/7.x/notionists/svg?seed=Alex'}
-                          alt={u.full_name}
-                          className="w-7 h-7 rounded-lg object-cover bg-white/10 flex-shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <div className="text-xs font-semibold text-white group-hover:text-white transition-colors truncate">
-                            {u.full_name}
-                          </div>
-                          <div className="text-[10px] text-[#8E9E94] truncate">
-                            {u.email} · {u.city} {u.qualifications && `(${u.qualifications.join(', ')})`}
-                          </div>
-                        </div>
-                      </div>
-                      <ArrowRight className="w-3 h-3 text-[#8E9E94] group-hover:text-white" />
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* 3. Companies / Clients */}
-              <div>
-                <div className="text-[10px] font-semibold text-[#8E9E94] uppercase tracking-wider mb-1.5 flex items-center space-x-1">
+                <div className="text-[10px] font-semibold text-[#8E9E94] uppercase tracking-wider mb-2 flex items-center space-x-1">
                   <Building className="w-3 h-3 text-white" />
                   <span>Компании (Клиенты и чат)</span>
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-2">
                   {companies.map((u) => (
                     <button
                       key={u.id}
                       onClick={() => handleQuickLogin(u)}
-                      className="w-full text-left p-2.5 rounded-xl border border-white/[0.06] hover:border-white/30 hover:bg-white/[0.05] transition-all group flex items-center justify-between"
+                      className="w-full text-left p-3 rounded-xl border border-white/[0.08] bg-white/[0.02] hover:border-white/30 hover:bg-white/[0.06] transition-all group flex items-center justify-between"
                     >
-                      <div className="flex items-center space-x-2.5 min-w-0">
+                      <div className="flex items-center space-x-3 min-w-0">
                         <img
                           src={u.avatar_url || 'https://api.dicebear.com/7.x/notionists/svg?seed=Kedr'}
                           alt={u.full_name}
-                          className="w-7 h-7 rounded-lg object-cover bg-white/10 flex-shrink-0"
+                          className="w-8 h-8 rounded-lg object-cover bg-white/10 flex-shrink-0"
                         />
                         <div className="min-w-0">
                           <div className="text-xs font-semibold text-white group-hover:text-white transition-colors truncate">
@@ -771,7 +705,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers,
                           <div className="text-[10px] text-[#8E9E94] truncate">{u.email} · {u.city}</div>
                         </div>
                       </div>
-                      <ArrowRight className="w-3 h-3 text-[#8E9E94] group-hover:text-white" />
+                      <ArrowRight className="w-3.5 h-3.5 text-[#8E9E94] group-hover:text-white" />
                     </button>
                   ))}
                 </div>
@@ -812,7 +746,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers,
               </div>
 
               {pinError && (
-                <div className="p-2.5 rounded-lg bg-neutral-900 border border-red-500/40 text-red-400 text-xs text-center">
+                <div className="p-2.5 rounded-lg bg-neutral-900 border border-white/20 text-neutral-200 text-xs text-center">
                   {pinError}
                 </div>
               )}

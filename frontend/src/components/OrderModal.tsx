@@ -281,8 +281,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         </div>
 
         {error && (
-          <div className="mx-5 mt-4 p-3 rounded-xl bg-[#FF453A]/15 border border-[#FF453A]/25 flex items-center space-x-2 text-xs text-[#FF453A]">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <div className="mx-5 mt-4 p-3 rounded-xl bg-white/[0.06] border border-white/20 flex items-center space-x-2 text-xs text-neutral-200">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 text-neutral-300" />
             <span>{error}</span>
           </div>
         )}
@@ -399,9 +399,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   type="checkbox"
                   checked={isWarranty}
                   onChange={(e) => setIsWarranty(e.target.checked)}
-                  className="rounded text-[#FF453A] focus:ring-[#FF453A] bg-[#1F2026]"
+                  className="rounded text-white focus:ring-white bg-[#1F2026]"
                 />
-                <span className="font-semibold text-[#FF453A]">Гарантийный визит (Правило П-9)</span>
+                <span className="font-semibold text-white">Гарантийный визит (Правило П-9)</span>
               </label>
 
               <label className="flex items-center space-x-2 text-white cursor-pointer">
@@ -409,9 +409,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                   type="checkbox"
                   checked={isSalesTransfer}
                   onChange={(e) => setIsSalesTransfer(e.target.checked)}
-                  className="rounded text-[#FF9F0A] focus:ring-[#FF9F0A] bg-[#1F2026]"
+                  className="rounded text-white focus:ring-white bg-[#1F2026]"
                 />
-                <span className="font-semibold text-[#FF9F0A]">
+                <span className="font-semibold text-neutral-300">
                   Передать в отдел продаж (машина вне реестра П-2)
                 </span>
               </label>
@@ -519,7 +519,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                               localFree > 0
                                 ? 'bg-white/15 text-white'
                                 : transferReq
-                                ? 'bg-[#FF9F0A]/15 text-[#FF9F0A]'
+                                ? 'bg-white/10 text-neutral-300 border border-white/10'
                                 : 'bg-white/[0.06] text-[#8E9E94]'
                             }`}
                           >
@@ -528,7 +528,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                         </div>
 
                         {transferReq && (
-                          <div className="mt-1 flex items-center space-x-1 text-[10px] text-[#FF9F0A]">
+                          <div className="mt-1 flex items-center space-x-1 text-[10px] text-neutral-300">
                             <Truck className="w-3 h-3" />
                             <span>Доступно со склада др. города (+1 раб. день)</span>
                           </div>
@@ -580,7 +580,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                               className={`text-[10px] font-semibold px-1.5 py-0.2 rounded ${
                                 eng.active_orders === 0
                                   ? 'bg-white/15 text-white'
-                                  : 'bg-[#FF9F0A]/20 text-[#FF9F0A]'
+                                  : 'bg-white/10 text-neutral-300'
                               }`}
                             >
                               {eng.active_orders === 0 ? '0 заявок' : `${eng.active_orders} заявк.`}
@@ -593,7 +593,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                           {hasModelQual ? (
                             <span className="text-white font-medium">(допущен)</span>
                           ) : (
-                            <span className="text-[#FF453A] font-medium">(нет допуска к {model})</span>
+                            <span className="text-neutral-400 font-medium">(нет допуска к {model})</span>
                           )}
                           {eng.model_experience_count > 0 && (
                             <span className="text-neutral-300 font-medium">

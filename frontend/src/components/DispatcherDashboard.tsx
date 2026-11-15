@@ -431,12 +431,12 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                       </span>
                     )}
                     {t.is_warranty && (
-                      <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-[#FF453A]/15 text-[#FF453A] border border-[#FF453A]/20">
-                        Гарантия
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-white/10 text-white border border-white/20">
+                        Гарантия (П-9)
                       </span>
                     )}
                     {t.is_unregistered && (
-                      <span className="text-[10px] font-medium px-1.5 py-0.2 rounded bg-[#FF9F0A]/15 text-[#FF9F0A] border border-[#FF9F0A]/20">
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-white/[0.04] text-neutral-400 border border-white/10">
                         Вне договора
                       </span>
                     )}
@@ -948,23 +948,23 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
               </div>
 
               {aiAnalysis?.is_unregistered_machine ? (
-                <div className="p-2.5 rounded-lg bg-[#FF9F0A]/15 border border-[#FF9F0A]/25 text-xs text-[#FF9F0A] space-y-1">
-                  <div className="font-semibold flex items-center space-x-1.5">
+                <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/15 text-xs text-neutral-300 space-y-1">
+                  <div className="font-semibold text-white flex items-center space-x-1.5">
                     <ShieldAlert className="w-3.5 h-3.5" />
                     <span>Машина вне реестра договора</span>
                   </div>
-                  <p className="text-[11px] leading-relaxed">
+                  <p className="text-[11px] leading-relaxed text-neutral-400">
                     {aiAnalysis.equipment_reasoning ||
                       'Выезд инженера не назначается. Обращение передаётся менеджеру по продажам с указанием модели и серийного номера.'}
                   </p>
                 </div>
               ) : aiAnalysis?.is_ambiguous_machine ? (
-                <div className="p-2.5 rounded-lg bg-[#FF9F0A]/15 border border-[#FF9F0A]/25 text-xs text-[#FF9F0A] space-y-1">
-                  <div className="font-semibold flex items-center space-x-1.5">
+                <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/15 text-xs text-neutral-300 space-y-1">
+                  <div className="font-semibold text-white flex items-center space-x-1.5">
                     <AlertCircle className="w-3.5 h-3.5" />
                     <span>Требуется уточнить кофемашину</span>
                   </div>
-                  <p className="text-[11px] leading-relaxed">
+                  <p className="text-[11px] leading-relaxed text-neutral-400">
                     {aiAnalysis.ambiguity_explanation || aiAnalysis.equipment_reasoning}
                   </p>
                 </div>
@@ -1018,12 +1018,12 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
               </span>
 
               {aiAnalysis?.is_warranty ? (
-                <div className="p-2.5 rounded-lg bg-[#FF453A]/15 border border-[#FF453A]/25 text-xs text-[#FF453A] space-y-1">
+                <div className="p-2.5 rounded-lg bg-white/10 border border-white/20 text-xs text-white space-y-1">
                   <div className="font-bold flex items-center space-x-1.5">
                     <ShieldAlert className="w-4 h-4 flex-shrink-0" />
                     <span>Гарантийный случай (норматив до 40 дней)</span>
                   </div>
-                  <p className="text-[11px] leading-relaxed">
+                  <p className="text-[11px] leading-relaxed text-neutral-300">
                     {aiAnalysis.warranty_reason}
                   </p>
                 </div>
@@ -1057,15 +1057,15 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
 
             {/* 4. Missing Clarification Questions */}
             {aiAnalysis?.missing_questions && aiAnalysis.missing_questions.length > 0 && (
-              <div className="p-3.5 rounded-xl border border-amber-500/25 bg-amber-500/[0.06] space-y-2">
-                <span className="text-xs font-semibold text-[#FF9F0A] flex items-center space-x-1.5">
+              <div className="p-3.5 rounded-xl border border-white/15 bg-white/[0.03] space-y-2">
+                <span className="text-xs font-semibold text-white flex items-center space-x-1.5">
                   <HelpCircle className="w-3.5 h-3.5" />
                   <span>Рекомендуется уточнить у клиента</span>
                 </span>
                 <ul className="space-y-1">
                   {aiAnalysis.missing_questions.map((q, idx) => (
                     <li key={idx} className="text-[11px] text-[#F3F4F6] flex items-start space-x-1.5">
-                      <span className="text-[#FF9F0A] font-bold">·</span>
+                      <span className="text-neutral-400 font-bold">·</span>
                       <span>{q}</span>
                     </li>
                   ))}
@@ -1111,8 +1111,8 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                               (p.local_free ?? 0) > 0
                                 ? 'bg-white/10 text-white border border-white/10'
                                 : p.transfer_required
-                                ? 'bg-[#FF9F0A]/15 text-[#FF9F0A]'
-                                : 'bg-white/[0.06] text-[#9CA3AF]'
+                                ? 'bg-white/[0.06] text-neutral-300 border border-white/10'
+                                : 'bg-white/[0.04] text-[#9CA3AF]'
                             }`}
                           >
                             {(p.local_free ?? 0) > 0
@@ -1125,7 +1125,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                             type="button"
                             onClick={() => handleRemovePart(p.code)}
                             title="Удалить деталь из заявки"
-                            className="p-1 rounded-md text-[#9CA3AF] hover:text-[#FF453A] hover:bg-white/[0.05] transition-colors"
+                            className="p-1 rounded-md text-[#9CA3AF] hover:text-white hover:bg-white/[0.05] transition-colors"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -1164,7 +1164,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                         </div>
 
                         {p.transfer_required && (
-                          <span className="flex items-center space-x-1 text-[10px] text-[#FF9F0A] font-medium">
+                          <span className="flex items-center space-x-1 text-[10px] text-neutral-300 font-medium">
                             <Truck className="w-3 h-3" />
                             <span>+1 раб. день</span>
                           </span>

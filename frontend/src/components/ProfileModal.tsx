@@ -122,12 +122,17 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (file.size > 2 * 1024 * 1024) {
+      setErrorMsg('Размер фотографии не должен превышать 2 МБ');
+      return;
+    }
+
     setUploadingAvatar(true);
     setErrorMsg(null);
     try {
       const res = await api.uploadAvatar(file);
       setAvatarUrl(res.avatar_url);
-      setSuccessMsg('Аватарка успешно загружена');
+      setSuccessMsg('Фотография успешно загружена и установлена!');
       setTimeout(() => setSuccessMsg(null), 3000);
     } catch (err: any) {
       setErrorMsg(err.message || 'Ошибка загрузки файла');
@@ -199,8 +204,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         )}
 
         {errorMsg && (
-          <div className="mx-5 mt-4 p-3 rounded-xl bg-[#FF453A]/10 border border-[#FF453A]/20 flex items-center space-x-2 text-xs text-[#FF453A] font-medium">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+          <div className="mx-5 mt-4 p-3 rounded-xl bg-white/[0.06] border border-white/20 flex items-center space-x-2 text-xs text-neutral-200 font-medium">
+            <AlertCircle className="w-4 h-4 flex-shrink-0 text-neutral-300" />
             <span>{errorMsg}</span>
           </div>
         )}
@@ -208,48 +213,62 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         {/* Body */}
         <form onSubmit={handleSave} className="flex-1 overflow-y-auto p-5 space-y-5 text-xs">
           {/* 1. Avatar Section */}
-          <div className="p-4 rounded-xl border border-white/[0.06] bg-black/20 space-y-3">
-            <label className="block text-xs font-semibold text-white uppercase tracking-wider">
-              Аватарка пользователя
-            </label>
+          <div className="p-4 rounded-xl border border-white/[0.08] bg-white/[0.02] space-y-4">
+            <div className="flex items-center justify-between">
+              <label className="block text-xs font-semibold text-white uppercase tracking-wider">
+                Фотография профиля
+              </label>
+              <span className="text-[11px] text-[#8E9E94]">PNG, JPG, WebP до 2 МБ</span>
+            </div>
 
-            <div className="flex items-center space-x-4">
-              <div className="relative group">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="relative group flex-shrink-0">
                 <img
                   src={avatarUrl}
                   alt={fullName}
-                  className="w-16 h-16 rounded-2xl object-cover bg-white/10 border border-white/[0.1] shadow-sm"
+                  className="w-20 h-20 rounded-2xl object-cover bg-white/10 border border-white/[0.15] shadow-md"
                 />
-                <label className="absolute inset-0 bg-black/60 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                  <Camera className="w-5 h-5 text-white" />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </label>
               </div>
 
-              <div className="flex-1">
-                <div className="text-[11px] text-[#8E9E94] mb-2">
-                  Выберите готовую аватарку или загрузите своё фото:
+              <div className="flex-1 space-y-3">
+                <div className="flex items-center space-x-2">
+                  <label className="inline-flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white text-black hover:bg-neutral-200 transition-all cursor-pointer shadow-sm">
+                    {uploadingAvatar ? (
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5" />
+                    )}
+                    <span>{uploadingAvatar ? 'Загрузка...' : 'Загрузить своё фото'}</span>
+                    <input
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp"
+                      onChange={handleFileUpload}
+                      disabled={uploadingAvatar}
+                      className="hidden"
+                    />
+                  </label>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {AVATAR_PRESETS.map((preset, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setAvatarUrl(preset)}
-                      className={`w-8 h-8 rounded-xl border p-0.5 overflow-hidden transition-all ${
-                        avatarUrl === preset
-                          ? 'border-white ring-2 ring-white/40'
-                          : 'border-white/[0.1] hover:border-white/[0.3]'
-                      }`}
-                    >
-                      <img src={preset} alt="preset" className="w-full h-full object-cover" />
-                    </button>
-                  ))}
+
+                <div>
+                  <div className="text-[11px] text-[#8E9E94] mb-1.5">
+                    Или выберите готовую аватарку:
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {AVATAR_PRESETS.map((preset, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setAvatarUrl(preset)}
+                        className={`w-8 h-8 rounded-xl border p-0.5 overflow-hidden transition-all ${
+                          avatarUrl === preset
+                            ? 'border-white ring-2 ring-white/50 bg-white/10'
+                            : 'border-white/[0.1] hover:border-white/[0.3] bg-white/[0.03]'
+                        }`}
+                      >
+                        <img src={preset} alt="preset" className="w-full h-full object-cover" />
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -372,12 +391,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
 
           {/* 4. Danger Zone: Delete Account */}
           <div className="pt-3 border-t border-white/[0.08] space-y-2">
-            <label className="block text-xs font-semibold text-[#FF453A] uppercase tracking-wider">
+            <label className="block text-xs font-semibold text-neutral-300 uppercase tracking-wider">
               Опасная зона
             </label>
 
             {deleteStep === 'initial' ? (
-              <div className="p-3.5 rounded-xl border border-[#FF453A]/20 bg-[#FF453A]/[0.06] flex items-center justify-between">
+              <div className="p-3.5 rounded-xl border border-white/10 bg-white/[0.03] flex items-center justify-between">
                 <div>
                   <div className="font-semibold text-white">Удаление профиля</div>
                   <div className="text-[11px] text-[#8E9E94]">
@@ -389,16 +408,16 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   type="button"
                   disabled={sendingDeleteCode}
                   onClick={handleRequestDeleteCode}
-                  className="px-3 py-1.5 rounded-xl bg-[#FF453A] hover:bg-[#FF453A]/90 disabled:opacity-50 text-white font-semibold transition-all flex items-center space-x-1.5 cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] border border-white/20 disabled:opacity-50 text-white font-semibold transition-all flex items-center space-x-1.5 cursor-pointer"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-3.5 h-3.5 text-neutral-300" />
                   <span>{sendingDeleteCode ? 'Отправка кода...' : 'Удалить аккаунт'}</span>
                 </button>
               </div>
             ) : (
-              <div className="p-4 rounded-xl border border-[#FF453A]/40 bg-[#2D1515] space-y-3">
+              <div className="p-4 rounded-xl border border-white/20 bg-white/[0.05] space-y-3">
                 <div className="flex items-start space-x-2.5">
-                  <AlertCircle className="w-5 h-5 text-[#FF453A] flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="w-5 h-5 text-neutral-300 flex-shrink-0 mt-0.5" />
                   <div>
                     <div className="font-bold text-white text-xs">Подтверждение удаления аккаунта</div>
                     <div className="text-[11px] text-[#D1D5DB] mt-0.5">
@@ -406,8 +425,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     </div>
                   </div>
                 </div>
-
-
 
                 <div className="flex items-center space-x-2">
                   <input
@@ -417,13 +434,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     value={deleteCode}
                     onChange={(e) => setDeleteCode(e.target.value.replace(/\D/g, ''))}
                     placeholder="123456"
-                    className="w-36 text-center tracking-[0.3em] font-mono font-bold text-base py-1.5 px-3 rounded-lg border border-white/[0.2] bg-black/40 text-white outline-none focus:border-[#FF453A]"
+                    className="w-36 text-center tracking-[0.3em] font-mono font-bold text-base py-1.5 px-3 rounded-lg border border-white/[0.2] bg-black/40 text-white outline-none focus:border-white"
                   />
                   <button
                     type="button"
                     disabled={loading || deleteCode.length < 6}
                     onClick={handleConfirmDeleteAccount}
-                    className="px-4 py-1.5 rounded-lg bg-[#FF453A] hover:bg-[#FF453A]/90 disabled:opacity-50 text-white font-semibold text-xs transition-all flex items-center space-x-1.5 cursor-pointer"
+                    className="px-4 py-1.5 rounded-lg bg-white hover:bg-neutral-200 disabled:opacity-50 text-black font-semibold text-xs transition-all flex items-center space-x-1.5 cursor-pointer"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>{loading ? 'Удаление...' : 'Подтвердить удаление'}</span>
@@ -469,7 +486,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   onClose();
                   onLogout();
                 }}
-                className="px-3 py-2 rounded-xl text-xs font-medium text-[#FF453A] hover:bg-[#FF453A]/10 border border-[#FF453A]/25 transition-colors flex items-center space-x-1.5 cursor-pointer"
+                className="px-3 py-2 rounded-xl text-xs font-medium text-neutral-300 hover:text-white hover:bg-white/10 border border-white/20 transition-colors flex items-center space-x-1.5 cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span>Выйти из аккаунта</span>

@@ -249,9 +249,9 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
       case 'order_created':
         return <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/15 text-white border border-white/20">Заявка создана</span>;
       case 'needs_clarification':
-        return <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#FF9F0A]/20 text-[#FF9F0A] border border-[#FF9F0A]/30">Требует ответа</span>;
+        return <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/10 text-white border border-white/20">Требует ответа</span>;
       case 'sales_transfer':
-        return <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-500/20 text-purple-400 border border-purple-500/30">Вне реестра</span>;
+        return <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/[0.05] text-neutral-300 border border-white/10">Вне реестра</span>;
       case 'resolved':
         return <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-white/10 text-[#9CA3AF]">Решено</span>;
       default:
@@ -492,7 +492,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
                       </button>
                       <button
                         onClick={() => setEquipmentToDelete(eq)}
-                        className="p-1.5 rounded-lg text-[#9CA3AF] hover:text-[#FF453A] hover:bg-[#FF453A]/10 transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
                         title="Удалить кофемашину из реестра"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -836,7 +836,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
               </div>
 
               {createError && (
-                <div className="p-3 rounded-xl bg-[#FF453A]/15 border border-[#FF453A]/30 text-[#FF453A] text-xs">
+                <div className="p-3 rounded-xl bg-white/[0.06] border border-white/20 text-neutral-200 text-xs">
                   {createError}
                 </div>
               )}
@@ -944,7 +944,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
               </div>
 
               {addEqError && (
-                <div className="p-3 rounded-xl bg-[#FF453A]/15 border border-[#FF453A]/30 text-[#FF453A] text-xs">
+                <div className="p-3 rounded-xl bg-white/[0.06] border border-white/20 text-neutral-200 text-xs">
                   {addEqError}
                 </div>
               )}
@@ -974,8 +974,8 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
       {equipmentToDelete && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-[#16171B] w-full max-w-sm rounded-2xl border border-white/[0.1] shadow-2xl p-6 text-[#F3F4F6] animate-in fade-in zoom-in-95 duration-150 space-y-4">
-            <div className="flex items-center space-x-2.5 text-[#FF453A]">
-              <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <div className="flex items-center space-x-2.5 text-white">
+              <AlertCircle className="w-5 h-5 flex-shrink-0 text-neutral-300" />
               <h3 className="text-base font-bold text-white">Удаление из договора</h3>
             </div>
             <p className="text-xs text-[#9CA3AF] leading-relaxed">
@@ -994,7 +994,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
                 type="button"
                 disabled={isDeletingEq}
                 onClick={() => handleDeleteEquipment(equipmentToDelete)}
-                className="px-4 py-2 rounded-xl bg-[#FF453A] hover:bg-[#D9382E] text-white text-xs font-semibold shadow-sm transition-all"
+                className="px-4 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-semibold shadow-sm transition-all cursor-pointer"
               >
                 {isDeletingEq ? 'Удаление...' : 'Удалить'}
               </button>

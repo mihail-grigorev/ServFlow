@@ -263,7 +263,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                         o.status === 'Выполнен'
                           ? 'bg-white/15 text-white border-white/20'
                           : o.status === 'На месте'
-                          ? 'bg-[#FF9F0A]/15 text-[#FF9F0A] border-[#FF9F0A]/25'
+                          ? 'bg-white/10 text-white border-white/20'
                           : 'bg-white/10 text-neutral-300 border-white/15'
                       }`}
                     >
@@ -279,7 +279,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                   <div className="flex items-center space-x-2 text-[10px] text-[#9CA3AF]">
                     <span className="text-white">{o.model} (№{o.serial_number})</span>
                     {o.is_warranty && (
-                      <span className="text-[#FF453A] font-semibold">· Гарантия (П-9)</span>
+                      <span className="text-white font-semibold">· Гарантия (П-9)</span>
                     )}
                     {o.reserved_parts && o.reserved_parts.length > 0 && (
                       <span>· Резерв: {o.reserved_parts.length} дет.</span>
@@ -448,14 +448,12 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                               <span className="font-mono font-bold text-white">{part.code}</span>
                               <span className="text-white font-medium">{part.name}</span>
                               <span className="text-[#9CA3AF]">x{part.quantity} шт.</span>
-                              <span className="text-white font-medium">{part.name}</span>
-                              <span className="text-[#9CA3AF]">x{part.quantity} шт.</span>
                             </div>
                             <div className="flex items-center space-x-2">
                               <span className="text-[10px] text-[#9CA3AF]">Склад: {part.source_city}</span>
                               {part.transfer_required && (
-                                <span className="text-[10px] text-[#FF9F0A] flex items-center space-x-1 font-medium bg-[#FF9F0A]/10 px-2 py-0.5 rounded">
-                                  <Truck className="w-3 h-3" />
+                                <span className="text-[10px] text-neutral-200 border border-white/15 flex items-center space-x-1 font-medium bg-white/[0.06] px-2 py-0.5 rounded">
+                                  <Truck className="w-3 h-3 text-neutral-300" />
                                   <span>Межсклад +1 день</span>
                                 </span>
                               )}

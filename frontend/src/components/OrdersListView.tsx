@@ -217,7 +217,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                   <td className="py-3.5 px-4 font-mono font-bold text-white whitespace-nowrap">
                     <div>{o.order_number}</div>
                     {o.is_warranty && (
-                      <span className="inline-block mt-0.5 text-[10px] font-bold px-1.5 py-0.2 rounded bg-[#FF453A]/15 text-[#FF453A] border border-[#FF453A]/20">
+                      <span className="inline-block mt-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/10 text-white border border-white/20">
                         Гарантия (П-9)
                       </span>
                     )}
@@ -279,7 +279,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                         o.status === 'Выполнен'
                           ? 'bg-white/15 text-white border-white/20'
                           : o.status === 'На месте'
-                          ? 'bg-[#FF9F0A]/15 text-[#FF9F0A] border-[#FF9F0A]/25'
+                          ? 'bg-white/10 text-white border-white/20'
                           : o.status === 'В пути'
                           ? 'bg-white/10 text-white border-white/15'
                           : 'bg-white/[0.06] text-[#8E9E94] border-white/[0.08]'
@@ -303,7 +303,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                       <button
                         type="button"
                         onClick={() => handleDeleteOrder(o.id, o.order_number)}
-                        className="inline-flex items-center space-x-1 px-2 py-1 rounded-lg bg-[#FF453A]/15 hover:bg-[#FF453A]/30 text-[#FF453A] border border-[#FF453A]/25 text-[11px] font-semibold transition-all active:scale-95 cursor-pointer"
+                        className="inline-flex items-center space-x-1 px-2 py-1 rounded-lg bg-white/[0.04] hover:bg-white/15 text-neutral-300 hover:text-white border border-white/10 text-[11px] font-semibold transition-all active:scale-95 cursor-pointer"
                         title="Удалить заявку на выезд"
                       >
                         <Trash2 className="w-3 h-3" />
@@ -412,9 +412,9 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                     type="checkbox"
                     checked={editIsWarranty}
                     onChange={(e) => setEditIsWarranty(e.target.checked)}
-                    className="rounded text-[#FF453A] focus:ring-[#FF453A] bg-[#1F2026]"
+                    className="rounded text-white focus:ring-white bg-[#1F2026]"
                   />
-                  <span className={editIsWarranty ? 'text-[#FF453A]' : 'text-white'}>
+                  <span className={editIsWarranty ? 'text-white' : 'text-neutral-400'}>
                     Гарантийный случай (Правило П-9)
                   </span>
                 </label>
@@ -423,8 +423,8 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                     type="text"
                     value={editWarrantyReason}
                     onChange={(e) => setEditWarrantyReason(e.target.value)}
-                    placeholder="Причина гарантии (например: повторный вызов до 30 дней)"
-                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-[#FF453A]"
+                    placeholder="Причина гарантии (например: повторный вызов до 40 дней)"
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/30"
                   />
                 )}
               </div>
@@ -477,7 +477,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                           <button
                             type="button"
                             onClick={() => handleRemovePart(p.code)}
-                            className="p-1 rounded-md text-[#8E9E94] hover:text-[#FF453A] hover:bg-white/[0.05]"
+                            className="p-1 rounded-md text-neutral-400 hover:text-white hover:bg-white/10"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -522,7 +522,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                 <button
                   type="button"
                   onClick={() => handleDeleteOrder(editingOrder.id, editingOrder.order_number)}
-                  className="px-3 py-1.5 rounded-xl bg-[#FF453A]/15 hover:bg-[#FF453A]/30 text-[#FF453A] border border-[#FF453A]/25 text-xs font-semibold flex items-center space-x-1.5 transition-all cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-white/[0.08] hover:bg-white/[0.15] text-neutral-200 border border-white/20 text-xs font-semibold flex items-center space-x-1.5 transition-all cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   <span>Удалить заявку</span>

@@ -103,8 +103,8 @@ export const ExcelResetModal: React.FC<ExcelResetModalProps> = ({
           )}
 
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-[#FF453A]/15 border border-[#FF453A]/25 flex items-center space-x-2 text-[#FF453A] font-medium">
-              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <div className="p-3 rounded-xl bg-white/[0.06] border border-white/20 flex items-center space-x-2 text-neutral-200 font-medium">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 text-neutral-300" />
               <span>{errorMsg}</span>
             </div>
           )}
@@ -130,7 +130,7 @@ export const ExcelResetModal: React.FC<ExcelResetModalProps> = ({
           {/* Option 2: Upload custom Excel file */}
           <form onSubmit={handleFileUpload} className="p-4 rounded-xl border border-white/[0.08] bg-[#1F2026] space-y-2.5">
             <h3 className="font-semibold text-sm text-[#F0F5F2] flex items-center space-x-2">
-              <Upload className="w-4 h-4 text-[#FF9F0A]" />
+              <Upload className="w-4 h-4 text-neutral-300" />
               <span>Загрузить свой файл Excel (.xlsx)</span>
             </h3>
             <p className="text-[#8E9E94]">

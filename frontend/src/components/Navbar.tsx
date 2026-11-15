@@ -216,29 +216,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             </button>
           )}
 
-          {/* Demo QR button for dispatcher */}
-          {currentUser?.role === 'dispatcher' && demoMode && onOpenDemoQrModal && (
-            <button
-              onClick={onOpenDemoQrModal}
-              title="Показать QR-коды для входа зрителей"
-              className="flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl text-xs font-medium bg-white/10 hover:bg-white/15 border border-white/20 text-white transition-colors"
-            >
-              <span>QR для зрителей</span>
-            </button>
-          )}
-
-          {/* Reset Demo Data Button */}
-          {currentUser?.role === 'dispatcher' && demoMode && onResetDemoData && (
-            <button
-              onClick={onResetDemoData}
-              title="Сбросить обращения зрителей и восстановить остатки запчастей"
-              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-medium bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-neutral-300 hover:text-white transition-colors"
-            >
-              <RotateCcw className="w-3.5 h-3.5 text-[#9CA3AF]" />
-              <span className="hidden lg:inline">Сбросить демо</span>
-            </button>
-          )}
-
           {/* User Account Button & Dropdown */}
           {currentUser ? (
             <div className="relative">

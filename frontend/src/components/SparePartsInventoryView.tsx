@@ -144,7 +144,7 @@ export const SparePartsInventoryView: React.FC<SparePartsInventoryViewProps> = (
                         className={`font-bold px-2 py-0.5 rounded-md text-[11px] ${
                           p.moscow_free > 0
                             ? 'bg-white/15 text-white border border-white/20'
-                            : 'bg-[#FF453A]/15 text-[#FF453A]'
+                            : 'bg-white/[0.04] text-neutral-400 border border-white/10'
                         }`}
                       >
                         {p.moscow_free} шт.
@@ -161,7 +161,7 @@ export const SparePartsInventoryView: React.FC<SparePartsInventoryViewProps> = (
                         className={`font-bold px-2 py-0.5 rounded-md text-[11px] ${
                           p.tula_free > 0
                             ? 'bg-white/15 text-white border border-white/20'
-                            : 'bg-[#FF453A]/15 text-[#FF453A]'
+                            : 'bg-white/[0.04] text-neutral-400 border border-white/10'
                         }`}
                       >
                         {p.tula_free} шт.
@@ -171,17 +171,17 @@ export const SparePartsInventoryView: React.FC<SparePartsInventoryViewProps> = (
                     {/* Logistics rule П-8 */}
                     <td className="py-3.5 px-4">
                       {canTransferToMoscow ? (
-                        <span className="flex items-center space-x-1 text-[#FF9F0A] font-medium text-[11px]">
-                          <Truck className="w-3.5 h-3.5" />
+                        <span className="inline-flex items-center space-x-1.5 text-neutral-200 border border-white/15 bg-white/[0.06] px-2 py-0.5 rounded-md font-medium text-[11px]">
+                          <Truck className="w-3.5 h-3.5 text-neutral-300" />
                           <span>Тула → Москва (+1 день)</span>
                         </span>
                       ) : canTransferToTula ? (
-                        <span className="flex items-center space-x-1 text-[#FF9F0A] font-medium text-[11px]">
-                          <Truck className="w-3.5 h-3.5" />
+                        <span className="inline-flex items-center space-x-1.5 text-neutral-200 border border-white/15 bg-white/[0.06] px-2 py-0.5 rounded-md font-medium text-[11px]">
+                          <Truck className="w-3.5 h-3.5 text-neutral-300" />
                           <span>Москва → Тула (+1 день)</span>
                         </span>
                       ) : (
-                        <span className="text-[#8E9E94] text-[11px] flex items-center space-x-1">
+                        <span className="text-neutral-400 text-[11px] flex items-center space-x-1">
                           <CheckCircle2 className="w-3.5 h-3.5 text-neutral-400" />
                           <span>В наличии на месте</span>
                         </span>
