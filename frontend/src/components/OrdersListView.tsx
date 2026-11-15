@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../api';
 import { ServiceOrder, User as UserType, SparePart, Equipment, ReservedPartItem } from '../types';
-import { ClipboardList, MapPin, User, ShieldAlert, CheckCircle2, Clock, Wrench, Edit3, X, Plus, Minus, Trash2, Package } from 'lucide-react';
+import { ClipboardList, MapPin, User, ShieldAlert, CheckCircle2, Clock, Wrench, Edit3, X, Plus, Minus, Trash2, Package, ArrowUpDown } from 'lucide-react';
 
 interface OrdersListViewProps {
   onRefreshTrigger?: number;
@@ -23,6 +23,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [orderSort, setOrderSort] = useState<'desc' | 'asc'>('desc');
 
   // Edit Modal State
   const [editingOrder, setEditingOrder] = useState<ServiceOrder | null>(null);
@@ -59,6 +60,13 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
     if (statusFilter === 'all') return true;
     if (statusFilter === 'warranty') return o.is_warranty;
     return o.status === statusFilter;
+  });
+
+  const sortedOrders = [...filtered].sort((a, b) => {
+    if (orderSort === 'desc') {
+      return b.id - a.id;
+    }
+    return a.id - b.id;
   });
 
   const handleOpenEdit = (o: ServiceOrder) => {
@@ -170,34 +178,133 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
           </p>
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex flex-wrap gap-1 bg-white/[0.04] border border-white/[0.08] p-1 rounded-xl text-xs">
-          {[
-            { id: 'all', label: 'Все заявки' },
-            { id: 'Назначен', label: 'Назначен' },
-            { id: 'В пути', label: 'В пути' },
-            { id: 'На месте', label: 'На месте' },
-            { id: 'Выполнен', label: 'Выполнен' },
-            { id: 'warranty', label: 'Гарантийные (П-9)' },
-          ].map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setStatusFilter(f.id)}
-              className={`px-3 py-1 rounded-lg font-medium transition-all ${
-                statusFilter === f.id
-                  ? 'bg-white text-black font-semibold shadow-sm'
-                  : 'text-[#8E9E94] hover:text-[#F0F5F2]'
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+        {/* Filter Pills and Sort Toggle */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap gap-1 bg-white/[0.04] border border-white/[0.08] p-1 rounded-xl text-xs">
+            {[
+              { id: 'all', label: 'Все заявки' },
+              { id: 'Назначен', label: 'Назначен' },
+              { id: 'В пути', label: 'В пути' },
+              { id: 'На месте', label: 'На месте' },
+              { id: 'Выполнен', label: 'Выполнен' },
+              { id: 'warranty', label: 'Гарантийные (П-9)' },
+            ].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setStatusFilter(f.id)}
+                className={`px-3 py-1 rounded-lg font-medium transition-all ${
+                  statusFilter === f.id
+                    ? 'bg-white text-black font-semibold shadow-sm'
+                    : 'text-[#8E9E94] hover:text-[#F0F5F2]'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setOrderSort((prev) => (prev === 'desc' ? 'asc' : 'desc'))}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-white/[0.06] hover:bg-white/10 text-white border border-white/[0.08] text-xs font-medium transition-all cursor-pointer active:scale-95"
+            title="Переключить порядок отображения заявок"
+          >
+            <ArrowUpDown className="w-3.5 h-3.5 text-neutral-300" />
+            <span>{orderSort === 'desc' ? '№ по убыванию (Новые)' : '№ по возрастанию (Старые)'}</span>
+          </button>
         </div>
       </div>
 
-      {/* Orders Table */}
+      {/* Orders Table (Desktop & Tablet) */}
       <div className="bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-2xl overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile View Cards */}
+        <div className="md:hidden divide-y divide-white/[0.06]">
+          {sortedOrders.map((o) => (
+            <div key={o.id} className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <span className="font-mono font-bold text-white text-sm">{o.order_number}</span>
+                  {o.is_warranty && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/10 text-white border border-white/20">
+                      Гарантия
+                    </span>
+                  )}
+                </div>
+                <span
+                  className={`font-semibold px-2 py-0.5 rounded-full text-[10px] border ${
+                    o.status === 'Выполнен'
+                      ? 'bg-white/15 text-white border-white/20'
+                      : o.status === 'На месте'
+                      ? 'bg-white/10 text-white border-white/20'
+                      : o.status === 'В пути'
+                      ? 'bg-white/10 text-white border-white/15'
+                      : 'bg-white/[0.06] text-[#8E9E94] border-white/[0.08]'
+                  }`}
+                >
+                  {o.status}
+                </span>
+              </div>
+
+              <div className="text-xs space-y-1">
+                <div className="font-semibold text-white">{o.client_name}</div>
+                <div className="text-[#8E9E94] flex items-center space-x-1">
+                  <MapPin className="w-3 h-3 text-[#8E9E94]" />
+                  <span>{o.address}</span>
+                </div>
+                <div className="text-[#8E9E94]">
+                  {o.model} (№{o.serial_number})
+                </div>
+              </div>
+
+              <div className="text-xs bg-white/[0.02] p-2 rounded-lg border border-white/[0.04] text-neutral-300">
+                <span className="font-medium text-white">Симптом:</span> {o.symptom}
+              </div>
+
+              {o.reserved_parts && o.reserved_parts.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {o.reserved_parts.map((p: any, idx: number) => (
+                    <span
+                      key={idx}
+                      className="px-1.5 py-0.5 rounded bg-white/[0.06] border border-white/[0.08] text-white font-mono text-[10px]"
+                    >
+                      {p.code} ({p.quantity} шт.)
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {isDispatcher && (
+                <div className="flex items-center justify-end space-x-2 pt-2 border-t border-white/[0.06]">
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEdit(o)}
+                    className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/20 text-xs font-semibold transition-all active:scale-95"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Редактировать</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteOrder(o.id, o.order_number)}
+                    className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/15 text-neutral-300 hover:text-white border border-white/10 text-xs font-semibold transition-all active:scale-95"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Удалить</span>
+                  </button>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {sortedOrders.length === 0 && (
+            <div className="p-8 text-center text-xs text-[#8E9E94]">
+              Заявки не найдены
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-white/[0.04] text-[#8E9E94] font-semibold uppercase tracking-wider border-b border-white/[0.08]">
               <tr>
@@ -212,7 +319,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.06]">
-              {filtered.map((o) => (
+              {sortedOrders.map((o) => (
                 <tr key={o.id} className="hover:bg-white/[0.02] transition-colors">
                   <td className="py-3.5 px-4 font-mono font-bold text-white whitespace-nowrap">
                     <div>{o.order_number}</div>
@@ -314,7 +421,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                 </tr>
               ))}
 
-              {filtered.length === 0 && (
+              {sortedOrders.length === 0 && (
                 <tr>
                   <td colSpan={isDispatcher ? 8 : 7} className="py-8 text-center text-xs text-[#8E9E94]">
                     Заявки не найдены

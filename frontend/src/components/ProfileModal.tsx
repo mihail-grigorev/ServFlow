@@ -521,14 +521,14 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 <h3 className="text-base font-semibold">Подтверждение выхода</h3>
               </div>
               <p className="text-xs text-neutral-400">
-                Для выхода из аккаунта <span className="text-white font-medium">{currentUser.full_name}</span> введите пароль (1997):
+                Для выхода из аккаунта <span className="text-white font-medium">{currentUser.full_name}</span> введите пароль:
               </p>
 
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
                   if (logoutPinInput.trim() && logoutPinInput.trim() !== '1997' && logoutPinInput.trim() !== '2026') {
-                    setLogoutPinError('Неверный пароль (1997)');
+                    setLogoutPinError('Неверный пароль');
                     return;
                   }
                   setShowLogoutConfirm(false);
@@ -541,7 +541,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                   <input
                     type="password"
                     autoFocus
-                    placeholder="Пароль для выхода (1997)"
+                    placeholder="Пароль для выхода"
                     value={logoutPinInput}
                     onChange={(e) => setLogoutPinInput(e.target.value)}
                     className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/20 text-white text-sm placeholder:text-neutral-500 focus:outline-none focus:border-white tracking-widest text-center font-mono"

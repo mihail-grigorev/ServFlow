@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import openpyxl
 from sqlalchemy.orm import Session
 from backend.models import User, Equipment, SparePart, ClientThread, Message, ServiceOrder
@@ -581,18 +581,20 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
             is_warranty=is_warranty,
             warranty_reason=warranty_reason,
             is_unregistered=(eq is None and ("ромашка" in t_def["client_name"].lower() or t_def["thread_number"] == 12)),
-            last_activity=datetime(2026, 11, 16, 11, 29)
+            last_activity=datetime(2026, 11, 16, 8, 0) + timedelta(minutes=t_def["thread_number"] * 15)
         )
         db.add(thread)
         db.flush()
 
         # Add messages for this thread
+        last_t_time = datetime(2026, 11, 16, 8, 0) + timedelta(minutes=t_def["thread_number"] * 15)
         for req_code in t_def["request_codes"]:
             req = requests_map.get(req_code)
             if req:
                 # Parse hour and minute from '16.11 08:05'
                 time_parts = req["time"].split(" ")[1].split(":")
                 msg_time = datetime(2026, 11, 16, int(time_parts[0]), int(time_parts[1]))
+                last_t_time = msg_time
 
                 msg = Message(
                     thread_id=thread.id,
@@ -667,16 +669,18 @@ def reset_demo_data(db: Session):
             is_warranty=is_warranty,
             warranty_reason=warranty_reason,
             is_unregistered=(eq is None and ("ромашка" in t_def["client_name"].lower() or t_def["thread_number"] == 12)),
-            last_activity=datetime(2026, 11, 16, 11, 29)
+            last_activity=datetime(2026, 11, 16, 8, 0) + timedelta(minutes=t_def["thread_number"] * 15)
         )
         db.add(thread)
         db.flush()
 
+        last_t_time = datetime(2026, 11, 16, 8, 0) + timedelta(minutes=t_def["thread_number"] * 15)
         for req_code in t_def["request_codes"]:
             req = requests_map.get(req_code)
             if req:
                 time_parts = req["time"].split(" ")[1].split(":")
                 msg_time = datetime(2026, 11, 16, int(time_parts[0]), int(time_parts[1]))
+                last_t_time = msg_time
 
                 msg = Message(
                     thread_id=thread.id,

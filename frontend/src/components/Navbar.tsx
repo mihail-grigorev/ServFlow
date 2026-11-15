@@ -62,7 +62,7 @@ export const Navbar: React.FC<NavbarProps> = ({
     e.preventDefault();
     // Verify PIN 1997 for staff or permit confirmed logout
     if (logoutPin.trim() && logoutPin.trim() !== '1997' && logoutPin.trim() !== '2026') {
-      setLogoutError('Неверный пароль для выхода (используйте 1997)');
+      setLogoutError('Неверный пароль для выхода');
       return;
     }
     setShowLogoutModal(false);
@@ -364,7 +364,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               <h3 className="text-base font-semibold text-white">Подтверждение выхода</h3>
             </div>
             <p className="text-xs text-neutral-400">
-              Вы уверены, что хотите выйти из аккаунта <span className="text-white font-medium">{currentUser?.full_name}</span>? Для подтверждения выхода введите пароль (1997):
+              Вы уверены, что хотите выйти из аккаунта <span className="text-white font-medium">{currentUser?.full_name}</span>? Для подтверждения выхода введите пароль:
             </p>
 
             <form onSubmit={handleConfirmLogout} className="space-y-3">
@@ -372,7 +372,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <input
                   type="password"
                   autoFocus
-                  placeholder="Пароль для выхода (1997)"
+                  placeholder="Пароль для выхода"
                   value={logoutPin}
                   onChange={(e) => setLogoutPin(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/20 text-white text-sm placeholder:text-neutral-500 focus:outline-none focus:border-white tracking-widest text-center font-mono"

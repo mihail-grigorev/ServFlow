@@ -13,6 +13,7 @@ import { SparePartsInventoryView } from './components/SparePartsInventoryView';
 import { CompanyCabinet } from './components/CompanyCabinet';
 import { DemoQrModal } from './components/DemoQrModal';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
+import { Footer } from './components/Footer';
 
 type TabType = 'dispatcher' | 'orders' | 'engineer' | 'warehouse' | 'company' | 'analytics';
 
@@ -231,7 +232,12 @@ export function App() {
   };
 
   if (!currentUser) {
-    return <LoginView onLoginSuccess={handleLoginSuccess} demoUsers={demoUsers} demoMode={demoMode} />;
+    return (
+      <div className="min-h-screen bg-[#0C0D0F] text-[#F3F4F6] flex flex-col justify-between selection:bg-white/20 selection:text-white">
+        <LoginView onLoginSuccess={handleLoginSuccess} demoUsers={demoUsers} demoMode={demoMode} />
+        <Footer />
+      </div>
+    );
   }
 
   return (
@@ -313,6 +319,8 @@ export function App() {
             />
           )}
         </main>
+
+        <Footer />
       </div>
 
       {/* Order Modal */}

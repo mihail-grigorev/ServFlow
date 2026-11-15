@@ -713,14 +713,14 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers,
                 </div>
               </div>
 
-              {/* Staff Test Users: Administrator and Engineer (PIN/Password: 1997) */}
+              {/* Staff Test Users: Administrator and Engineer */}
               <div className="pt-3 border-t border-white/[0.08]">
                 <div className="text-[10px] font-semibold text-[#8E9E94] uppercase tracking-wider mb-2 flex items-center justify-between">
                   <div className="flex items-center space-x-1">
                     <Lock className="w-3 h-3 text-white" />
-                    <span>Сотрудники сервиса (Пароль: 1997)</span>
+                    <span>Сотрудники сервиса</span>
                   </div>
-                  <span className="text-[10px] text-neutral-300 font-mono px-1.5 py-0.5 rounded bg-white/10 border border-white/20">PIN: 1997</span>
+                  <span className="text-[10px] text-neutral-400 font-mono px-1.5 py-0.5 rounded bg-white/5 border border-white/10">Защищено паролем</span>
                 </div>
                 <div className="space-y-2">
                   {[
@@ -762,7 +762,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers,
                               {u.role === 'dispatcher' ? 'Админ' : 'Инженер'}
                             </span>
                           </div>
-                          <div className="text-[10px] text-[#8E9E94] truncate">{u.email} · Пароль/PIN: 1997</div>
+                          <div className="text-[10px] text-[#8E9E94] truncate">{u.email}</div>
                         </div>
                       </div>
                       <ArrowRight className="w-3.5 h-3.5 text-[#8E9E94] group-hover:text-white" />
@@ -798,7 +798,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers,
                 <input
                   type="password"
                   autoFocus
-                  placeholder="Введите пароль / PIN (1997)"
+                  placeholder="Введите пароль аккаунта"
                   value={staffPinInput}
                   onChange={(e) => setStaffPinInput(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm placeholder:text-neutral-500 focus:outline-none focus:border-white/30 tracking-widest text-center"

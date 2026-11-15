@@ -217,7 +217,7 @@ def get_threads(
             )
         )
 
-    threads = query.order_by(ClientThread.id.desc()).all()
+    threads = query.order_by(ClientThread.thread_number.asc()).all()
     orders = db.query(ServiceOrder).filter(ServiceOrder.thread_id.isnot(None)).all()
     orders_by_thread = {o.thread_id: o for o in orders}
     users_by_id = {u.id: u for u in db.query(User).all()}

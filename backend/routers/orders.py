@@ -60,7 +60,7 @@ def get_orders(
     if is_warranty is not None:
         query = query.filter(ServiceOrder.is_warranty == is_warranty)
 
-    orders = query.order_by(ServiceOrder.created_at.desc()).all()
+    orders = query.order_by(ServiceOrder.id.desc()).all()
     return [ServiceOrderResponse.model_validate(o) for o in orders]
 
 

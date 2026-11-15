@@ -28,6 +28,9 @@ import {
   ArrowRight,
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ArrowUpDown,
+  SlidersHorizontal,
   UserCheck
 } from 'lucide-react';
 
@@ -51,6 +54,8 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
 }) => {
   const [selectedThreadId, setSelectedThreadId] = useState<number | null>(null);
   const [dispatcherChatTab, setDispatcherChatTab] = useState<'client' | 'engineer'>('client');
+  const [mobileTab, setMobileTab] = useState<'threads' | 'chat' | 'ai'>('threads');
+  const [sortOrder, setSortOrder] = useState<'num_asc' | 'num_desc' | 'activity'>('num_asc');
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisResult | null>(null);
@@ -304,9 +309,16 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
   });
 
   const sortedThreads = [...filteredThreads].sort((a, b) => {
+    if (sortOrder === 'num_asc') {
+      return a.thread_number - b.thread_number;
+    }
+    if (sortOrder === 'num_desc') {
+      return b.thread_number - a.thread_number;
+    }
     const timeA = new Date(a.last_activity || a.created_at).getTime();
     const timeB = new Date(b.last_activity || b.created_at).getTime();
-    return timeB - timeA;
+    if (timeB !== timeA) return timeB - timeA;
+    return a.thread_number - b.thread_number;
   });
 
   const getChannelIcon = (ch: string) => {
@@ -333,9 +345,40 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
 
   return (
     <div className="min-h-[calc(100vh-4rem)] lg:h-[calc(100vh-4rem)] flex flex-col p-3 sm:p-6 max-w-[1700px] mx-auto w-full text-[#F3F4F6]">
+      {/* Mobile Top Navigation Segmented Tabs */}
+      <div className="lg:hidden flex items-center bg-[#16171B] p-1.5 rounded-2xl border border-white/[0.08] mb-3 gap-1 shadow-lg">
+        <button
+          type="button"
+          onClick={() => setMobileTab('threads')}
+          className={`flex-1 py-2 px-1 text-xs font-semibold rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
+            mobileTab === 'threads' ? 'bg-white text-black shadow-md' : 'text-neutral-400 hover:text-white'
+          }`}
+        >
+          <span>📋 Обращения ({sortedThreads.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('chat')}
+          className={`flex-1 py-2 px-1 text-xs font-semibold rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
+            mobileTab === 'chat' ? 'bg-white text-black shadow-md' : 'text-neutral-400 hover:text-white'
+          }`}
+        >
+          <span>💬 Чат {selectedThread ? `(#${selectedThread.thread_number})` : ''}</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('ai')}
+          className={`flex-1 py-2 px-1 text-xs font-semibold rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
+            mobileTab === 'ai' ? 'bg-white text-black shadow-md' : 'text-neutral-400 hover:text-white'
+          }`}
+        >
+          <span>⚡ ИИ & Детали</span>
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 min-h-0">
         {/* ================= COLUMN 1 (LEFT): THREADS & QUICK ORDER ================= */}
-        <div className="h-[360px] lg:h-auto lg:col-span-3 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex flex-col min-h-0 overflow-hidden">
+        <div className={`${mobileTab === 'threads' ? 'flex' : 'hidden'} lg:flex h-[calc(100vh-14rem)] lg:h-auto lg:col-span-3 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex-col min-h-0 overflow-hidden`}>
           <div className="p-3.5 border-b border-white/[0.06] space-y-2.5">
             <div className="flex items-center space-x-2">
               <button
@@ -357,6 +400,27 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border border-white/[0.08] bg-[#1F2026] text-white placeholder-[#9CA3AF] focus:border-white/20 outline-none transition-all"
               />
+            </div>
+
+            {/* Sort order toggle and filters */}
+            <div className="flex items-center justify-between pt-0.5">
+              <div className="flex items-center space-x-1 text-[11px] text-[#8E9E94]">
+                <SlidersHorizontal className="w-3 h-3 text-[#9CA3AF]" />
+                <span>Порядок:</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSortOrder((prev) => (prev === 'num_asc' ? 'num_desc' : prev === 'num_desc' ? 'activity' : 'num_asc'));
+                }}
+                className="flex items-center space-x-1.5 text-[11px] font-medium px-2 py-0.5 rounded-lg bg-white/[0.06] hover:bg-white/10 text-white border border-white/[0.08] transition-all cursor-pointer active:scale-95"
+                title="Переключить порядок отображения обращений"
+              >
+                <ArrowUpDown className="w-3 h-3 text-neutral-300" />
+                {sortOrder === 'num_asc' && <span>№ 1 → 13 (Возр.)</span>}
+                {sortOrder === 'num_desc' && <span>№ 13 → 1 (Убыв.)</span>}
+                {sortOrder === 'activity' && <span>По активности</span>}
+              </button>
             </div>
 
             {/* Filter Pills */}
@@ -398,7 +462,10 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
               return (
                 <div
                   key={t.id}
-                  onClick={() => setSelectedThreadId(t.id)}
+                  onClick={() => {
+                    setSelectedThreadId(t.id);
+                    setMobileTab('chat');
+                  }}
                   className={`p-3.5 cursor-pointer transition-all ${
                     isBrandNew
                       ? 'bg-white/10 ring-1 ring-white/30 border-l-4 border-white'
@@ -420,7 +487,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                           Новое
                         </span>
                       )}
-                      <span className="text-[10px] text-[#9CA3AF]">
+                      <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-white/10 text-white border border-white/20">
                         #{t.thread_number}
                       </span>
                     </div>
@@ -467,7 +534,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
         </div>
 
         {/* ================= COLUMN 2 (CENTER): CHAT & AI ASSISTANT ================= */}
-        <div className="h-[540px] lg:h-auto lg:col-span-5 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex flex-col min-h-0 overflow-hidden">
+        <div className={`${mobileTab === 'chat' ? 'flex' : 'hidden'} lg:flex h-[calc(100vh-14rem)] lg:h-auto lg:col-span-5 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex-col min-h-0 overflow-hidden`}>
           {selectedThread ? (
             <>
               {/* Header */}
@@ -495,6 +562,28 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                 </div>
 
                 <div className="flex items-center space-x-2">
+                  {/* Mobile back / forward controls */}
+                  <div className="flex items-center space-x-1 lg:hidden">
+                    <button
+                      type="button"
+                      onClick={() => setMobileTab('threads')}
+                      className="px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center space-x-1 cursor-pointer"
+                      title="К списку обращений"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      <span>Список</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMobileTab('ai')}
+                      className="px-2 py-1 rounded-lg bg-white text-black text-xs font-semibold flex items-center space-x-1 shadow-sm cursor-pointer"
+                      title="К ИИ-анализу и деталям"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-black" />
+                      <span>ИИ</span>
+                    </button>
+                  </div>
+
                   <span
                     className={`text-xs px-2.5 py-1 rounded-full font-medium ${
                       selectedThread.status === 'ready_for_order'
@@ -816,12 +905,23 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
         </div>
 
         {/* ================= COLUMN 3 (RIGHT): PROACTIVE AI EQUIPMENT & SPARE PARTS OR ACTIVE ORDER ================= */}
-        <div className="min-h-[380px] lg:h-auto lg:col-span-4 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex flex-col min-h-0 overflow-hidden">
+        <div className={`${mobileTab === 'ai' ? 'flex' : 'hidden'} lg:flex h-[calc(100vh-14rem)] lg:h-auto lg:col-span-4 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex-col min-h-0 overflow-hidden`}>
           <div className="p-4 border-b border-white/[0.06] flex items-center justify-between">
-            <h2 className="font-bold text-sm text-white flex items-center space-x-1.5">
-              <Sparkles className="w-4 h-4 text-white/70" />
-              <span>{activeOrderForThread ? 'Сформированная заявка' : 'Диагностика и запчасти'}</span>
-            </h2>
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => setMobileTab('chat')}
+                className="lg:hidden px-2 py-1 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center space-x-1 cursor-pointer"
+                title="Вернуться в чат"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                <span>В чат</span>
+              </button>
+              <h2 className="font-bold text-sm text-white flex items-center space-x-1.5">
+                <Sparkles className="w-4 h-4 text-white/70" />
+                <span>{activeOrderForThread ? 'Сформированная заявка' : 'Диагностика и запчасти'}</span>
+              </h2>
+            </div>
             {activeOrderForThread && (
               <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/10 text-neutral-300 border border-white/20">
                 Заявка активна
