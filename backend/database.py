@@ -7,6 +7,8 @@ from backend.config import settings
 logger = logging.getLogger(__name__)
 
 db_url = settings.DATABASE_URL
+if db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql://", 1)
 
 # Create engine
 try:
@@ -16,10 +18,10 @@ try:
             connect_args={"check_same_thread": False}
         )
     else:
-        # Test connection with 2-second timeout to avoid startup hangs if Docker is starting
+        # Test connection with 10-second timeout to accommodate cloud database TLS handshakes
         test_engine = create_engine(
             db_url,
-            connect_args={"connect_timeout": 2},
+            connect_args={"connect_timeout": 10},
             pool_pre_ping=True
         )
         with test_engine.connect() as conn:
