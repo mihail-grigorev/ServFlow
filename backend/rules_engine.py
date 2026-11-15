@@ -316,16 +316,20 @@ class RulesEngine:
     def extract_symptoms_and_assumptions(text: str) -> Tuple[str, Optional[str]]:
         """
         Rule П-4:
-        Symptom = what happens, when and where.
-        Assumption = customer's hypotheses ("привезите сразу насос", "наверное опять датчик").
+        Symptom = Synthesized technical description: what happened, how it happened, and preliminary node.
+        Assumption = Customer's hypotheses separated out.
+        Never returns a raw chat transcript dump!
         """
         text_clean = text.strip()
         assumptions = []
-        symptoms = []
 
-        # Common assumption patterns
+        # Common assumption patterns to extract separately
         phrases_assumptions = [
             "можно сразу привезти новый насос",
+            "привезите сразу новый насос",
+            "привезите сразу насос",
+            "привезите новую помпу",
+            "привезите помпу",
             "привезите сразу",
             "наверное, опять тот узел",
             "наверное опять тот узел",
@@ -333,6 +337,11 @@ class RulesEngine:
             "сами починим",
             "пришлите инструкцию по разборке",
             "нужна прокладка",
+            "наверное помпа",
+            "наверное датчик",
+            "думаю дело в клапане",
+            "кажется она сгорела",
+            "кажется сгорел",
         ]
 
         lower_t = text_clean.lower()
@@ -340,13 +349,95 @@ class RulesEngine:
             if phrase in lower_t:
                 assumptions.append(phrase)
 
-        # Build clean symptom
-        # Remove known pure customer assumptions from symptom summary
-        symptom_text = text_clean
-        if "можно сразу привезти новый насос" in symptom_text:
-            symptom_text = symptom_text.replace("Можно сразу привезти новый насос?", "").strip()
-        if "пришлите инструкцию по разборке" in symptom_text.lower():
-            symptom_text = "Запрос инструкции по разборке кофемашины для самостоятельного ремонта."
+        # 1. Parse client text, ignoring dispatcher / engineer / system lines
+        client_lines = []
+        for line in text_clean.split("\n"):
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith("[") and (": " in line or "] " in line):
+                header, _, body = line.partition(": ")
+                if any(role in header.lower() for role in ["диспетчер", "инженер", "сервис", "система", "servflow", "ии-"]):
+                    continue
+                client_lines.append(body.strip())
+            else:
+                client_lines.append(line)
+
+        combined_client_text = " ".join(client_lines)
+        c_lower = combined_client_text.lower()
+
+        # 2. Synthesize what and how it happened
+        symptom_parts = []
+
+        # What: Leakage
+        if any(w in c_lower for w in ["течь", "течет", "течёт", "теет", "протек", "капает", "капли", "лужа", "вода"]):
+            loc = "снизу корпуса (лужа под аппаратом)"
+            if any(w in c_lower for w in ["из-под группы", "групп", "рожк", "холдер"]):
+                loc = "из-под заварочной группы при проливе"
+            elif "поддон" in c_lower:
+                loc = "переполнение дренажного поддона"
+
+            sound = ""
+            if any(w in c_lower for w in ["пар", "шип", "свист", "давлен"]):
+                sound = " с выходом пара под давлением (характерное шипение)"
+
+            cond = ""
+            if any(w in c_lower for w in ["постоянно", "всегда", "непрерывно", "в простое", "даже когда не варим"]):
+                cond = " Вода скапливается непрерывно даже в режиме ожидания."
+            elif any(w in c_lower for w in ["при варке", "при приготовлении", "когда варим", "во время пролива"]):
+                cond = " Протечка возникает только в момент приготовления кофе."
+
+            cause = (
+                " Признаки разгерметизации электромагнитного клапана подачи воды V010 либо штуцеров бойлера."
+                if "групп" not in loc
+                else " Признаки износа или окаменения прокладки заварочной группы."
+            )
+            symptom_parts.append(f"Протечка воды {loc}{sound}.{cond}{cause}")
+
+        # What: Flow & Pump
+        elif any(w in c_lower for w in ["напор", "струйк", "медленно течет", "не качает", "гул", "шум", "гудит", "трещ"]):
+            flow_desc = "Слабый напор и медленный пролив кофе"
+            if any(w in c_lower for w in ["гул", "шум", "гудит", "трещ"]):
+                flow_desc += " с посторонним гулом и вибрацией ротационной помпы"
+            cond = ""
+            if any(w in c_lower for w in ["после чистки", "после декальцинации", "после промывки"]):
+                cond = " Симптом проявился после проведения декальцинации."
+            cause = " Вероятен засор фильтра-картриджа F010, накипь в жиклере группы либо износ помпы."
+            symptom_parts.append(f"{flow_desc}.{cond}{cause}")
+
+        # What: Error codes
+        elif any(w in c_lower for w in ["e03", "e07", "e11", "ошибк", "код"]):
+            if "e03" in c_lower:
+                symptom_parts.append("Блокировка кофемашины с кодом ошибки E03 (нет подачи воды в бойлер). Требуется ревизия клапана V010 и датчика потока.")
+            elif "e07" in c_lower:
+                symptom_parts.append("Ошибка E07 (заварочный блок не зафиксирован или сбой концевика). Требуется проверка посадочного места блока.")
+            elif "e11" in c_lower:
+                symptom_parts.append("Ошибка E11 (датчик фиксирует низкий уровень воды в баке). Признаки накипи на электроде уровня L100/L200.")
+            else:
+                symptom_parts.append("Индикация сервисной ошибки на панели управления. Аппарат блокирует приготовление напитков.")
+
+        # What: Steam & Heating
+        elif any(w in c_lower for w in ["пар", "молоко", "капучин", "не греет", "холодн"]):
+            symptom_parts.append("Неисправность парового тракта: слабый пар или отсутствие нагрева молока при взбивании. Вероятен износ крана пара S100 или засор трубки стимера.")
+
+        # Self-repair inquiry
+        if any(w in c_lower for w in ["инструкцию по разборке", "сами починим", "как разобрать"]):
+            symptom_parts.append("Запрос инструкции по разборке кофемашины для самостоятельного ремонта.")
+
+        if symptom_parts:
+            symptom_text = " ".join(symptom_parts)
+        else:
+            # Clean customer words: strip greetings, pleasantries, questions
+            clean_sents = []
+            for sent in combined_client_text.replace("!", ".").replace("?", ".").split("."):
+                s = sent.strip()
+                if not s or len(s) < 5:
+                    continue
+                s_l = s.lower()
+                if any(w in s_l for w in ["здравствуйте", "добрый день", "доброе утро", "привет", "подскажите когда", "когда приедет", "спасибо"]):
+                    continue
+                clean_sents.append(s)
+            symptom_text = ". ".join(clean_sents) + "." if clean_sents else "Требуется диагностика и осмотр кофемашины."
 
         return symptom_text, ("; ".join(assumptions) if assumptions else None)
 
