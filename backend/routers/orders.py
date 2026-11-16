@@ -629,6 +629,50 @@ def update_order(
     return ServiceOrderResponse.model_validate(order)
 
 
+def release_order_parts(db: Session, order: ServiceOrder):
+    """Release reserved parts back to warehouse (for cancelled or deleted orders)."""
+    if not order.reserved_parts:
+        return
+    try:
+        for item in order.reserved_parts:
+            if isinstance(item, dict):
+                code = item.get("code")
+                qty = max(1, item.get("quantity", 1))
+                city = str(item.get("source_city", "")).lower()
+                if code:
+                    part = db.query(SparePart).filter(SparePart.code == code).first()
+                    if part:
+                        if "москва" in city:
+                            part.moscow_reserved = max(0, (part.moscow_reserved or 0) - qty)
+                        else:
+                            part.tula_reserved = max(0, (part.tula_reserved or 0) - qty)
+    except Exception as e:
+        print(f"Error releasing order parts: {e}")
+
+
+def consume_order_parts(db: Session, order: ServiceOrder):
+    """Write off parts from physical stock upon order completion ('Выполнен')."""
+    if not order.reserved_parts:
+        return
+    try:
+        for item in order.reserved_parts:
+            if isinstance(item, dict):
+                code = item.get("code")
+                qty = max(1, item.get("quantity", 1))
+                city = str(item.get("source_city", "")).lower()
+                if code:
+                    part = db.query(SparePart).filter(SparePart.code == code).first()
+                    if part:
+                        if "москва" in city:
+                            part.moscow_stock = max(0, (part.moscow_stock or 0) - qty)
+                            part.moscow_reserved = max(0, (part.moscow_reserved or 0) - qty)
+                        else:
+                            part.tula_stock = max(0, (part.tula_stock or 0) - qty)
+                            part.tula_reserved = max(0, (part.tula_reserved or 0) - qty)
+    except Exception as e:
+        print(f"Error consuming order parts: {e}")
+
+
 @router.patch("/{order_id}/status", response_model=ServiceOrderResponse)
 def update_order_status(
     order_id: int,
@@ -650,8 +694,16 @@ def update_order_status(
         )
 
     old_status = order.status
-    order.status = status_update.status
+    new_status = status_update.status
+    order.status = new_status
     order.updated_at = datetime.utcnow()
+
+    # Automatic stock / reservation synchronization
+    if new_status in ["Отменен", "Отменён"] and old_status not in ["Отменен", "Отменён", "Выполнен"]:
+        release_order_parts(db, order)
+    elif new_status == "Выполнен" and old_status != "Выполнен":
+        consume_order_parts(db, order)
+
     db.commit()
     db.refresh(order)
     log_audit(db, action="order_status_update", user_id=current_user.id, object=order.order_number, details={"new_status": status_update.status})
@@ -697,9 +749,15 @@ def submit_order_report(
             detail="Отправка отчета доступна только назначенному инженеру или диспетчеру"
         )
 
+    old_status = order.status
+    new_status = report_in.status or "Выполнен"
     order.inspection_report = report_in.inspection_report
-    order.status = report_in.status or "Выполнен"
+    order.status = new_status
     order.updated_at = datetime.utcnow()
+
+    # Automatic physical stock write-off when completed
+    if new_status == "Выполнен" and old_status != "Выполнен":
+        consume_order_parts(db, order)
 
     # Update equipment last visit history if applicable
     if order.equipment_id:
@@ -733,23 +791,9 @@ def delete_order(
     if not order:
         raise HTTPException(status_code=404, detail="Заявка не найдена")
 
-    # Release reserved parts back to warehouse
-    if order.reserved_parts:
-        try:
-            for item in order.reserved_parts:
-                if isinstance(item, dict):
-                    code = item.get("code")
-                    qty = max(1, item.get("quantity", 1))
-                    city = str(item.get("source_city", "")).lower()
-                    if code:
-                        part = db.query(SparePart).filter(SparePart.code == code).first()
-                        if part:
-                            if "москва" in city:
-                                part.moscow_reserved = max(0, (part.moscow_reserved or 0) - qty)
-                            else:
-                                part.tula_reserved = max(0, (part.tula_reserved or 0) - qty)
-        except Exception as e:
-            print(f"Error restoring reserved parts: {e}")
+    # Release reserved parts back to warehouse if order was active
+    if order.status not in ["Выполнен", "Отменен", "Отменён"]:
+        release_order_parts(db, order)
 
     # If linked to a thread, update thread status
     if order.thread_id:
