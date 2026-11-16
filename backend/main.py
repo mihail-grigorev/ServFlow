@@ -30,7 +30,7 @@ async def lifespan(app: FastAPI):
     # Initialize DB schema
     init_db()
     
-    # Auto-seed if database is freshly created
+    # Auto-seed if database is freshly created, or ensure demo tokens on existing DB
     db = SessionLocal()
     try:
         user_count = db.query(User).count()
@@ -38,6 +38,9 @@ async def lifespan(app: FastAPI):
             logger.info("База данных пуста. Запуск автоматического сидинга...")
             seed_database(db)
             logger.info("Сидинг успешно завершён!")
+        else:
+            from backend.seed import generate_and_seed_company_qr
+            generate_and_seed_company_qr(db)
     except Exception as e:
         logger.error(f"Ошибка проверки базы данных при старте: {e}")
     finally:
