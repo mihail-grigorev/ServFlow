@@ -36,6 +36,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   if (!isOpen) return null;
 
   const [selectedEqCode, setSelectedEqCode] = useState<string>('EQ01');
+  const [isCustomCompany, setIsCustomCompany] = useState<boolean>(false);
+  const [customCity, setCustomCity] = useState<'Москва' | 'Тула'>('Москва');
   const [clientName, setClientName] = useState<string>('');
   const [address, setAddress] = useState<string>('');
   const [model, setModel] = useState<string>('C100');
@@ -54,9 +56,11 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [isAiRecommending, setIsAiRecommending] = useState<boolean>(false);
   const [aiRecommendationSummary, setAiRecommendationSummary] = useState<string | null>(null);
 
-  // Selected equipment object
-  const currentEq = allEquipment.find((e) => e.code === selectedEqCode) || allEquipment[0] || null;
-  const targetCity = currentEq?.city || 'Москва';
+  // Selected equipment object (null if custom company)
+  const currentEq = (!isCustomCompany && selectedEqCode !== 'custom')
+    ? (allEquipment.find((e) => e.code === selectedEqCode) || allEquipment[0] || null)
+    : null;
+  const targetCity = isCustomCompany ? customCity : (currentEq?.city || 'Москва');
 
   // Compatible parts for model (Rule П-7)
   const compatibleParts = allParts.filter((p) => {
@@ -71,6 +75,16 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     return true;
   });
 
+  const handleAddressChange = (val: string) => {
+    setAddress(val);
+    const lower = val.toLowerCase();
+    if (lower.includes('тула')) {
+      setCustomCity('Тула');
+    } else if (lower.includes('москва')) {
+      setCustomCity('Москва');
+    }
+  };
+
   // Re-initialize state whenever modal opens or thread/aiData changes
   useEffect(() => {
     if (!isOpen) return;
@@ -78,23 +92,50 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     setError(null);
     setConflictError(null);
 
-    const initialCode =
-      aiData?.detected_equipment_code ||
-      thread?.equipment_code ||
-      (allEquipment.length > 0 ? allEquipment[0].code : 'EQ01');
-    setSelectedEqCode(initialCode);
-
-    const eq = allEquipment.find((e) => e.code === initialCode) || (allEquipment.length > 0 ? allEquipment[0] : null);
-    if (eq) {
-      setClientName(thread?.client_name || eq.client_name || '');
-      setAddress(eq.address || '');
-      setModel(eq.model || 'C100');
-      setSerialNumber(eq.serial_number || '—');
+    // If opening without thread (manual button), allow choosing or default
+    if (!thread) {
+      // Default to registry if available, but reset custom flag
+      setIsCustomCompany(false);
+      const initialCode = allEquipment.length > 0 ? allEquipment[0].code : 'custom';
+      setSelectedEqCode(initialCode);
+      const eq = allEquipment.find((e) => e.code === initialCode);
+      if (eq) {
+        setClientName(eq.client_name);
+        setAddress(eq.address);
+        setModel(eq.model);
+        setSerialNumber(eq.serial_number);
+        setCustomCity(eq.city === 'Тула' ? 'Тула' : 'Москва');
+      } else {
+        setIsCustomCompany(true);
+        setSelectedEqCode('custom');
+        setClientName('');
+        setAddress('');
+        setModel('C100');
+        setSerialNumber('');
+        setCustomCity('Москва');
+      }
     } else {
-      setClientName(thread?.client_name || 'Новый клиент');
-      setAddress('Адрес уточняется');
-      setModel('C100');
-      setSerialNumber('—');
+      setIsCustomCompany(false);
+      const initialCode =
+        aiData?.detected_equipment_code ||
+        thread.equipment_code ||
+        (allEquipment.length > 0 ? allEquipment[0].code : 'EQ01');
+      setSelectedEqCode(initialCode);
+
+      const eq = allEquipment.find((e) => e.code === initialCode) || (allEquipment.length > 0 ? allEquipment[0] : null);
+      if (eq) {
+        setClientName(thread.client_name || eq.client_name || '');
+        setAddress(eq.address || '');
+        setModel(eq.model || 'C100');
+        setSerialNumber(eq.serial_number || '—');
+        setCustomCity(eq.city === 'Тула' ? 'Тула' : 'Москва');
+      } else {
+        setClientName(thread.client_name || 'Новый клиент');
+        setAddress('Адрес уточняется');
+        setModel('C100');
+        setSerialNumber('—');
+        setCustomCity('Москва');
+      }
     }
 
     if (aiData?.draft_symptom) {
@@ -135,9 +176,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     }
   }, [isOpen, thread, aiData, allEquipment]);
 
-  // Sync selected equipment when dropdown changes
+  // Sync selected equipment when dropdown changes (only if in registry mode)
   useEffect(() => {
-    if (!selectedEqCode) return;
+    if (isCustomCompany || !selectedEqCode || selectedEqCode === 'custom') return;
     const eq = allEquipment.find((e) => e.code === selectedEqCode);
     if (eq) {
       if (!thread?.client_name) {
@@ -146,8 +187,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
       setAddress(eq.address);
       setModel(eq.model);
       setSerialNumber(eq.serial_number);
+      setCustomCity(eq.city === 'Тула' ? 'Тула' : 'Москва');
     }
-  }, [selectedEqCode, allEquipment, thread?.client_name]);
+  }, [selectedEqCode, allEquipment, thread?.client_name, isCustomCompany]);
 
   // 40-Day Warranty Auto-Check (Rule П-9)
   const [warrantyNotice, setWarrantyNotice] = useState<string | null>(null);
@@ -282,8 +324,17 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     setLoading(true);
 
     try {
-      const finalClientName = (clientName || thread?.client_name || 'Новый клиент').trim();
-      const finalAddress = (address || currentEq?.address || 'Адрес уточняется').trim();
+      const finalClientName = (clientName || thread?.client_name || '').trim();
+      if (!finalClientName) {
+        setError('Пожалуйста, укажите наименование компании или клиента');
+        setLoading(false);
+        return;
+      }
+      const finalAddress = (
+        address ||
+        currentEq?.address ||
+        (targetCity === 'Тула' ? 'Тула, адрес уточняется' : 'Москва, адрес уточняется')
+      ).trim();
       const finalModel = (model || currentEq?.model || 'C100').trim();
       const finalSerial = (serialNumber || currentEq?.serial_number || '—').trim();
       const finalSymptom = (symptom || 'Требуется диагностика и осмотр кофемашины').trim();
@@ -313,10 +364,12 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         };
       });
 
+      const eqCodePayload = isCustomCompany || selectedEqCode === 'custom' ? null : (selectedEqCode || null);
+
       await api.createOrder({
         thread_id: thread?.id,
         client_name: finalClientName,
-        equipment_code: selectedEqCode || null,
+        equipment_code: eqCodePayload,
         address: finalAddress,
         model: finalModel,
         serial_number: finalSerial,
@@ -409,79 +462,271 @@ export const OrderModal: React.FC<OrderModalProps> = ({
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-5 space-y-5 text-xs">
           {/* 1. Equipment Selection */}
           <div className="space-y-3">
-            <h3 className="font-bold text-white uppercase tracking-wider text-[11px] text-[#9CA3AF]">
-              1. Данные оборудования
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[#9CA3AF] mb-1">
-                  Машина из реестра договора
-                </label>
-                <select
-                  value={selectedEqCode}
-                  onChange={(e) => setSelectedEqCode(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/20"
-                >
-                  {allEquipment.map((eq) => (
-                    <option key={eq.code} value={eq.code}>
-                      {eq.code} · {eq.client_name} ({eq.model} №{eq.serial_number}) · {eq.city}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[#9CA3AF] mb-1">
-                  Клиент / Заведение
-                </label>
-                <input
-                  type="text"
-                  value={clientName}
-                  onChange={(e) => setClientName(e.target.value)}
-                  placeholder="Наименование клиента"
-                  className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/20"
-                />
-              </div>
-
-              <div>
-                <label className="block text-[#9CA3AF] mb-1">
-                  Адрес заведения
-                </label>
-                <input
-                  type="text"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder="Адрес заведения"
-                  className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/20"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[#9CA3AF] mb-1">
-                    Модель
-                  </label>
-                  <input
-                    type="text"
-                    value={model}
-                    onChange={(e) => setModel(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[#9CA3AF] mb-1">
-                    Серийный №
-                  </label>
-                  <input
-                    type="text"
-                    value={serialNumber}
-                    onChange={(e) => setSerialNumber(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none font-mono"
-                  />
-                </div>
-              </div>
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-white uppercase tracking-wider text-[11px] text-[#9CA3AF]">
+                1. Клиент и оборудование
+              </h3>
+              {isCustomCompany ? (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white border border-white/20">
+                  Новая компания (вне базы)
+                </span>
+              ) : (
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-white/[0.06] text-neutral-400 border border-white/10">
+                  Из реестра договоров
+                </span>
+              )}
             </div>
+
+            {/* Mode switch tabs: Registry vs New Company */}
+            <div className="flex p-1 rounded-xl bg-black/40 border border-white/[0.08] gap-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCustomCompany(false);
+                  const firstCode = allEquipment.length > 0 ? allEquipment[0].code : 'EQ01';
+                  setSelectedEqCode(firstCode);
+                  const eq = allEquipment.find((e) => e.code === firstCode);
+                  if (eq) {
+                    setClientName(eq.client_name);
+                    setAddress(eq.address);
+                    setModel(eq.model);
+                    setSerialNumber(eq.serial_number);
+                    setCustomCity(eq.city === 'Тула' ? 'Тула' : 'Москва');
+                  }
+                }}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  !isCustomCompany
+                    ? 'bg-white text-black shadow-sm font-bold'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                Выбрать из реестра ({allEquipment.length})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsCustomCompany(true);
+                  setSelectedEqCode('custom');
+                  if (!thread) {
+                    setClientName('');
+                    setAddress('');
+                    setModel('C100');
+                    setSerialNumber('');
+                    setCustomCity('Москва');
+                  }
+                }}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center justify-center space-x-1.5 ${
+                  isCustomCompany
+                    ? 'bg-white text-black shadow-sm font-bold'
+                    : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>+ Новая компания (ввести вручную)</span>
+              </button>
+            </div>
+
+            {!isCustomCompany ? (
+              /* Existing Registry Form */
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="block text-[#9CA3AF] mb-1">
+                    Машина из реестра договора
+                  </label>
+                  <select
+                    value={selectedEqCode}
+                    onChange={(e) => {
+                      if (e.target.value === 'custom') {
+                        setIsCustomCompany(true);
+                        setSelectedEqCode('custom');
+                        if (!thread) {
+                          setClientName('');
+                          setAddress('');
+                          setModel('C100');
+                          setSerialNumber('');
+                        }
+                      } else {
+                        setSelectedEqCode(e.target.value);
+                      }
+                    }}
+                    className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/20"
+                  >
+                    {allEquipment.map((eq) => (
+                      <option key={eq.code} value={eq.code}>
+                        {eq.code} · {eq.client_name} ({eq.model} №{eq.serial_number}) · {eq.city}
+                      </option>
+                    ))}
+                    <option value="custom">✨ + Ввести новую компанию вручную (вне базы)...</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[#9CA3AF] mb-1">
+                    Клиент / Заведение
+                  </label>
+                  <input
+                    type="text"
+                    value={clientName}
+                    onChange={(e) => setClientName(e.target.value)}
+                    placeholder="Наименование клиента"
+                    className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/20"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[#9CA3AF] mb-1">
+                    Адрес заведения
+                  </label>
+                  <input
+                    type="text"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder="Адрес заведения"
+                    className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none focus:border-white/20"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 sm:col-span-2">
+                  <div>
+                    <label className="block text-[#9CA3AF] mb-1">
+                      Модель
+                    </label>
+                    <input
+                      type="text"
+                      value={model}
+                      onChange={(e) => setModel(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[#9CA3AF] mb-1">
+                      Серийный №
+                    </label>
+                    <input
+                      type="text"
+                      value={serialNumber}
+                      onChange={(e) => setSerialNumber(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* New Custom Company Form */
+              <div className="space-y-3">
+                <div className="p-3 rounded-xl bg-white/[0.04] border border-white/10 flex items-start space-x-2.5 text-xs">
+                  <Sparkles className="w-4 h-4 text-white mt-0.5 flex-shrink-0" />
+                  <div className="space-y-0.5">
+                    <div className="font-semibold text-white">Новая компания / клиент вне базы</div>
+                    <div className="text-[11px] text-neutral-400">
+                      Введите название заведения, город и параметры аппарата. Заявка и профиль компании будут автоматически сохранены.
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[#9CA3AF] mb-1 font-medium">
+                      Название компании / заведения <span className="text-white">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={clientName}
+                      onChange={(e) => setClientName(e.target.value)}
+                      placeholder="Например: Кофейня «Эспрессо» или ООО «Север»"
+                      required
+                      className="w-full px-3 py-2 rounded-xl border border-white/20 bg-[#1F2026] text-white placeholder:text-neutral-500 outline-none focus:border-white focus:ring-1 focus:ring-white/20 font-medium"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[#9CA3AF] mb-1 font-medium">
+                      Город обслуживания
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCustomCity('Москва')}
+                        className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                          customCity === 'Москва'
+                            ? 'bg-white text-black border-white shadow-sm'
+                            : 'bg-white/[0.04] text-neutral-300 border-white/10 hover:bg-white/[0.08]'
+                        }`}
+                      >
+                        📍 Москва
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setCustomCity('Тула')}
+                        className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+                          customCity === 'Тула'
+                            ? 'bg-white text-black border-white shadow-sm'
+                            : 'bg-white/[0.04] text-neutral-300 border-white/10 hover:bg-white/[0.08]'
+                        }`}
+                      >
+                        📍 Тула
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block text-[#9CA3AF] mb-1 font-medium">
+                      Адрес заведения
+                    </label>
+                    <input
+                      type="text"
+                      value={address}
+                      onChange={(e) => handleAddressChange(e.target.value)}
+                      placeholder="Например: Москва, ул. Ленина, д. 24"
+                      className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white placeholder:text-neutral-500 outline-none focus:border-white/20"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[#9CA3AF] mb-1 font-medium">
+                      Модель кофемашины
+                    </label>
+                    <div className="flex gap-1.5 mb-1.5">
+                      {['C100', 'C200', 'C300'].map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setModel(m)}
+                          className={`flex-1 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            model === m
+                              ? 'bg-white text-black border border-white'
+                              : 'bg-white/[0.04] text-neutral-400 hover:text-white border border-white/10'
+                          }`}
+                        >
+                          {m}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      value={model}
+                      onChange={(e) => setModel(e.target.value)}
+                      placeholder="Или введите другую модель"
+                      className="w-full px-3 py-1.5 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white outline-none font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[#9CA3AF] mb-1 font-medium">
+                      Серийный номер аппарата
+                    </label>
+                    <input
+                      type="text"
+                      value={serialNumber}
+                      onChange={(e) => setSerialNumber(e.target.value)}
+                      placeholder="Например: 450 или SN-2026 (или «б/н»)"
+                      className="w-full px-3 py-2 rounded-xl border border-white/[0.1] bg-[#1F2026] text-white placeholder:text-neutral-500 outline-none focus:border-white/20 font-mono"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Warranty check */}
             <div className="flex items-center gap-4 pt-1">

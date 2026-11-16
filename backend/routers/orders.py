@@ -22,7 +22,7 @@ from backend.excel_order_service import (
     process_excel_upload_and_create_ai_orders,
     process_all_existing_threads_ai
 )
-from backend.auth import get_current_user, require_dispatcher
+from backend.auth import get_current_user, require_dispatcher, get_password_hash
 from backend.seed import get_company_id_for_client
 from backend.audit import log_audit
 from backend.analytics import track_event
@@ -393,10 +393,11 @@ def create_order(
             )
 
     # Look for equipment if code or serial provided
+    eq_code = order_in.equipment_code if order_in.equipment_code not in ["custom", "none", ""] else None
     equipment = None
-    if order_in.equipment_code:
-        equipment = db.query(Equipment).filter(Equipment.code == order_in.equipment_code).first()
-    if not equipment and order_in.serial_number:
+    if eq_code:
+        equipment = db.query(Equipment).filter(Equipment.code == eq_code).first()
+    if not equipment and order_in.serial_number and order_in.serial_number not in ["—", "-", "", "б/н"]:
         equipment = db.query(Equipment).filter(Equipment.serial_number == order_in.serial_number).first()
 
     # 2. Atomic spare parts stock verification & reservation
@@ -466,6 +467,28 @@ def create_order(
                 raise HTTPException(status_code=400, detail=f"Инженер {eng.full_name} не имеет допуска к модели {order_in.model}")
 
     company_id = get_company_id_for_client(order_in.client_name)
+    company_user = db.query(User).filter(User.company_id == company_id).first()
+    if not company_user and order_in.client_name:
+        norm_key = company_id.replace("comp_", "")
+        email_candidate = f"client_{norm_key}@kofeservice.ru"
+        if db.query(User).filter(User.email == email_candidate).first():
+            email_candidate = f"client_{norm_key}_{int(datetime.utcnow().timestamp())}@kofeservice.ru"
+        city_val = "Тула" if "тула" in (order_in.address or "").lower() else "Москва"
+        new_company = User(
+            email=email_candidate,
+            full_name=order_in.client_name,
+            company_id=company_id,
+            role="company",
+            city=city_val,
+            is_demo=True,
+            is_senior=False,
+            qualifications=[],
+            avatar_url=f"https://api.dicebear.com/7.x/notionists/svg?seed={norm_key}",
+            hashed_password=get_password_hash("password123")
+        )
+        db.add(new_company)
+        db.flush()
+
     order_created_at = datetime.utcnow()
 
     today_str = datetime.utcnow().strftime("%Y%m%d")
@@ -481,7 +504,7 @@ def create_order(
         client_name=order_in.client_name,
         company_id=company_id,
         equipment_id=equipment.id if equipment else None,
-        equipment_code=order_in.equipment_code or (equipment.code if equipment else None),
+        equipment_code=equipment.code if equipment else (eq_code if eq_code and eq_code != "custom" else None),
         address=order_in.address,
         model=order_in.model,
         serial_number=order_in.serial_number,
