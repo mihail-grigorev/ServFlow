@@ -187,6 +187,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
               { id: 'В пути', label: 'В пути' },
               { id: 'На месте', label: 'На месте' },
               { id: 'Выполнен', label: 'Выполнен' },
+              { id: 'Передано в отдел продаж', label: 'В отдел продаж (П-2)' },
               { id: 'warranty', label: 'Гарантийные (П-9)' },
             ].map((f) => (
               <button
@@ -221,23 +222,25 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
         <div className="md:hidden divide-y divide-white/[0.06]">
           {sortedOrders.map((o) => (
             <div key={o.id} className="p-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <span className="font-mono font-bold text-white text-sm">{o.order_number}</span>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center space-x-2 min-w-0">
+                  <span className="font-mono font-bold text-white text-sm shrink-0">{o.order_number}</span>
                   {o.is_warranty && (
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/10 text-white border border-white/20">
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/10 text-white border border-white/20 shrink-0 whitespace-nowrap">
                       Гарантия
                     </span>
                   )}
                 </div>
                 <span
-                  className={`font-semibold px-2 py-0.5 rounded-full text-[10px] border ${
+                  className={`font-semibold px-2 py-0.5 rounded-full text-[10px] border whitespace-nowrap shrink-0 inline-flex items-center justify-center leading-normal ${
                     o.status === 'Выполнен'
                       ? 'bg-white/15 text-white border-white/20'
                       : o.status === 'На месте'
                       ? 'bg-white/10 text-white border-white/20'
                       : o.status === 'В пути'
                       ? 'bg-white/10 text-white border-white/15'
+                      : o.status === 'Передано в отдел продаж'
+                      ? 'bg-neutral-800 text-neutral-300 border-neutral-700'
                       : 'bg-white/[0.06] text-[#8E9E94] border-white/[0.08]'
                   }`}
                 >
@@ -380,15 +383,17 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
                     )}
                   </td>
 
-                  <td className="py-3.5 px-4 text-center">
+                  <td className="py-3.5 px-4 text-center whitespace-nowrap">
                     <span
-                      className={`font-semibold px-2.5 py-1 rounded-full text-[11px] border ${
+                      className={`font-semibold px-2.5 py-1 rounded-full text-[11px] border whitespace-nowrap inline-flex items-center justify-center leading-normal ${
                         o.status === 'Выполнен'
                           ? 'bg-white/15 text-white border-white/20'
                           : o.status === 'На месте'
                           ? 'bg-white/10 text-white border-white/20'
                           : o.status === 'В пути'
                           ? 'bg-white/10 text-white border-white/15'
+                          : o.status === 'Передано в отдел продаж'
+                          ? 'bg-neutral-800 text-neutral-300 border-neutral-700'
                           : 'bg-white/[0.06] text-[#8E9E94] border-white/[0.08]'
                       }`}
                     >

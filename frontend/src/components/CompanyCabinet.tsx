@@ -165,7 +165,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
   useEffect(() => {
     const interval = setInterval(() => {
       loadCompanyData(undefined, true);
-    }, 2000);
+    }, 4000);
     return () => clearInterval(interval);
   }, [currentUser, selectedThreadId]);
 

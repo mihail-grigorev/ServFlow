@@ -393,7 +393,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                       )}
                     </div>
                     <span
-                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${o.status === 'Выполнен'
+                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded border whitespace-nowrap flex-shrink-0 ${o.status === 'Выполнен'
                         ? 'bg-white/15 text-white border-white/20'
                         : o.status === 'На месте'
                           ? 'bg-white/10 text-white border-white/20'
