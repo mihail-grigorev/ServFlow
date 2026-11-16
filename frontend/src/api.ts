@@ -14,26 +14,87 @@ import {
 
 const API_BASE = '/api';
 
+const memoryStorage: Record<string, string> = {};
+
+function safeStorageGet(key: string): string | null {
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return memoryStorage[key] || null;
+  }
+}
+
+function safeStorageSet(key: string, value: string) {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    memoryStorage[key] = value;
+  }
+}
+
+function safeStorageRemove(key: string) {
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    delete memoryStorage[key];
+  }
+}
+
 export function getToken(): string | null {
-  return localStorage.getItem('kofe_auth_token');
+  try {
+    const t = safeStorageGet('kofe_auth_token');
+    if (!t || t === 'undefined' || t === 'null') return null;
+    return t;
+  } catch {
+    return null;
+  }
 }
 
 export function setToken(token: string) {
-  localStorage.setItem('kofe_auth_token', token);
+  try {
+    if (token) {
+      safeStorageSet('kofe_auth_token', token);
+    } else {
+      safeStorageRemove('kofe_auth_token');
+    }
+  } catch (e) {
+    console.error('Failed to set token:', e);
+  }
 }
 
 export function clearToken() {
-  localStorage.removeItem('kofe_auth_token');
-  localStorage.removeItem('kofe_current_user');
+  try {
+    safeStorageRemove('kofe_auth_token');
+    safeStorageRemove('kofe_current_user');
+    safeStorageRemove('kofe_active_tab');
+  } catch (e) {
+    console.error('Failed to clear token:', e);
+  }
 }
 
 export function getSavedUser(): User | null {
-  const u = localStorage.getItem('kofe_current_user');
-  return u ? JSON.parse(u) : null;
+  try {
+    const u = safeStorageGet('kofe_current_user');
+    if (!u || u === 'undefined' || u === 'null') return null;
+    return JSON.parse(u);
+  } catch (err) {
+    try {
+      safeStorageRemove('kofe_current_user');
+    } catch {}
+    return null;
+  }
 }
 
 export function saveUser(user: User) {
-  localStorage.setItem('kofe_current_user', JSON.stringify(user));
+  try {
+    if (user) {
+      safeStorageSet('kofe_current_user', JSON.stringify(user));
+    } else {
+      safeStorageRemove('kofe_current_user');
+    }
+  } catch (e) {
+    console.error('Failed to save user:', e);
+  }
 }
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {

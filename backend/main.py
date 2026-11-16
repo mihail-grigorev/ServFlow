@@ -5,6 +5,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from backend.config import settings
@@ -77,17 +78,16 @@ app = FastAPI(
 async def security_headers_middleware(request: Request, call_next):
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["Referrer-Policy"] = "no-referrer"
-    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+    response.headers["X-Frame-Options"] = "SAMEORIGIN"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "microphone=(), geolocation=()"
     response.headers["Content-Security-Policy"] = (
-        "default-src 'self'; "
-        "img-src 'self' data: https://api.dicebear.com blob:; "
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
-        "script-src 'self' 'unsafe-inline'; "
-        "font-src 'self' data: https://fonts.gstatic.com; "
-        "connect-src 'self' ws: wss: http: https:; "
-        "frame-ancestors 'none';"
+        "default-src 'self' 'unsafe-inline' data: blob:; "
+        "img-src 'self' data: https: blob:; "
+        "style-src 'self' 'unsafe-inline' https:; "
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; "
+        "font-src 'self' data: https:; "
+        "connect-src 'self' ws: wss: http: https:;"
     )
     if settings.PUBLIC_BASE_URL.startswith("https://"):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
@@ -102,6 +102,9 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"detail": "Внутренняя ошибка сервера", "request_id": req_id}
     )
+
+# Enable GZip compression for fast mobile loading
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 # CORS middleware: support mobile phones on local Wi-Fi and cloud hosts
 app.add_middleware(
@@ -140,21 +143,34 @@ def health_check():
 @app.get("/logo.png")
 def get_logo():
     logo_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "logo.png")
+    headers = {"Cache-Control": "public, max-age=86400"}
     if os.path.exists(logo_path):
-        return FileResponse(logo_path, media_type="image/png")
+        return FileResponse(logo_path, media_type="image/png", headers=headers)
     frontend_logo = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "public", "logo.png")
     if os.path.exists(frontend_logo):
-        return FileResponse(frontend_logo, media_type="image/png")
+        return FileResponse(frontend_logo, media_type="image/png", headers=headers)
     return {"error": "logo not found"}
+
+class CachedStaticFiles(StaticFiles):
+    async def get_response(self, path: str, scope):
+        response = await super().get_response(path, scope)
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        return response
 
 # Mount static frontend build if it exists
 frontend_dist = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend", "dist")
 if os.path.exists(frontend_dist):
-    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
+    app.mount("/assets", CachedStaticFiles(directory=os.path.join(frontend_dist, "assets")), name="assets")
 
     @app.get("/{full_path:path}")
     def serve_frontend(full_path: str):
         file_path = os.path.join(frontend_dist, full_path)
         if os.path.exists(file_path) and os.path.isfile(file_path):
-            return FileResponse(file_path)
-        return FileResponse(os.path.join(frontend_dist, "index.html"))
+            headers = {}
+            if "assets" in full_path:
+                headers["Cache-Control"] = "public, max-age=31536000, immutable"
+            return FileResponse(file_path, headers=headers)
+        return FileResponse(
+            os.path.join(frontend_dist, "index.html"),
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"}
+        )

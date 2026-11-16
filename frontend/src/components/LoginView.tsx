@@ -194,7 +194,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers,
   const handleQuickLogin = async (demoUser: User) => {
     setError(null);
     if (demoUser.role === 'dispatcher' || demoUser.role === 'engineer') {
-      const isVerified = sessionStorage.getItem('demo_staff_pin_verified') === 'true';
+      let isVerified = false;
+      try {
+        isVerified = sessionStorage.getItem('demo_staff_pin_verified') === 'true';
+      } catch {}
       if (!isVerified) {
         setPinModalUser(demoUser);
         setStaffPinInput('');
@@ -221,7 +224,9 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers,
     setPinLoading(true);
     try {
       await api.verifyStaffPin(staffPinInput.trim());
-      sessionStorage.setItem('demo_staff_pin_verified', 'true');
+      try {
+        sessionStorage.setItem('demo_staff_pin_verified', 'true');
+      } catch {}
       const targetUser = pinModalUser;
       setPinModalUser(null);
       setLoading(true);

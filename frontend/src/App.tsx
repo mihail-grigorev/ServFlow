@@ -31,11 +31,21 @@ function getValidTabForRole(role?: string, tab?: string | null): TabType {
 }
 
 export function App() {
-  const [currentUser, setCurrentUser] = useState<User | null>(getSavedUser());
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    try {
+      return getSavedUser();
+    } catch {
+      return null;
+    }
+  });
   const [activeTab, setActiveTab] = useState<TabType>(() => {
-    const savedUser = getSavedUser();
-    const savedTab = localStorage.getItem('kofe_active_tab');
-    return getValidTabForRole(savedUser?.role, savedTab);
+    try {
+      const savedUser = getSavedUser();
+      const savedTab = localStorage.getItem('kofe_active_tab');
+      return getValidTabForRole(savedUser?.role, savedTab);
+    } catch {
+      return 'dispatcher';
+    }
   });
   const [demoUsers, setDemoUsers] = useState<User[]>([]);
   const [threads, setThreads] = useState<ClientThread[]>([]);
@@ -70,14 +80,20 @@ export function App() {
     if (token) {
       api.exchangeDemoQr(token)
         .then((res) => {
-          setCurrentUser(res.user);
-          setActiveTab('company');
-          localStorage.setItem('kofe_active_tab', 'company');
-          window.history.replaceState({}, '', window.location.pathname.replace(/\/demo\/enter\/?$/, '') || '/');
+          if (res && res.user) {
+            setCurrentUser(res.user);
+            setActiveTab('company');
+            try {
+              localStorage.setItem('kofe_active_tab', 'company');
+              window.history.replaceState({}, '', window.location.pathname.replace(/\/demo\/enter\/?$/, '') || '/');
+            } catch {}
+          }
         })
         .catch((err) => {
           alert('Ошибка входа по QR-коду: ' + (err.message || 'Срок действия истёк'));
-          window.history.replaceState({}, '', '/');
+          try {
+            window.history.replaceState({}, '', '/');
+          } catch {}
         });
     }
   }, []);
