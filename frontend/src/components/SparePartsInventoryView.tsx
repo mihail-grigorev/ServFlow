@@ -75,12 +75,12 @@ export const SparePartsInventoryView: React.FC<SparePartsInventoryViewProps> = (
         </div>
 
         {/* Compatible Model Tabs */}
-        <div className="flex bg-black/40 p-1 rounded-xl border border-white/[0.06] text-xs self-start sm:self-auto">
+        <div className="flex bg-black/40 p-1 rounded-xl border border-white/[0.06] text-xs self-start sm:self-auto overflow-x-auto no-scrollbar flex-nowrap whitespace-nowrap">
           {['all', 'C100', 'C200', 'C300'].map((m) => (
             <button
               key={m}
               onClick={() => setModelFilter(m)}
-              className={`px-3 py-1.5 rounded-lg font-medium transition-all ${
+              className={`px-3 py-1.5 rounded-lg font-medium transition-all whitespace-nowrap flex-shrink-0 cursor-pointer ${
                 modelFilter === m
                   ? 'bg-white text-black font-semibold shadow-sm'
                   : 'text-[#8E9E94] hover:text-white'

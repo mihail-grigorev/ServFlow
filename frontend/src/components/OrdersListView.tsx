@@ -180,7 +180,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
 
         {/* Filter Pills and Sort Toggle */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex flex-wrap gap-1 bg-white/[0.04] border border-white/[0.08] p-1 rounded-xl text-xs">
+          <div className="flex items-center gap-1.5 bg-white/[0.04] border border-white/[0.08] p-1 rounded-xl text-xs overflow-x-auto no-scrollbar flex-nowrap whitespace-nowrap">
             {[
               { id: 'all', label: 'Все заявки' },
               { id: 'Назначен', label: 'Назначен' },
@@ -192,7 +192,7 @@ export const OrdersListView: React.FC<OrdersListViewProps> = ({
               <button
                 key={f.id}
                 onClick={() => setStatusFilter(f.id)}
-                className={`px-3 py-1 rounded-lg font-medium transition-all ${
+                className={`px-3 py-1 rounded-lg font-medium transition-all whitespace-nowrap flex-shrink-0 cursor-pointer ${
                   statusFilter === f.id
                     ? 'bg-white text-black font-semibold shadow-sm'
                     : 'text-[#8E9E94] hover:text-[#F0F5F2]'

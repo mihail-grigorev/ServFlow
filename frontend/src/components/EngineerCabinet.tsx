@@ -92,8 +92,33 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
     const text = (textToSend || chatMessage).trim();
     if (!text || !orderThread) return;
 
+    if (!textToSend) {
+      setChatMessage('');
+    }
     setSendingMessage(true);
     const targetChatType = engineerChatTab === 'dispatcher' ? 'dispatcher_engineer' : 'client_engineer';
+
+    // Optimistic message append
+    const tempId = Date.now();
+    const tempMessage = {
+      id: tempId,
+      thread_id: orderThread.id,
+      channel: orderThread.channel,
+      sender_type: 'engineer' as const,
+      sender_name: `Инженер ${currentUser.full_name}`,
+      content: text,
+      chat_type: targetChatType,
+      created_at: new Date().toISOString(),
+    };
+    orderThread.messages.push(tempMessage);
+
+    if (chatScrollContainerRef.current) {
+      chatScrollContainerRef.current.scrollTo({
+        top: chatScrollContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+
     try {
       await api.addMessage(orderThread.id, {
         content: text,
@@ -101,9 +126,9 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
         sender_name: `Инженер ${currentUser.full_name}`,
         chat_type: targetChatType,
       });
-      setChatMessage('');
       await loadOrderThread(selectedOrder!.id);
     } catch (err: any) {
+      orderThread.messages = orderThread.messages.filter((m) => m.id !== tempId);
       alert(err.message || 'Ошибка отправки сообщения');
     } finally {
       setSendingMessage(false);
@@ -175,9 +200,9 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6 text-[#F3F4F6]">
       {/* Engineer Profile Banner */}
-      <div className="bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center space-x-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 text-white flex items-center justify-center overflow-hidden flex-shrink-0">
+      <div className="bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple p-3.5 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/10 border border-white/20 text-white flex items-center justify-center overflow-hidden flex-shrink-0">
             {currentUser.avatar_url ? (
               <img
                 src={currentUser.avatar_url}
@@ -188,41 +213,41 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                 }}
               />
             ) : (
-              <UserCheck className="w-6 h-6" />
+              <UserCheck className="w-5 h-5 sm:w-6 sm:h-6" />
             )}
           </div>
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center space-x-2">
-              <h1 className="text-base font-bold text-white">
+              <h1 className="text-sm sm:text-base font-bold text-white truncate">
                 {currentUser.full_name}
               </h1>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-white border border-white/20">
+              <span className="text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-white border border-white/20 whitespace-nowrap">
                 Сервисный инженер
               </span>
             </div>
-            <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-[#9CA3AF]">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1 text-xs text-[#9CA3AF]">
               <span className="flex items-center space-x-1">
                 <MapPin className="w-3.5 h-3.5 text-neutral-400" />
                 <span>Базирование: {currentUser.city || 'Москва'}</span>
               </span>
               <span>·</span>
-              <span>
-                Допуски к кофемашинам: <strong className="text-white">{currentUser.qualifications?.join(', ') || 'C100, C200'}</strong>
+              <span className="truncate">
+                Допуски: <strong className="text-white">{currentUser.qualifications?.join(', ') || 'C100, C200'}</strong>
               </span>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center space-x-4 border-t md:border-t-0 md:border-l border-white/[0.08] pt-3 md:pt-0 md:pl-5 text-xs">
+        <div className="flex items-center space-x-4 border-t md:border-t-0 md:border-l border-white/[0.08] pt-2 md:pt-0 md:pl-5 text-xs">
           <div>
             <div className="text-[#9CA3AF]">Назначено выездов:</div>
-            <div className="text-base font-bold text-white">
+            <div className="text-sm sm:text-base font-bold text-white">
               {orders.filter((o) => o.status !== 'Выполнен').length} активных
             </div>
           </div>
           <div>
             <div className="text-[#9CA3AF]">Всего в журнале:</div>
-            <div className="text-base font-bold text-white">{orders.length}</div>
+            <div className="text-sm sm:text-base font-bold text-white">{orders.length}</div>
           </div>
         </div>
       </div>
@@ -237,7 +262,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
             </h2>
 
             {/* Filter pills */}
-            <div className="flex flex-wrap gap-1 bg-black/30 p-1 rounded-xl border border-white/[0.06]">
+            <div className="flex items-center gap-1.5 bg-black/30 p-1 rounded-xl border border-white/[0.06] overflow-x-auto no-scrollbar flex-nowrap whitespace-nowrap">
               {[
                 { id: 'all', label: 'Все' },
                 { id: 'Назначен', label: 'Назначен' },
@@ -248,7 +273,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                 <button
                   key={f.id}
                   onClick={() => setActiveStatusFilter(f.id)}
-                  className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap flex-shrink-0 cursor-pointer ${
                     activeStatusFilter === f.id
                       ? 'bg-white text-black shadow-sm font-semibold'
                       : 'text-[#9CA3AF] hover:text-white'
@@ -761,9 +786,13 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
               )}
             </>
           ) : (
-            <div className="bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple p-12 text-center text-xs text-[#9CA3AF]">
-              <Wrench className="w-10 h-10 text-white/20 mx-auto mb-2" />
-              <span>Выберите назначенный выезд из списка слева для просмотра карточки подготовки и переписки</span>
+            <div className="bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple p-8 sm:p-12 text-center text-xs text-[#9CA3AF]">
+              <Wrench className="w-10 h-10 text-white/20 mx-auto mb-3" />
+              <p className="max-w-md mx-auto leading-relaxed">
+                {orders.length === 0
+                  ? `В городе ${currentUser.city || 'Тула'} у инженера ${currentUser.full_name} пока нет назначенных выездов. Как только диспетчер распределит заявку, она мгновенно появится в этом списке.`
+                  : 'Выберите назначенный выезд из списка слева для просмотра карточки подготовки и переписки.'}
+              </p>
             </div>
           )}
         </div>

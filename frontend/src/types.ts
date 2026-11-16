@@ -160,6 +160,29 @@ export interface AnalyticsSummary {
   auto_handled_ratio: number;
   total_threads: number;
   auto_handled_threads: number;
+  orders_total?: number;
+  orders_by_status?: Record<string, number>;
+  warranty_orders_count?: number;
+  warranty_ratio?: number;
+  unregistered_count?: number;
+  engineers_workload?: Array<{
+    id: number;
+    name: string;
+    city: string;
+    qualifications: string[];
+    active_orders: number;
+    completed_orders: number;
+    total_orders: number;
+  }>;
+  models_breakdown?: Record<string, number>;
+  warehouse_summary?: {
+    moscow_stock: number;
+    moscow_free: number;
+    tula_stock: number;
+    tula_free: number;
+    parts_count: number;
+    deficit_count: number;
+  };
   ai_latency: {
     p50_ms: number;
     p95_ms: number;

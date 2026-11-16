@@ -121,44 +121,50 @@ def test_verify_staff_pin(client):
 
 
 def test_audience_anti_spam(client, db_session):
-    # Exchange token for comp_kedr
-    disp = db_session.query(User).filter(User.role == "dispatcher").first()
-    disp_token = create_access_token(data={"sub": disp.email, "role": disp.role, "v": disp.token_version or 1})
-    resp = client.get("/api/demo/companies", headers={"Authorization": f"Bearer {disp_token}"})
-    kedr = next(c for c in resp.json() if c["company_id"] == "comp_kedr")
+    import backend.routers.threads as threads_router
+    orig_auto_reply = threads_router.AUTO_REPLY_ENABLED
+    threads_router.AUTO_REPLY_ENABLED = False
+    try:
+        # Exchange token for comp_kedr
+        disp = db_session.query(User).filter(User.role == "dispatcher").first()
+        disp_token = create_access_token(data={"sub": disp.email, "role": disp.role, "v": disp.token_version or 1})
+        resp = client.get("/api/demo/companies", headers={"Authorization": f"Bearer {disp_token}"})
+        kedr = next(c for c in resp.json() if c["company_id"] == "comp_kedr")
 
-    resp = client.post("/api/demo/exchange", json={"token": kedr["token"]})
-    comp_token = resp.json()["access_token"]
+        resp = client.post("/api/demo/exchange", json={"token": kedr["token"]})
+        comp_token = resp.json()["access_token"]
 
-    # 1. Message > 1000 characters
-    long_text = "А" * 1001
-    resp = client.post(
-        "/api/threads",
-        json={"content": long_text},
-        headers={"Authorization": f"Bearer {comp_token}"}
-    )
-    assert resp.status_code == 400
-
-    # 2. Rate limit: post messages
-    # Fetch a thread for kedr
-    threads = client.get("/api/threads", headers={"Authorization": f"Bearer {comp_token}"}).json()
-    thread_id = threads[0]["id"]
-
-    for i in range(10):
-        r = client.post(
-            f"/api/threads/{thread_id}/messages",
-            json={"content": f"Тестовое сообщение {i}"},
+        # 1. Message > 1000 characters
+        long_text = "А" * 1001
+        resp = client.post(
+            "/api/threads",
+            json={"content": long_text},
             headers={"Authorization": f"Bearer {comp_token}"}
         )
-        assert r.status_code == 200
+        assert resp.status_code == 400
 
-    # 11th message must be rejected with 429
-    r11 = client.post(
-        f"/api/threads/{thread_id}/messages",
-        json={"content": "Превышение лимита"},
-        headers={"Authorization": f"Bearer {comp_token}"}
-    )
-    assert r11.status_code == 429
+        # 2. Rate limit: post messages
+        # Fetch a thread for kedr
+        threads = client.get("/api/threads", headers={"Authorization": f"Bearer {comp_token}"}).json()
+        thread_id = threads[0]["id"]
+
+        for i in range(10):
+            r = client.post(
+                f"/api/threads/{thread_id}/messages",
+                json={"content": f"Тестовое сообщение {i}"},
+                headers={"Authorization": f"Bearer {comp_token}"}
+            )
+            assert r.status_code == 200
+
+        # 11th message must be rejected with 429
+        r11 = client.post(
+            f"/api/threads/{thread_id}/messages",
+            json={"content": "Превышение лимита"},
+            headers={"Authorization": f"Bearer {comp_token}"}
+        )
+        assert r11.status_code == 429
+    finally:
+        threads_router.AUTO_REPLY_ENABLED = orig_auto_reply
 
 
 def test_qr_revoke_and_reissue(client, db_session):

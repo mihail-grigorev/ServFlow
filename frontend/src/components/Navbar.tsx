@@ -72,59 +72,57 @@ export const Navbar: React.FC<NavbarProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 w-full glass-panel border-b border-white/[0.08] bg-[#16171B]/90 backdrop-blur-md text-[#F3F4F6]">
-      <div className="max-w-[1700px] mx-auto w-full px-2.5 sm:px-6 h-16 flex items-center justify-between gap-2">
-        {/* Left: Clean Brand logo & name */}
+    <header className="sticky top-0 z-40 w-full glass-panel border-b border-white/[0.08] bg-[#16171B]/95 backdrop-blur-md text-[#F3F4F6]">
+      <div className="max-w-[1700px] mx-auto w-full px-3 sm:px-6 h-14 sm:h-16 flex items-center justify-between gap-2">
+        {/* Left: Clean Brand logo & role badge */}
         <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
           <img
             src={logoImg}
             alt="ServFlow"
-            className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl shadow-md object-contain bg-black/40 border border-white/10 p-0.5"
+            className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl shadow-md object-contain bg-black/40 border border-white/10 p-0.5"
           />
           <span className="font-bold text-sm sm:text-base tracking-tight text-white">
             ServFlow
           </span>
-          {demoMode && (
-            <span className="hidden sm:inline-block text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-white/10 text-neutral-300 border border-white/15">
-              Демо
+          {currentUser && (
+            <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-white/10 text-neutral-300 border border-white/15">
+              {currentUser.role === 'dispatcher' ? 'Диспетчер' : currentUser.role === 'engineer' ? 'Инженер' : 'Кофейня'}
             </span>
           )}
         </div>
 
-        {/* Center: Clean Core Tabs (swipeable on mobile) */}
+        {/* Center: Desktop-only Core Tabs */}
         {currentUser && (
-          <nav className="flex items-center space-x-1 bg-black/40 p-1 rounded-xl border border-white/[0.06] overflow-x-auto no-scrollbar max-w-[45vw] sm:max-w-none flex-nowrap flex-shrink">
+          <nav className="hidden sm:flex items-center space-x-1 bg-black/40 p-1 rounded-xl border border-white/[0.06]">
             {currentUser.role === 'dispatcher' ? (
               <>
                 <button
                   onClick={() => setActiveTab('dispatcher')}
-                  className={`flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex-shrink-0 whitespace-nowrap ${
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                     activeTab === 'dispatcher'
                       ? 'bg-white text-black shadow-sm font-semibold'
                       : 'text-[#9CA3AF] hover:text-white'
                   }`}
                 >
                   <Sparkles className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Диспетчерская</span>
-                  <span className="md:hidden">Чаты</span>
+                  <span>Диспетчерская</span>
                 </button>
 
                 <button
                   onClick={() => setActiveTab('orders')}
-                  className={`flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex-shrink-0 whitespace-nowrap ${
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                     activeTab === 'orders'
                       ? 'bg-white text-black shadow-sm font-semibold'
                       : 'text-[#9CA3AF] hover:text-white'
                   }`}
                 >
                   <ClipboardList className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Заявки на выезд</span>
-                  <span className="md:hidden">Заявки</span>
+                  <span>Заявки на выезд</span>
                 </button>
 
                 <button
                   onClick={() => setActiveTab('warehouse')}
-                  className={`flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex-shrink-0 whitespace-nowrap ${
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                     activeTab === 'warehouse'
                       ? 'bg-white text-black shadow-sm font-semibold'
                       : 'text-[#9CA3AF] hover:text-white'
@@ -136,15 +134,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 
                 <button
                   onClick={() => setActiveTab('analytics')}
-                  className={`flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-medium rounded-lg transition-all flex-shrink-0 whitespace-nowrap ${
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                     activeTab === 'analytics'
                       ? 'bg-white text-black shadow-sm font-semibold'
                       : 'text-[#9CA3AF] hover:text-white'
                   }`}
                 >
                   <BarChart3 className="w-3.5 h-3.5" />
-                  <span className="hidden md:inline">Аналитика</span>
-                  <span className="md:hidden">Отчёты</span>
+                  <span>Аналитика</span>
                 </button>
               </>
             ) : currentUser.role === 'company' ? (
@@ -189,16 +186,15 @@ export const Navbar: React.FC<NavbarProps> = ({
           </nav>
         )}
 
-        {/* Right: AI Auto-reply, Reset & Avatar Profile */}
+        {/* Right: Actions & User Avatar */}
         <div className="flex items-center space-x-2">
-          {/* AI Auto-Reply Switch - Replaces Simulator for Dispatcher */}
+          {/* AI Auto-Reply Switch - Desktop */}
           {currentUser?.role === 'dispatcher' && onToggleAutoReply && (
-            <div className="flex items-center space-x-1.5 bg-[#1F2026] p-1 rounded-xl border border-white/[0.08]">
-              {/* Global Auto-reply Toggle */}
+            <div className="hidden sm:flex items-center space-x-1.5 bg-[#1F2026] p-1 rounded-xl border border-white/[0.08]">
               <button
                 type="button"
                 onClick={onToggleAutoReply}
-                title="Автоответ с ИИ: автоматически отвечает клиентам во всех входящих чатах и ветках"
+                title="Автоответ с ИИ: автоматически отвечает клиентам во всех входящих чатах"
                 className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                   autoReplyEnabled
                     ? 'bg-white/15 text-white border border-white/20'
@@ -206,32 +202,38 @@ export const Navbar: React.FC<NavbarProps> = ({
                 }`}
               >
                 <Sparkles className="w-3.5 h-3.5 text-white" />
-                <span className="hidden sm:inline">Автоответ с ИИ:</span>
+                <span>ИИ-Автоответ:</span>
                 <span className="font-bold">{autoReplyEnabled ? 'ВКЛ' : 'ВЫКЛ'}</span>
-                <span
-                  className={`w-6 h-3.5 flex items-center rounded-full p-0.5 transition-colors ${
-                    autoReplyEnabled ? 'bg-white' : 'bg-neutral-700'
-                  }`}
-                >
-                  <span
-                    className={`${autoReplyEnabled ? 'bg-black' : 'bg-white'} w-2.5 h-2.5 rounded-full shadow-md transform transition-transform ${
-                      autoReplyEnabled ? 'translate-x-2.5' : 'translate-x-0'
-                    }`}
-                  />
-                </span>
               </button>
             </div>
           )}
 
-          {/* Reset / Excel Button - Visible ONLY to Dispatcher */}
+          {/* AI Auto-Reply Toggle - Mobile Compact Icon Button */}
+          {currentUser?.role === 'dispatcher' && onToggleAutoReply && (
+            <button
+              type="button"
+              onClick={onToggleAutoReply}
+              title={`ИИ-Автоответ: ${autoReplyEnabled ? 'ВКЛ' : 'ВЫКЛ'}`}
+              className={`sm:hidden p-2 rounded-xl border text-xs font-semibold transition-all flex items-center space-x-1 ${
+                autoReplyEnabled
+                  ? 'bg-white/15 text-white border-white/30'
+                  : 'bg-white/[0.04] text-neutral-400 border-white/10'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5 text-white" />
+              <span className="text-[10px] font-mono">{autoReplyEnabled ? 'ВКЛ' : 'ВЫКЛ'}</span>
+            </button>
+          )}
+
+          {/* Reset / Excel Button - Visible ONLY to Dispatcher (Desktop) */}
           {currentUser?.role === 'dispatcher' && (
             <button
               onClick={onOpenResetModal}
               title="Сброс и импорт данных из Excel"
-              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-medium bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-white transition-colors"
+              className="hidden md:flex items-center space-x-1 px-2.5 py-1.5 rounded-xl text-xs font-medium bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-white transition-colors"
             >
               <RotateCcw className="w-3.5 h-3.5 text-[#9CA3AF]" />
-              <span className="hidden md:inline">Сброс / Excel</span>
+              <span>Сброс</span>
             </button>
           )}
 
@@ -240,7 +242,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             <div className="relative">
               <button
                 onClick={() => setMenuOpen(!menuOpen)}
-                className="flex items-center space-x-2 p-1.5 pr-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] transition-all"
+                className="flex items-center space-x-1.5 p-1 sm:p-1.5 sm:pr-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] transition-all cursor-pointer"
               >
                 <img
                   src={currentUser.avatar_url || 'https://api.dicebear.com/7.x/notionists/svg?seed=Anna'}
@@ -354,6 +356,108 @@ export const Navbar: React.FC<NavbarProps> = ({
           )}
         </div>
       </div>
+
+      {/* Mobile Sub-Navigation Bar */}
+      {currentUser && (
+        <nav className="sm:hidden flex items-center bg-[#111215] border-t border-white/[0.06] px-2 py-1.5 gap-1.5 overflow-x-auto no-scrollbar">
+          {currentUser.role === 'dispatcher' ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setActiveTab('dispatcher')}
+                className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-xl transition-all flex items-center justify-center space-x-1 cursor-pointer whitespace-nowrap ${
+                  activeTab === 'dispatcher'
+                    ? 'bg-white text-black shadow-sm'
+                    : 'text-[#9CA3AF] hover:text-white'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Чаты</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('orders')}
+                className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-xl transition-all flex items-center justify-center space-x-1 cursor-pointer whitespace-nowrap ${
+                  activeTab === 'orders'
+                    ? 'bg-white text-black shadow-sm'
+                    : 'text-[#9CA3AF] hover:text-white'
+                }`}
+              >
+                <ClipboardList className="w-3.5 h-3.5" />
+                <span>Заявки</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('warehouse')}
+                className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-xl transition-all flex items-center justify-center space-x-1 cursor-pointer whitespace-nowrap ${
+                  activeTab === 'warehouse'
+                    ? 'bg-white text-black shadow-sm'
+                    : 'text-[#9CA3AF] hover:text-white'
+                }`}
+              >
+                <Package className="w-3.5 h-3.5" />
+                <span>Склад</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('analytics')}
+                className={`flex-1 py-1.5 px-2 text-xs font-semibold rounded-xl transition-all flex items-center justify-center space-x-1 cursor-pointer whitespace-nowrap ${
+                  activeTab === 'analytics'
+                    ? 'bg-white text-black shadow-sm'
+                    : 'text-[#9CA3AF] hover:text-white'
+                }`}
+              >
+                <BarChart3 className="w-3.5 h-3.5" />
+                <span>Отчёты</span>
+              </button>
+            </>
+          ) : currentUser.role === 'company' ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setActiveTab('company')}
+                className={`flex-1 py-2 px-2 text-xs font-semibold rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
+                  activeTab === 'company'
+                    ? 'bg-white text-black shadow-sm'
+                    : 'text-[#9CA3AF] hover:text-white'
+                }`}
+              >
+                <Building className="w-3.5 h-3.5" />
+                <span>Кабинет и чат</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('orders')}
+                className={`flex-1 py-2 px-2 text-xs font-semibold rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
+                  activeTab === 'orders'
+                    ? 'bg-white text-black shadow-sm'
+                    : 'text-[#9CA3AF] hover:text-white'
+                }`}
+              >
+                <ClipboardList className="w-3.5 h-3.5" />
+                <span>Мои заявки</span>
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setActiveTab('engineer')}
+              className={`flex-1 py-2 px-2 text-xs font-semibold rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer ${
+                activeTab === 'engineer'
+                  ? 'bg-white text-black shadow-sm'
+                  : 'text-[#9CA3AF] hover:text-white'
+              }`}
+            >
+              <Wrench className="w-3.5 h-3.5" />
+              <span>Мои выезды</span>
+            </button>
+          )}
+        </nav>
+      )}
 
       {/* Logout Password (1997) Confirmation Modal */}
       {showLogoutModal && (

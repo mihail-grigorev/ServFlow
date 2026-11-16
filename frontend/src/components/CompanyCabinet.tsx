@@ -160,8 +160,33 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
     const text = (textToSend !== undefined ? textToSend : inputText).trim();
     if (!text || !selectedThread) return;
 
+    if (textToSend === undefined) {
+      setInputText('');
+    }
     setSendingMsg(true);
     const targetChatType = clientChatTab === 'engineer' ? 'client_engineer' : 'client_dispatcher';
+
+    // Optimistic message append
+    const tempId = Date.now();
+    const tempMessage = {
+      id: tempId,
+      thread_id: selectedThread.id,
+      channel: selectedThread.channel || 'Мессенджер',
+      sender_type: 'client' as const,
+      sender_name: currentUser.full_name,
+      content: text,
+      chat_type: targetChatType,
+      created_at: new Date().toISOString(),
+    };
+    selectedThread.messages.push(tempMessage);
+
+    if (chatScrollContainerRef.current) {
+      chatScrollContainerRef.current.scrollTo({
+        top: chatScrollContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+
     try {
       await api.sendMessage(
         selectedThread.id,
@@ -171,10 +196,10 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
         currentUser.full_name,
         targetChatType
       );
-      setInputText('');
       await loadCompanyData(selectedThread.id);
       if (onRefreshData) onRefreshData();
     } catch (err) {
+      selectedThread.messages = selectedThread.messages.filter((m) => m.id !== tempId);
       console.error('Failed to send message:', err);
     } finally {
       setSendingMsg(false);
@@ -316,11 +341,11 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 w-full md:w-auto">
           <button
             onClick={() => loadCompanyData()}
             title="Обновить переписку"
-            className="p-2 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-[#9CA3AF] hover:text-white transition-all cursor-pointer"
+            className="p-2 sm:p-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-[#9CA3AF] hover:text-white transition-all cursor-pointer flex-shrink-0"
           >
             <RotateCcw className={`w-4 h-4 ${loading ? 'animate-spin text-white' : ''}`} />
           </button>
@@ -330,9 +355,9 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
               setCreateError(null);
               setIsNewTicketOpen(true);
             }}
-            className="px-4 py-2 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-bold shadow-sm transition-all flex items-center space-x-1.5 cursor-pointer active:scale-95"
+            className="flex-1 md:flex-initial px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-bold shadow-sm transition-all flex items-center justify-center space-x-1.5 cursor-pointer active:scale-95"
           >
-            <Plus className="w-4 h-4 text-black" />
+            <Plus className="w-4 h-4 text-black flex-shrink-0" />
             <span>Новое обращение / вызов мастера</span>
           </button>
         </div>
@@ -557,11 +582,11 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
                   </div>
 
                   {/* Sub-tabs: Dispatcher vs Engineer */}
-                  <div className="flex items-center space-x-1.5 mt-2 bg-black/30 p-1 rounded-xl border border-white/[0.08]">
+                  <div className="flex items-center space-x-1.5 mt-2 bg-black/30 p-1 rounded-xl border border-white/[0.08] overflow-x-auto no-scrollbar flex-nowrap whitespace-nowrap">
                     <button
                       type="button"
                       onClick={() => setClientChatTab('dispatcher')}
-                      className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer whitespace-nowrap flex-shrink-0 ${
                         clientChatTab === 'dispatcher'
                           ? 'bg-white text-black shadow-sm font-semibold'
                           : 'text-[#9CA3AF] hover:text-white'
@@ -581,7 +606,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
                     <button
                       type="button"
                       onClick={() => setClientChatTab('engineer')}
-                      className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer whitespace-nowrap flex-shrink-0 ${
                         clientChatTab === 'engineer'
                           ? 'bg-white text-black shadow-sm font-semibold'
                           : 'text-[#9CA3AF] hover:text-white'

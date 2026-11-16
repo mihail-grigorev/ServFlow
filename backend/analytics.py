@@ -263,7 +263,61 @@ def get_analytics_summary(db: Session) -> Dict[str, Any]:
                 "is_critical": (moscow_free <= 0 or tula_free <= 0)
             })
 
-    # 6. Audience demo companies requests
+    # 6. Real operational breakdown metrics
+    orders_by_status = {
+        "Новая": sum(1 for o in active_orders if o.status == "Новая"),
+        "Назначен": sum(1 for o in active_orders if o.status == "Назначен"),
+        "В пути": sum(1 for o in active_orders if o.status == "В пути"),
+        "На месте": sum(1 for o in active_orders if o.status == "На месте"),
+        "Выполнен": sum(1 for o in active_orders if o.status == "Выполнен"),
+    }
+    warranty_orders_count = sum(1 for o in active_orders if o.is_warranty)
+    warranty_ratio = round(warranty_orders_count / len(active_orders) * 100, 1) if active_orders else 0.0
+    unregistered_count = db.query(ClientThread).filter(ClientThread.is_unregistered == True).count()
+
+    # Engineers real workload
+    engineers = db.query(User).filter(User.role == "engineer").all()
+    engineers_workload = []
+    for eng in engineers:
+        eng_orders = [o for o in active_orders if o.engineer_id == eng.id]
+        active_cnt = sum(1 for o in eng_orders if o.status != "Выполнен")
+        done_cnt = sum(1 for o in eng_orders if o.status == "Выполнен")
+        engineers_workload.append({
+            "id": eng.id,
+            "name": eng.full_name,
+            "city": eng.city,
+            "qualifications": eng.qualifications or [],
+            "active_orders": active_cnt,
+            "completed_orders": done_cnt,
+            "total_orders": len(eng_orders)
+        })
+
+    # Equipment breakdown distribution (C100, C200, C300)
+    models_breakdown = {"C100": 0, "C200": 0, "C300": 0}
+    for o in active_orders:
+        m_str = (o.model or "").upper()
+        for k in models_breakdown.keys():
+            if k in m_str:
+                models_breakdown[k] += 1
+    for th in all_threads:
+        eq_str = (th.equipment_code or "") + " " + (th.client_name or "")
+        if "C100" in eq_str or "EQ01" in eq_str or "EQ02" in eq_str:
+            models_breakdown["C100"] += 1
+        elif "C200" in eq_str or "EQ03" in eq_str or "EQ04" in eq_str:
+            models_breakdown["C200"] += 1
+        elif "C300" in eq_str or "EQ05" in eq_str or "EQ06" in eq_str or "EQ10" in eq_str:
+            models_breakdown["C300"] += 1
+
+    warehouse_summary = {
+        "moscow_stock": sum(p.moscow_stock or 0 for p in all_parts),
+        "moscow_free": sum(max(0, (p.moscow_stock or 0) - (p.moscow_reserved or 0)) for p in all_parts),
+        "tula_stock": sum(p.tula_stock or 0 for p in all_parts),
+        "tula_free": sum(max(0, (p.tula_stock or 0) - (p.tula_reserved or 0)) for p in all_parts),
+        "parts_count": len(all_parts),
+        "deficit_count": len(deficit_parts)
+    }
+
+    # Audience demo companies requests
     demo_companies = ["comp_kedr", "comp_briz", "comp_pirs", "comp_travel"]
     demo_requests_count = db.query(ClientThread).filter(
         ClientThread.company_id.in_(demo_companies)
@@ -277,6 +331,14 @@ def get_analytics_summary(db: Session) -> Dict[str, Any]:
         "auto_handled_ratio": auto_ratio,
         "total_threads": total_threads,
         "auto_handled_threads": auto_handled_threads,
+        "orders_total": len(active_orders),
+        "orders_by_status": orders_by_status,
+        "warranty_orders_count": warranty_orders_count,
+        "warranty_ratio": warranty_ratio,
+        "unregistered_count": unregistered_count,
+        "engineers_workload": engineers_workload,
+        "models_breakdown": models_breakdown,
+        "warehouse_summary": warehouse_summary,
         "ai_latency": {
             "p50_ms": round(p50, 1),
             "p95_ms": round(p95, 1)

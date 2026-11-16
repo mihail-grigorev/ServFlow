@@ -29,6 +29,7 @@ import {
   ChevronDown,
   ChevronUp,
   ChevronLeft,
+  ChevronRight,
   ArrowUpDown,
   SlidersHorizontal,
   UserCheck
@@ -283,21 +284,45 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
   };
 
   const handleSendMessage = async (customText?: string) => {
-    const textToSend = customText || inputText;
-    if (!textToSend.trim() || !selectedThread) return;
+    const textToSend = (customText || inputText).trim();
+    if (!textToSend || !selectedThread) return;
 
+    if (!customText) {
+      setInputText('');
+    }
     setSendingMsg(true);
     const targetChatType = dispatcherChatTab === 'client' ? 'client_dispatcher' : 'dispatcher_engineer';
+
+    // Optimistic UI message append
+    const tempId = Date.now();
+    const tempMessage = {
+      id: tempId,
+      thread_id: selectedThread.id,
+      channel: selectedThread.channel,
+      sender_type: 'dispatcher' as const,
+      sender_name: 'Диспетчер ServFlow',
+      content: textToSend,
+      chat_type: targetChatType,
+      created_at: new Date().toISOString(),
+    };
+    selectedThread.messages.push(tempMessage);
+
+    if (chatScrollContainerRef.current) {
+      chatScrollContainerRef.current.scrollTo({
+        top: chatScrollContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+
     try {
       await api.sendMessage(
         selectedThread.id,
-        textToSend.trim(),
+        textToSend,
         selectedThread.channel,
         'dispatcher',
         'Диспетчер ServFlow',
         targetChatType
       );
-      setInputText('');
       await onRefreshThreads();
       if (chatScrollContainerRef.current) {
         chatScrollContainerRef.current.scrollTo({
@@ -309,6 +334,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
         loadAiAnalysis(selectedThread.id);
       }
     } catch (err: any) {
+      selectedThread.messages = selectedThread.messages.filter((m) => m.id !== tempId);
       alert(err.message || 'Ошибка отправки сообщения');
     } finally {
       setSendingMsg(false);
@@ -411,7 +437,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                 className="w-full py-2.5 px-3 rounded-xl bg-white hover:bg-neutral-200 text-black border border-white/20 text-xs font-semibold flex items-center justify-center space-x-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
               >
                 <Plus className="w-4 h-4 text-black" />
-                <span>+ Новая заявка в 1 клик</span>
+                <span>Новая заявка в 1 клик</span>
               </button>
             </div>
 
@@ -449,7 +475,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
             </div>
 
             {/* Filter Pills */}
-            <div className="flex items-center space-x-1 overflow-x-auto pb-0.5">
+            <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar pb-0.5 flex-nowrap whitespace-nowrap">
               {[
                 { id: 'all', label: 'Все' },
                 { id: 'needs_clarification', label: 'Уточнить' },
@@ -460,7 +486,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                 <button
                   key={f.id}
                   onClick={() => setActiveFilter(f.id)}
-                  className={`px-2 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap flex-shrink-0 cursor-pointer ${
                     activeFilter === f.id
                       ? 'bg-white text-black font-semibold shadow-sm'
                       : 'bg-white/[0.05] text-[#9CA3AF] hover:text-white hover:bg-white/[0.08]'
@@ -470,7 +496,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                 </button>
               ))}
               {newThreadIds.size > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-black whitespace-nowrap animate-pulse">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-black whitespace-nowrap animate-pulse flex-shrink-0">
                   +{newThreadIds.size} нов.
                 </span>
               )}
@@ -491,7 +517,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                     setSelectedThreadId(t.id);
                     setMobileTab('chat');
                   }}
-                  className={`p-3.5 cursor-pointer transition-all ${
+                  className={`p-3.5 cursor-pointer transition-all active:scale-[0.99] select-none ${
                     isBrandNew
                       ? 'bg-white/10 ring-1 ring-white/30 border-l-4 border-white'
                       : isSelected
@@ -542,10 +568,13 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                     )}
                   </div>
 
-                  {/* Last message preview */}
-                  <p className="text-[11px] text-[#9CA3AF] line-clamp-2">
-                    {lastMsg ? lastMsg.content : 'Нет сообщений'}
-                  </p>
+                  {/* Last message preview and mobile chevron */}
+                  <div className="flex items-center justify-between gap-2 mt-1">
+                    <p className="text-[11px] text-[#9CA3AF] line-clamp-2 flex-1">
+                      {lastMsg ? lastMsg.content : 'Нет сообщений'}
+                    </p>
+                    <ChevronRight className="w-4 h-4 text-neutral-500 lg:hidden flex-shrink-0" />
+                  </div>
                 </div>
               );
             })}

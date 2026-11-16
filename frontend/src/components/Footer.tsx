@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import logoImg from '../assets/logo.png';
 import {
   FileText,
-  Phone,
   Mail,
   ExternalLink,
   CheckCircle2,
@@ -36,21 +35,13 @@ export const Footer: React.FC = () => {
             </span>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 text-xs">
+          <div className="flex items-center gap-2 text-xs">
             <a
-              href="tel:88005553535"
-              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-neutral-200 text-black font-semibold text-xs transition-all active:scale-95"
+              href="mailto:servflow@yandex.ru"
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-neutral-200 text-black font-semibold text-xs transition-all active:scale-95 shadow-sm"
             >
-              <Phone className="w-3.5 h-3.5 text-black" />
-              <span>8 (800) 555-35-35</span>
-            </a>
-            <a
-              href="mailto:support@kofeservice.ru"
-              className="inline-flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl bg-white/[0.05] hover:bg-white/10 text-neutral-300 hover:text-white border border-white/[0.08] text-xs transition-colors"
-            >
-              <Mail className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">support@kofeservice.ru</span>
-              <span className="sm:hidden">Email</span>
+              <Mail className="w-3.5 h-3.5 text-black" />
+              <span>servflow@yandex.ru</span>
             </a>
           </div>
         </div>
