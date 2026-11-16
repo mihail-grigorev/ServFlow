@@ -50,6 +50,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [conflictError, setConflictError] = useState<{ message: string } | null>(null);
   const [recommendedEngineers, setRecommendedEngineers] = useState<any[]>([]);
+  const [aiRecommendedParts, setAiRecommendedParts] = useState<any[]>([]);
+  const [isAiRecommending, setIsAiRecommending] = useState<boolean>(false);
+  const [aiRecommendationSummary, setAiRecommendationSummary] = useState<string | null>(null);
 
   // Selected equipment object
   const currentEq = allEquipment.find((e) => e.code === selectedEqCode) || allEquipment[0] || null;
@@ -185,23 +188,68 @@ export const OrderModal: React.FC<OrderModalProps> = ({
     }
   }, [selectedEqCode, allEquipment, currentEq]);
 
-  // Smart Engineer Ranking
+  // AI Recommendation for Engineers & Spare Parts
+  const runAiRecommendation = async (
+    overrideSymptom?: string,
+    overrideModel?: string,
+    autoApply = false
+  ) => {
+    const curModel = overrideModel || model;
+    const curSymptom = overrideSymptom !== undefined ? overrideSymptom : symptom;
+    if (!curModel) return;
+
+    setIsAiRecommending(true);
+    try {
+      // 1. Recommend Engineers
+      const engData = await api.getEngineerRecommendations(curModel, targetCity, curSymptom);
+      if (engData && engData.length > 0) {
+        setRecommendedEngineers(engData);
+        const topEng = engData[0];
+        const topId = topEng.id || topEng.engineer_id;
+        if (topId && (autoApply || selectedEngineerId === null)) {
+          setSelectedEngineerId(topId);
+        }
+      }
+
+      // 2. Recommend Parts
+      const partsData = await api.recommendParts({
+        model: curModel,
+        symptom: curSymptom,
+        city: targetCity,
+        equipment_code: selectedEqCode,
+      });
+
+      if (partsData && Array.isArray(partsData)) {
+        setAiRecommendedParts(partsData);
+        if (autoApply && partsData.length > 0) {
+          const newParts: { [code: string]: number } = {};
+          partsData.forEach((p: any) => {
+            newParts[p.code] = 1;
+          });
+          setSelectedParts(newParts);
+        }
+      }
+
+      const engName = engData?.[0]?.full_name || 'Мастер';
+      const partsCount = partsData?.length || 0;
+      setAiRecommendationSummary(
+        `ИИ подобрал: ${partsCount > 0 ? `${partsCount} рекоменд. дет.` : 'диагностика без деталей'} и мастера ${engName}`
+      );
+    } catch (err) {
+      console.error('Failed to run AI recommendation:', err);
+    } finally {
+      setIsAiRecommending(false);
+    }
+  };
+
+  // Run AI recommendation on model/symptom/city change
   useEffect(() => {
     if (!model) return;
-    api.getEngineerRecommendations(model, targetCity, symptom)
-      .then((data) => {
-        if (data && data.length > 0) {
-          setRecommendedEngineers(data);
-          const topId = data[0].id || data[0].engineer_id;
-          if (topId) {
-            setSelectedEngineerId(topId);
-          }
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to get engineer recommendations:', err);
-      });
-  }, [model, targetCity, symptom]);
+    const timer = setTimeout(() => {
+      runAiRecommendation(symptom, model, false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [model, targetCity, symptom, selectedEqCode]);
 
   // Pre-select fallback engineer if recommendations empty
   useEffect(() => {
@@ -502,6 +550,47 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             </div>
           </div>
 
+          {/* AI Recommendation Trigger Button & Summary */}
+          <div className="space-y-2">
+            <button
+              type="button"
+              onClick={() => runAiRecommendation(symptom, model, true)}
+              disabled={isAiRecommending}
+              className="w-full py-3 px-4 rounded-xl bg-white hover:bg-neutral-100 text-black text-xs sm:text-sm font-extrabold shadow-md border-2 border-white flex items-center justify-center space-x-2 cursor-pointer active:scale-[0.98] transition-all disabled:opacity-50"
+            >
+              <Sparkles className={`w-4 h-4 text-black flex-shrink-0 ${isAiRecommending ? 'animate-spin' : ''}`} />
+              <span>
+                {isAiRecommending
+                  ? 'ИИ подбирает детали и лучшего мастера...'
+                  : '✨ Подобрать детали и мастера с помощью ИИ'}
+              </span>
+            </button>
+
+            {aiRecommendationSummary && (
+              <div className="p-2.5 rounded-xl bg-white/10 border border-white/20 text-xs text-white flex items-center justify-between">
+                <div className="flex items-center space-x-2 min-w-0">
+                  <Sparkles className="w-3.5 h-3.5 text-white flex-shrink-0" />
+                  <span className="truncate">{aiRecommendationSummary}</span>
+                </div>
+                {aiRecommendedParts.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newParts: { [code: string]: number } = {};
+                      aiRecommendedParts.forEach((p: any) => {
+                        newParts[p.code] = 1;
+                      });
+                      setSelectedParts(newParts);
+                    }}
+                    className="text-[11px] underline text-neutral-300 hover:text-white font-semibold cursor-pointer whitespace-nowrap ml-2"
+                  >
+                    Выбрать {aiRecommendedParts.length} дет.
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* 3. Spare Parts Reservation (Rules П-7 & П-8) */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
@@ -544,6 +633,9 @@ export const OrderModal: React.FC<OrderModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-56 overflow-y-auto p-1.5 border border-white/[0.06] rounded-xl bg-black/20">
               {compatibleParts.map((p) => {
                 const isChecked = Boolean(selectedParts[p.code]);
+                const aiRec = aiRecommendedParts.find((rp) => rp.code === p.code) ||
+                  aiData?.recommended_parts?.find((rp) => rp.code === p.code);
+                const isAiRecommended = Boolean(aiRec);
                 const localStock = targetCity === 'Москва' ? p.moscow_stock : p.tula_stock;
                 const localRes = targetCity === 'Москва' ? p.moscow_reserved : p.tula_reserved;
                 const localFree = Math.max(0, localStock - localRes);
@@ -558,6 +650,8 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     className={`p-2.5 rounded-xl border cursor-pointer transition-all flex items-start space-x-2.5 ${
                       isChecked
                         ? 'border-white bg-white/10 ring-1 ring-white/20'
+                        : isAiRecommended
+                        ? 'border-white/40 bg-white/[0.05] hover:bg-white/[0.08]'
                         : 'border-white/[0.08] bg-[#1F2026] hover:bg-white/[0.04]'
                     }`}
                   >
@@ -568,12 +662,20 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                       className="mt-0.5 rounded accent-white text-white focus:ring-white bg-[#16171B]"
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-white truncate text-[11px]">
-                          {p.code} · {p.name}
-                        </span>
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="flex items-center space-x-1.5 min-w-0">
+                          <span className="font-semibold text-white truncate text-[11px]">
+                            {p.code} · {p.name}
+                          </span>
+                          {isAiRecommended && (
+                            <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-white text-black flex items-center space-x-0.5 shadow-sm whitespace-nowrap flex-shrink-0">
+                              <Sparkles className="w-2.5 h-2.5 text-black" />
+                              <span>ИИ</span>
+                            </span>
+                          )}
+                        </div>
                         <span
-                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                          className={`text-[10px] font-bold px-1.5 py-0.5 rounded whitespace-nowrap flex-shrink-0 ${
                             localFree > 0
                               ? 'bg-white/15 text-white'
                               : transferReq
@@ -588,6 +690,12 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                             : 'Купить (0 шт.)'}
                         </span>
                       </div>
+
+                      {isAiRecommended && aiRec?.diagnostic_reason && (
+                        <div className="mt-1 text-[10px] text-neutral-300 leading-tight">
+                          <strong className="text-white">Рекомендация ИИ:</strong> {aiRec.diagnostic_reason}
+                        </div>
+                      )}
 
                       {/* Stock alerts per part */}
                       {transferReq && (
@@ -625,6 +733,7 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                 const quals: string[] = eng.qualifications || [];
                 const hasModelQual = quals.includes(model) || eng.has_model_qualification;
                 const activeOrders = eng.active_orders !== undefined ? eng.active_orders : eng.active_orders_count;
+                const isAiTop = eng.is_recommended || (recommendedEngineers.length > 0 && (recommendedEngineers[0].id === engId || recommendedEngineers[0].engineer_id === engId));
 
                 return (
                   <div
@@ -633,14 +742,16 @@ export const OrderModal: React.FC<OrderModalProps> = ({
                     className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
                       isSelected
                         ? 'border-white bg-white/15 ring-2 ring-white/25'
+                        : isAiTop
+                        ? 'border-white/40 bg-white/[0.06] hover:bg-white/10 ring-1 ring-white/20'
                         : 'border-white/[0.08] bg-[#1F2026] hover:bg-white/[0.04]'
                     }`}
                   >
                     <div className="flex-1 min-w-0 pr-2">
-                      {eng.is_recommended && (
+                      {isAiTop && (
                         <div className="text-[10px] text-white font-bold flex items-center space-x-1 mb-1">
                           <Sparkles className="w-3 h-3 text-white flex-shrink-0" />
-                          <span className="truncate">{eng.recommendation_reason || 'Рекомендован ИИ'}</span>
+                          <span className="truncate">{eng.recommendation_reason || `Рекомендован ИИ (опыт по ${model}, свободный график)`}</span>
                         </div>
                       )}
 

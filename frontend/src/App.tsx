@@ -286,6 +286,7 @@ export function App() {
             <EngineerCabinet
               currentUser={currentUser}
               allEquipment={allEquipment}
+              onOpenProfile={() => setIsProfileModalOpen(true)}
             />
           )}
 

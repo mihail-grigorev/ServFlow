@@ -18,12 +18,14 @@ import {
   Building,
   RefreshCw,
   Bell,
-  BellOff
+  BellOff,
+  Edit3
 } from 'lucide-react';
 
 interface EngineerCabinetProps {
   currentUser: User;
   allEquipment: Equipment[];
+  onOpenProfile?: () => void;
 }
 
 const playNotificationSound = () => {
@@ -56,6 +58,7 @@ const playNotificationSound = () => {
 export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
   currentUser,
   allEquipment,
+  onOpenProfile,
 }) => {
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -204,7 +207,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
     const interval = setInterval(() => {
       api.getOrders({ engineer_id: currentUser.id }).then((res) => {
         setOrders(res);
-      }).catch(() => {});
+      }).catch(() => { });
     }, 4000);
     return () => clearInterval(interval);
   }, [currentUser]);
@@ -263,8 +266,14 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6 text-[#F3F4F6]">
       {/* Engineer Profile Banner */}
       <div className="bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple p-3.5 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/10 border border-white/20 text-white flex items-center justify-center overflow-hidden flex-shrink-0">
+        <div className="flex items-center space-x-3 min-w-0">
+          <div
+            onClick={onOpenProfile}
+            className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-white/10 border border-white/20 text-white flex items-center justify-center overflow-hidden flex-shrink-0 ${
+              onOpenProfile ? 'cursor-pointer hover:ring-2 hover:ring-white/30 transition-all' : ''
+            }`}
+            title="Нажмите, чтобы настроить профиль и аватар"
+          >
             {currentUser.avatar_url ? (
               <img
                 src={currentUser.avatar_url}
@@ -290,7 +299,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1 text-xs text-[#9CA3AF]">
               <span className="flex items-center space-x-1">
                 <MapPin className="w-3.5 h-3.5 text-neutral-400" />
-                <span>Базирование: {currentUser.city || 'Москва'}</span>
+                <span>Базирование: <strong className="text-white">{currentUser.city || 'Москва'}</strong></span>
               </span>
               <span>·</span>
               <span className="truncate">
@@ -300,17 +309,31 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center space-x-4 border-t md:border-t-0 md:border-l border-white/[0.08] pt-2 md:pt-0 md:pl-5 text-xs">
-          <div>
-            <div className="text-[#9CA3AF]">Назначено выездов:</div>
-            <div className="text-sm sm:text-base font-bold text-white">
-              {orders.filter((o) => o.status !== 'Выполнен').length} активных
+        <div className="flex items-center justify-between md:justify-end gap-3 sm:gap-4 border-t md:border-t-0 md:border-l border-white/[0.08] pt-2 md:pt-0 md:pl-5 text-xs">
+          <div className="flex items-center space-x-4">
+            <div>
+              <div className="text-[#9CA3AF]">Назначено выездов:</div>
+              <div className="text-sm sm:text-base font-bold text-white">
+                {orders.filter((o) => o.status !== 'Выполнен').length} активных
+              </div>
+            </div>
+            <div>
+              <div className="text-[#9CA3AF]">Всего в журнале:</div>
+              <div className="text-sm sm:text-base font-bold text-white">{orders.length}</div>
             </div>
           </div>
-          <div>
-            <div className="text-[#9CA3AF]">Всего в журнале:</div>
-            <div className="text-sm sm:text-base font-bold text-white">{orders.length}</div>
-          </div>
+
+          {onOpenProfile && (
+            <button
+              type="button"
+              onClick={onOpenProfile}
+              className="px-3 py-1.5 rounded-xl border border-white/20 bg-white/10 hover:bg-white/20 text-white font-medium text-xs flex items-center space-x-1.5 transition-all cursor-pointer whitespace-nowrap flex-shrink-0 active:scale-95 shadow-sm"
+              title="Изменить город, допуски, имя или аватар"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>Редактировать профиль</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -434,9 +457,8 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                     <MessageSquare className="w-3.5 h-3.5" />
                     <span>Чат по заявке</span>
                     {allMessagesCount > 0 && (
-                      <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-bold ${
-                        activeView === 'chat' ? 'bg-black/20 text-black' : 'bg-white/10 text-white'
-                      }`}>
+                      <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-bold ${activeView === 'chat' ? 'bg-black/20 text-black' : 'bg-white/10 text-white'
+                        }`}>
                         {allMessagesCount}
                       </span>
                     )}
@@ -673,11 +695,10 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                         type="button"
                         onClick={() => setIsSoundEnabled((prev) => !prev)}
                         title={isSoundEnabled ? 'Звуковые оповещения включены' : 'Звук выключен'}
-                        className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition-all flex items-center space-x-1.5 cursor-pointer ${
-                          isSoundEnabled
-                            ? 'bg-white/10 text-white border-white/20 hover:bg-white/15'
-                            : 'bg-white/[0.04] text-neutral-400 border-white/[0.08] hover:text-white'
-                        }`}
+                        className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition-all flex items-center space-x-1.5 cursor-pointer ${isSoundEnabled
+                          ? 'bg-white/10 text-white border-white/20 hover:bg-white/15'
+                          : 'bg-white/[0.04] text-neutral-400 border-white/[0.08] hover:text-white'
+                          }`}
                       >
                         {isSoundEnabled ? <Bell className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />}
                         <span className="hidden sm:inline">{isSoundEnabled ? 'Звук ВКЛ' : 'Звук ВЫКЛ'}</span>
@@ -799,8 +820,8 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                       {engineerChatTab === 'dispatcher'
                         ? 'Быстрые сообщения диспетчеру:'
                         : engineerChatTab === 'client'
-                        ? 'Быстрые сообщения клиенту:'
-                        : 'Быстрые сообщения по заявке:'}
+                          ? 'Быстрые сообщения клиенту:'
+                          : 'Быстрые сообщения по заявке:'}
                     </div>
                     <div className="flex flex-wrap gap-1.5">
                       {(engineerChatTab === 'client'

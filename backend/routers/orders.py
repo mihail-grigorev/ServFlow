@@ -14,8 +14,10 @@ from backend.schemas import (
     ServiceOrderStatusUpdate,
     ServiceOrderReportUpdate,
     ServiceOrderUpdate,
-    ClientThreadResponse
+    ClientThreadResponse,
+    RecommendPartsRequest
 )
+from backend.rules_engine import RulesEngine
 from backend.auth import get_current_user, require_dispatcher
 from backend.seed import get_company_id_for_client
 from backend.audit import log_audit
@@ -69,7 +71,7 @@ def get_engineer_recommendations(
     model: str = Query(...),
     city: str = Query("Москва"),
     symptom: Optional[str] = Query(None),
-    current_user: User = Depends(require_dispatcher),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     engineers = db.query(User).filter(User.role == "engineer").all()
@@ -148,7 +150,41 @@ def get_engineer_recommendations(
         })
 
     results.sort(key=lambda x: x["score"], reverse=True)
+    if results:
+        best = next((r for r in results if r["city_match"] and r["has_model_qualification"]), results[0])
+        best["is_recommended"] = True
+        reason_items = []
+        if best.get("has_model_qualification"):
+            reason_items.append(f"допуск к {model}")
+        if best.get("model_experience_count", 0) > 0:
+            reason_items.append(f"опыт по {model} ({best['model_experience_count']} рем.)")
+        if best.get("active_orders_count", 0) == 0:
+            reason_items.append("свободен (0 активных заявок)")
+        else:
+            reason_items.append(f"{best['active_orders_count']} акт. заявок")
+        best["recommendation_reason"] = f"Рекомендован ИИ: {', '.join(reason_items)}"
     return results
+
+
+@router.post("/recommend-parts")
+def recommend_parts(
+    req: RecommendPartsRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    all_parts = db.query(SparePart).all()
+    eq = None
+    if req.equipment_code:
+        eq = db.query(Equipment).filter(Equipment.code == req.equipment_code).first()
+
+    parts_list = RulesEngine.get_recommended_parts_for_order(
+        model=req.model,
+        city=req.city or "Москва",
+        text_content=req.symptom or "",
+        all_parts=all_parts,
+        equipment=eq
+    )
+    return parts_list
 
 
 @router.get("/{order_id}", response_model=ServiceOrderResponse)

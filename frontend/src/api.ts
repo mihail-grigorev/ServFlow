@@ -378,6 +378,18 @@ export const api = {
     return request<any[]>(`/orders/engineer-recommendations?${params.toString()}`);
   },
 
+  recommendParts: async (data: {
+    model: string;
+    symptom?: string;
+    city?: string;
+    equipment_code?: string;
+  }): Promise<any[]> => {
+    return request<any[]>('/orders/recommend-parts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
+
   getAutoReplySetting: async (): Promise<{ auto_reply_enabled: boolean }> => {
     return request<{ auto_reply_enabled: boolean }>('/threads/settings/auto-reply');
   },

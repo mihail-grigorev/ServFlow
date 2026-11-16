@@ -362,17 +362,22 @@ def update_profile(
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    # Security check K4: Only dispatcher can change is_senior or qualifications
-    if profile_data.is_senior is not None or profile_data.qualifications is not None:
+    # Dispatcher can change is_senior; dispatcher and engineer can update qualifications
+    if profile_data.is_senior is not None:
         if current_user.role != "dispatcher":
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail="Изменение квалификаций и статуса старшего специалиста доступно только диспетчеру"
+                detail="Изменение статуса старшего специалиста доступно только диспетчеру"
             )
-        if profile_data.is_senior is not None:
-            user.is_senior = profile_data.is_senior
-        if profile_data.qualifications is not None:
-            user.qualifications = profile_data.qualifications
+        user.is_senior = profile_data.is_senior
+
+    if profile_data.qualifications is not None:
+        if current_user.role not in ["dispatcher", "engineer"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Изменение квалификаций доступно только диспетчеру и инженеру"
+            )
+        user.qualifications = profile_data.qualifications
 
     # Changing email requires code confirmation
     if profile_data.email and profile_data.email.strip().lower() != user.email.lower():

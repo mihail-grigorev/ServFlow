@@ -244,6 +244,14 @@ class AITextAnalysisRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+class RecommendPartsRequest(BaseModel):
+    model: str = Field(max_length=50)
+    symptom: Optional[str] = Field(default="", max_length=2000)
+    city: Optional[str] = Field(default="Москва", max_length=50)
+    equipment_code: Optional[str] = Field(default=None, max_length=50)
+
+    model_config = ConfigDict(extra="forbid")
+
 # ----------------- Orders -----------------
 class ServiceOrderCreate(BaseModel):
     thread_id: Optional[int] = None

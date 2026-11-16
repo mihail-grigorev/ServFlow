@@ -70,6 +70,21 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [logoutPinError, setLogoutPinError] = useState('');
 
   useEffect(() => {
+    if (isOpen) {
+      setFullName(currentUser.full_name);
+      setEmail(currentUser.email);
+      setCity(currentUser.city || 'Москва');
+      setQualifications(currentUser.qualifications || []);
+      setAvatarUrl(currentUser.avatar_url || AVATAR_PRESETS[0]);
+      setNewPassword('');
+      setErrorMsg(null);
+      setSuccessMsg(null);
+      setDeleteStep('initial');
+      setDeleteCode('');
+    }
+  }, [isOpen, currentUser]);
+
+  useEffect(() => {
     let timer: any;
     if (deleteCountdown > 0) {
       timer = setInterval(() => {
