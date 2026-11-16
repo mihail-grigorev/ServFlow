@@ -1,9 +1,12 @@
 from datetime import datetime, timedelta
+import hashlib
 import openpyxl
+import segno
 from sqlalchemy.orm import Session
-from backend.models import User, Equipment, SparePart, ClientThread, Message, ServiceOrder
+from backend.models import User, Equipment, SparePart, ClientThread, Message, ServiceOrder, DemoQrToken
 from backend.auth import get_password_hash
 from backend.rules_engine import RulesEngine
+from backend.config import settings
 
 # Built-in exact data dictionary from case study
 EQUIPMENT_DATA = [
@@ -325,7 +328,10 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
     db.commit()
 
     # 2. Seed Users
-    hashed_pwd = get_password_hash("password123")
+    # Dispatchers and engineers use STAFF_PASSWORD from .env ("1997")
+    staff_pwd = get_password_hash(settings.STAFF_PASSWORD)
+    company_pwd = get_password_hash("password123")
+
     users = [
         User(
             email="dispatcher@kofeservice.ru",
@@ -335,7 +341,7 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
             is_senior=False,
             qualifications=["C100", "C200", "C300"],
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Anna",
-            hashed_password=hashed_pwd
+            hashed_password=staff_pwd
         ),
         User(
             email="ivanov@kofeservice.ru",
@@ -345,7 +351,7 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
             is_senior=False,
             qualifications=["C100", "C200", "C300"],
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Alex",
-            hashed_password=hashed_pwd
+            hashed_password=staff_pwd
         ),
         User(
             email="petrov@kofeservice.ru",
@@ -355,7 +361,7 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
             is_senior=False,
             qualifications=["C100", "C200"],
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Dmitry",
-            hashed_password=hashed_pwd
+            hashed_password=staff_pwd
         ),
         User(
             email="smirnov@kofeservice.ru",
@@ -365,7 +371,7 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
             is_senior=False,
             qualifications=["C100", "C200", "C300"],
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Sergey",
-            hashed_password=hashed_pwd
+            hashed_password=staff_pwd
         ),
         User(
             email="kozlov@kofeservice.ru",
@@ -375,7 +381,7 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
             is_senior=False,
             qualifications=["C100", "C200"],
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Pavel",
-            hashed_password=hashed_pwd
+            hashed_password=staff_pwd
         ),
         # Company accounts (clients) with company_id and is_demo=True
         User(
@@ -388,7 +394,7 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
             is_senior=False,
             qualifications=[],
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Kedr",
-            hashed_password=hashed_pwd
+            hashed_password=company_pwd
         ),
         User(
             email="client_bereg@kofeservice.ru",
@@ -400,7 +406,7 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
             is_senior=False,
             qualifications=[],
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Bereg",
-            hashed_password=hashed_pwd
+            hashed_password=company_pwd
         ),
         User(
             email="client_zerno@kofeservice.ru",
@@ -412,7 +418,7 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
             is_senior=False,
             qualifications=[],
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Zerno",
-            hashed_password=hashed_pwd
+            hashed_password=company_pwd
         ),
         User(
             email="client_list@kofeservice.ru",
@@ -424,7 +430,7 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
             is_senior=False,
             qualifications=[],
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=List",
-            hashed_password=hashed_pwd
+            hashed_password=company_pwd
         ),
         User(
             email="client_park@kofeservice.ru",
@@ -436,7 +442,7 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
             is_senior=False,
             qualifications=[],
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Park",
-            hashed_password=hashed_pwd
+            hashed_password=company_pwd
         ),
         User(
             email="client_ugol@kofeservice.ru",
@@ -448,7 +454,7 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
             is_senior=False,
             qualifications=[],
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Ugol",
-            hashed_password=hashed_pwd
+            hashed_password=company_pwd
         ),
         User(
             email="client_skver@kofeservice.ru",
@@ -460,7 +466,7 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
             is_senior=False,
             qualifications=[],
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Skver",
-            hashed_password=hashed_pwd
+            hashed_password=company_pwd
         ),
         User(
             email="client_mayak@kofeservice.ru",
@@ -472,7 +478,7 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
             is_senior=False,
             qualifications=[],
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Mayak",
-            hashed_password=hashed_pwd
+            hashed_password=company_pwd
         ),
         User(
             email="client_sever@kofeservice.ru",
@@ -484,7 +490,7 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
             is_senior=False,
             qualifications=[],
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Sever",
-            hashed_password=hashed_pwd
+            hashed_password=company_pwd
         ),
         User(
             email="client_piers@kofeservice.ru",
@@ -496,9 +502,9 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
             is_senior=False,
             qualifications=[],
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Piers",
-            hashed_password=hashed_pwd
+            hashed_password=company_pwd
         ),
-        # Test Administrator & Engineer with password 1997
+        # Test Administrator & Engineer with password 1997 from .env
         User(
             email="admin@kofeservice.ru",
             full_name="Администратор системы",
@@ -508,7 +514,7 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
             is_senior=True,
             qualifications=["C100", "C200", "C300"],
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Admin1997",
-            hashed_password=get_password_hash("1997")
+            hashed_password=staff_pwd
         ),
         User(
             email="engineer@kofeservice.ru",
@@ -519,7 +525,7 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
             is_senior=True,
             qualifications=["C100", "C200", "C300"],
             avatar_url="https://api.dicebear.com/7.x/notionists/svg?seed=Engineer1997",
-            hashed_password=get_password_hash("1997")
+            hashed_password=staff_pwd
         ),
     ]
     db.add_all(users)
@@ -610,11 +616,51 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
     # Seed active demo orders for engineers so chats are immediately testable
     seed_demo_orders(db, eq_objs)
 
+    # Seed offline scannable QR code for company account
+    generate_and_seed_company_qr(db)
+
     db.commit()
     return {
         "status": "success",
         "message": "База данных успешно заполнена исходными данными: 5 пользователей, 12 единиц оборудования, 10 запчастей, 13 веток обращений (23 утренних сообщения)."
     }
+
+
+def generate_and_seed_company_qr(db: Session):
+    comp_kedr = db.query(User).filter(User.company_id == "comp_kedr").first()
+    if not comp_kedr:
+        return
+    token_str = "kedr_company_direct_access_token_2026"
+    thash = hashlib.sha256(token_str.encode()).hexdigest()
+    existing = db.query(DemoQrToken).filter(DemoQrToken.token_hash == thash).first()
+    if not existing:
+        tok = DemoQrToken(
+            company_id="comp_kedr",
+            token=token_str,
+            token_hash=thash,
+            created_at=datetime.utcnow(),
+            expires_at=datetime.utcnow() + timedelta(days=3650),
+            revoked=False,
+            uses=0,
+            max_uses=999999
+        )
+        db.add(tok)
+    else:
+        existing.revoked = False
+        existing.expires_at = datetime.utcnow() + timedelta(days=3650)
+    db.commit()
+
+    try:
+        import os
+        url = f"{settings.PUBLIC_BASE_URL}/demo/enter?t={token_str}"
+        qr = segno.make_qr(url)
+        qr.save("company_qr.png", scale=10, border=3)
+        qr.save("company_qr.svg", scale=10, border=3)
+        os.makedirs("frontend/public", exist_ok=True)
+        qr.save("frontend/public/company_qr.png", scale=10, border=3)
+        qr.save("frontend/public/company_qr.svg", scale=10, border=3)
+    except Exception as e:
+        print(f"Error generating company QR files: {e}")
 
 
 def seed_demo_orders(db: Session, eq_objs: dict):
@@ -854,6 +900,9 @@ def reset_demo_data(db: Session):
 
     # Seed active demo orders for engineers so chats are immediately testable
     seed_demo_orders(db, eq_objs)
+
+    # Seed offline scannable QR code for company account
+    generate_and_seed_company_qr(db)
 
     db.commit()
     return {"status": "success", "message": "Демо-данные успешно сброшены к начальному состоянию"}

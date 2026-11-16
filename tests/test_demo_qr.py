@@ -115,9 +115,13 @@ def test_verify_staff_pin(client):
     assert resp.status_code == 400
 
     # Correct PIN
-    resp = client.post("/api/demo/verify-staff-pin", json={"pin": "2026"})
+    resp = client.post("/api/demo/verify-staff-pin", json={"pin": "1997"})
     assert resp.status_code == 200
     assert resp.json()["valid"] is True
+
+    resp2 = client.post("/api/demo/verify-staff-pin", json={"pin": "2026"})
+    assert resp2.status_code == 200
+    assert resp2.json()["valid"] is True
 
 
 def test_audience_anti_spam(client, db_session):

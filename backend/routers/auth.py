@@ -77,13 +77,27 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
     user = db.query(User).filter(func.lower(User.email) == clean_email).first()
     pwd = req.password
 
-    # Match user's own password, trimmed password, or standard demo password fallback in DEMO_MODE
+    # Match password: staff accounts (dispatcher & engineer) accept STAFF_PASSWORD from .env
     is_valid = False
     if user:
-        if verify_password(pwd, user.hashed_password) or verify_password(pwd.strip(), user.hashed_password):
-            is_valid = True
-        elif settings.DEMO_MODE and pwd.strip() in ["password123", "admin", "123456", "12345678"]:
-            is_valid = True
+        if user.role in ["dispatcher", "engineer"]:
+            if (
+                pwd.strip() == settings.STAFF_PASSWORD
+                or verify_password(pwd, user.hashed_password)
+                or verify_password(pwd.strip(), user.hashed_password)
+            ):
+                is_valid = True
+            elif settings.DEMO_MODE and pwd.strip() in ["password123", "admin", "123456", "12345678"]:
+                is_valid = True
+        elif user.role == "company":
+            # Company accounts strictly use their own password (STAFF_PASSWORD from .env is not accepted)
+            if verify_password(pwd, user.hashed_password) or verify_password(pwd.strip(), user.hashed_password):
+                is_valid = True
+            elif settings.DEMO_MODE and pwd.strip() in ["password123"]:
+                is_valid = True
+        else:
+            if verify_password(pwd, user.hashed_password) or verify_password(pwd.strip(), user.hashed_password):
+                is_valid = True
 
     if not is_valid:
         record_failed_login(ip, clean_email)

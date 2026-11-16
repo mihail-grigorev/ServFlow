@@ -9,10 +9,11 @@ class Settings(BaseSettings):
     
     # Environment mode: in demo mode, demo users, QR generation and dev tools are enabled
     DEMO_MODE: bool = os.getenv("DEMO_MODE", "true").lower() in ("true", "1", "yes")
-    DEMO_STAFF_PIN: str = os.getenv("DEMO_STAFF_PIN", "2026")
+    STAFF_PASSWORD: str = os.getenv("STAFF_PASSWORD", "1997")
+    DEMO_STAFF_PIN: str = os.getenv("STAFF_PASSWORD", "1997")
     DEMO_QR_TTL_HOURS: int = int(os.getenv("DEMO_QR_TTL_HOURS", "6"))
     DEMO_QR_MAX_SESSIONS: int = int(os.getenv("DEMO_QR_MAX_SESSIONS", "30"))
-    PUBLIC_BASE_URL: str = os.getenv("PUBLIC_BASE_URL", "http://localhost:5173")
+    PUBLIC_BASE_URL: str = os.getenv("PUBLIC_BASE_URL", "https://servflow.onrender.com")
     
     # Database URL: default connects to local postgres on 5434 or Docker on 5432
     DATABASE_URL: str = os.getenv(

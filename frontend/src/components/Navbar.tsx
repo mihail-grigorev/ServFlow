@@ -459,7 +459,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </nav>
       )}
 
-      {/* Logout Password (1997) Confirmation Modal */}
+      {/* Logout Password Confirmation Modal */}
       {showLogoutModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="w-full max-w-sm bg-[#16171B] border border-white/20 rounded-2xl p-6 shadow-2xl space-y-4 text-white">

@@ -284,7 +284,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers,
               onClick={() => {
                 setMode('login');
                 setError(null);
-                setPassword('password123');
+                setPassword('');
               }}
               className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all ${
                 mode === 'login'
@@ -321,14 +321,6 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers,
 
           {mode === 'login' ? (
             <form onSubmit={handleLogin} className="space-y-4">
-              <div className="p-3 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-between text-xs text-neutral-300">
-                <div className="flex items-center space-x-2">
-                  <ShieldCheck className="w-4 h-4 text-white flex-shrink-0" />
-                  <span>Пароль для всех тестовых аккаунтов: <strong className="text-white font-mono bg-black/40 px-1.5 py-0.5 rounded border border-white/10">password123</strong></span>
-                </div>
-                <span className="text-[10px] text-[#8E9E94] hidden sm:inline">вход в 1 клик справа ➔</span>
-              </div>
-
               <div>
                 <label className="block text-xs font-medium text-[#8E9E94] mb-1">
                   Электронная почта
@@ -790,7 +782,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers,
               <h3 className="text-base font-semibold">Доступ сотрудника</h3>
             </div>
             <p className="text-xs text-neutral-400">
-              Вход под аккаунтом <span className="text-white font-medium">{pinModalUser.full_name}</span> ({pinModalUser.role === 'dispatcher' ? 'Админ / Диспетчер' : 'Инженер'}) защищён паролем / PIN.
+              Вход под аккаунтом <span className="text-white font-medium">{pinModalUser.full_name}</span> ({pinModalUser.role === 'dispatcher' ? 'Админ / Диспетчер' : 'Инженер'}) защищён кодом доступа.
             </p>
 
             <form onSubmit={handleVerifyStaffPin} className="space-y-3">
@@ -798,7 +790,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers,
                 <input
                   type="password"
                   autoFocus
-                  placeholder="Введите пароль аккаунта"
+                  placeholder="Код доступа сотрудника"
                   value={staffPinInput}
                   onChange={(e) => setStaffPinInput(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl bg-black/40 border border-white/10 text-white text-sm placeholder:text-neutral-500 focus:outline-none focus:border-white/30 tracking-widest text-center"

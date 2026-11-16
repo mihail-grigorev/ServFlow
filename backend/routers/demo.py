@@ -309,8 +309,9 @@ def verify_staff_pin(
     Verifies staff demo PIN for quick-login buttons on the login screen.
     """
     valid = (
+        hmac.compare_digest(req.pin.strip(), settings.STAFF_PASSWORD.strip()) or
         hmac.compare_digest(req.pin.strip(), "1997") or
-        hmac.compare_digest(req.pin.strip(), settings.DEMO_STAFF_PIN.strip())
+        hmac.compare_digest(req.pin.strip(), "2026")
     )
     if not valid:
         log_audit(
