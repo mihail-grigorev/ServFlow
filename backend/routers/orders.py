@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, func
@@ -18,6 +18,10 @@ from backend.schemas import (
     RecommendPartsRequest
 )
 from backend.rules_engine import RulesEngine
+from backend.excel_order_service import (
+    process_excel_upload_and_create_ai_orders,
+    process_all_existing_threads_ai
+)
 from backend.auth import get_current_user, require_dispatcher
 from backend.seed import get_company_id_for_client
 from backend.audit import log_audit
@@ -185,6 +189,58 @@ def recommend_parts(
         equipment=eq
     )
     return parts_list
+
+
+@router.post("/ai-batch-from-excel")
+async def ai_batch_from_excel(
+    file: UploadFile = File(...),
+    current_user: User = Depends(require_dispatcher),
+    db: Session = Depends(get_db)
+):
+    """
+    Dispatcher feature: Upload an Excel file containing client requests/appeals.
+    AI automatically analyzes each request, identifies machines, checks warranty,
+    picks compatible parts, assigns engineers, and creates all Service Orders.
+    """
+    filename = file.filename or "orders.xlsx"
+    if not filename.lower().endswith(".xlsx"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Разрешена загрузка файлов только с расширением .xlsx"
+        )
+    content = await file.read()
+    if len(content) > 10 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Размер файла превышает 10 МБ"
+        )
+    try:
+        res = process_excel_upload_and_create_ai_orders(content, filename, db, current_user)
+        return res
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ошибка обработки Excel файла ИИ: {e}"
+        )
+
+
+@router.post("/ai-batch-process-threads")
+def ai_batch_process_threads(
+    current_user: User = Depends(require_dispatcher),
+    db: Session = Depends(get_db)
+):
+    """
+    Dispatcher feature: AI automatically generates service orders for all existing
+    case threads that do not yet have an assigned order.
+    """
+    try:
+        res = process_all_existing_threads_ai(db, current_user)
+        return res
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Ошибка обработки обращений ИИ: {e}"
+        )
 
 
 @router.get("/{order_id}", response_model=ServiceOrderResponse)

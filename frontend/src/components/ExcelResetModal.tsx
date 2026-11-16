@@ -6,7 +6,8 @@ import {
   Upload,
   FileSpreadsheet,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Sparkles
 } from 'lucide-react';
 
 interface ExcelResetModalProps {
@@ -62,6 +63,26 @@ export const ExcelResetModal: React.FC<ExcelResetModalProps> = ({
       }, 1500);
     } catch (err: any) {
       setErrorMsg(err.message || 'Ошибка загрузки файла');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAiBatchProcess = async () => {
+    if (!selectedFile) return;
+    setLoading(true);
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
+    try {
+      const res = await api.aiBatchCreateFromExcel(selectedFile);
+      setSuccessMsg(res.message);
+      onDataReset();
+      setTimeout(() => {
+        onClose();
+      }, 1800);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Ошибка ИИ-составления заявок');
     } finally {
       setLoading(false);
     }
@@ -144,13 +165,25 @@ export const ExcelResetModal: React.FC<ExcelResetModalProps> = ({
               className="w-full text-xs text-[#8E9E94] file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-white/[0.08] file:text-[#F0F5F2] hover:file:bg-white/[0.12] cursor-pointer"
             />
 
-            <button
-              type="submit"
-              disabled={loading || !selectedFile}
-              className="w-full py-2 rounded-xl border border-white/[0.12] hover:bg-white/[0.06] disabled:opacity-40 font-medium text-[#F0F5F2] transition-colors"
-            >
-              Импортировать из загруженного файла
-            </button>
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={handleAiBatchProcess}
+                disabled={loading || !selectedFile}
+                className="w-full py-2.5 rounded-xl bg-white text-black font-extrabold hover:bg-neutral-200 disabled:opacity-40 text-xs shadow-md flex items-center justify-center space-x-1.5 transition-all cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-black" />
+                <span>✨ Загрузить и составить все заявки через ИИ</span>
+              </button>
+
+              <button
+                type="submit"
+                disabled={loading || !selectedFile}
+                className="w-full py-2 rounded-xl border border-white/[0.12] hover:bg-white/[0.06] disabled:opacity-40 font-medium text-[#F0F5F2] transition-colors cursor-pointer"
+              >
+                Только импортировать данные без автосоздания
+              </button>
+            </div>
           </form>
         </div>
       </div>

@@ -34,8 +34,10 @@ import {
   SlidersHorizontal,
   UserCheck,
   Bell,
-  BellOff
+  BellOff,
+  FileSpreadsheet
 } from 'lucide-react';
+import { BatchAiOrdersModal } from './BatchAiOrdersModal';
 
 interface DispatcherDashboardProps {
   onOpenOrderModal: (thread?: ClientThread, aiData?: AIAnalysisResult | null) => void;
@@ -93,6 +95,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisResult | null>(null);
+  const [isBatchAiModalOpen, setIsBatchAiModalOpen] = useState<boolean>(false);
   const [aiLoading, setAiLoading] = useState<boolean>(false);
   const [inputText, setInputText] = useState<string>('');
   const [sendingMsg, setSendingMsg] = useState<boolean>(false);
@@ -540,13 +543,23 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
         {/* ================= COLUMN 1 (LEFT): THREADS & QUICK ORDER ================= */}
         <div className={`${mobileTab === 'threads' ? 'flex' : 'hidden'} lg:flex h-[calc(100dvh-10.5rem)] min-h-[500px] lg:h-auto lg:col-span-3 bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex-col min-h-0 overflow-hidden`}>
           <div className="p-3.5 border-b border-white/[0.06] space-y-2.5">
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-col gap-2">
               <button
                 onClick={() => onOpenOrderModal()}
                 className="w-full py-3 px-4 rounded-xl bg-white hover:bg-neutral-100 text-black text-xs sm:text-sm font-extrabold shadow-md border-2 border-white flex items-center justify-center space-x-2 cursor-pointer active:scale-95 transition-all ring-2 ring-white/10"
               >
                 <Plus className="w-4.5 h-4.5 text-black stroke-[3] flex-shrink-0" />
                 <span className="tracking-wide">Создать заявку в 1 клик</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsBatchAiModalOpen(true)}
+                className="w-full py-2.5 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold border border-white/20 flex items-center justify-center space-x-2 cursor-pointer transition-all active:scale-98 shadow-sm"
+                title="Загрузить Excel файл с обращениями или составить все заявки с помощью ИИ"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-white flex-shrink-0" />
+                <span>✨ ИИ: Составить заявки из Excel</span>
               </button>
             </div>
 
@@ -1578,6 +1591,18 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
       )}
     </div>
       </div>
+
+      {/* Batch AI Orders Modal */}
+      <BatchAiOrdersModal
+        isOpen={isBatchAiModalOpen}
+        onClose={() => setIsBatchAiModalOpen(false)}
+        onSuccess={() => {
+          onRefreshThreads();
+          if (onNavigateToOrders) {
+            onNavigateToOrders();
+          }
+        }}
+      />
     </div>
   );
 };

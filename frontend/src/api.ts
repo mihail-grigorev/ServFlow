@@ -430,6 +430,45 @@ export const api = {
     return res.json();
   },
 
+  aiBatchCreateFromExcel: async (file: File): Promise<{
+    status: string;
+    message: string;
+    total_requests: number;
+    total_orders_created: number;
+    total_sales_transfers: number;
+    orders: any[];
+  }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const token = getToken();
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_BASE}/orders/ai-batch-from-excel`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || 'Ошибка ИИ-составления заявок из Excel');
+    }
+    return res.json();
+  },
+
+  aiBatchProcessThreads: async (): Promise<{
+    status: string;
+    message: string;
+    total_requests: number;
+    total_orders_created: number;
+    total_sales_transfers: number;
+    orders: any[];
+  }> => {
+    return request('/orders/ai-batch-process-threads', {
+      method: 'POST',
+    });
+  },
+
   // Demo Mode & Audience QR
   getDemoConfig: async (): Promise<{ demo_mode: boolean; public_base_url: string }> => {
     return request<{ demo_mode: boolean; public_base_url: string }>('/demo/config');
