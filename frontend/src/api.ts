@@ -40,6 +40,18 @@ function safeStorageRemove(key: string) {
   }
 }
 
+export function safeGetItem(key: string): string | null {
+  return safeStorageGet(key);
+}
+
+export function safeSetItem(key: string, value: string): void {
+  safeStorageSet(key, value);
+}
+
+export function safeRemoveItem(key: string): void {
+  safeStorageRemove(key);
+}
+
 export function getToken(): string | null {
   try {
     const t = safeStorageGet('kofe_auth_token');

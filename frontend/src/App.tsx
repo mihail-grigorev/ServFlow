@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { api, getSavedUser, clearToken } from './api';
+import { api, getSavedUser, clearToken, safeGetItem, safeSetItem } from './api';
 import { User, ClientThread, Equipment, SparePart, AIAnalysisResult } from './types';
 import { Navbar } from './components/Navbar';
 import { LoginView } from './components/LoginView';
@@ -41,7 +41,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     try {
       const savedUser = getSavedUser();
-      const savedTab = localStorage.getItem('kofe_active_tab');
+      const savedTab = safeGetItem('kofe_active_tab');
       return getValidTabForRole(savedUser?.role, savedTab);
     } catch {
       return 'dispatcher';
@@ -83,8 +83,8 @@ export function App() {
           if (res && res.user) {
             setCurrentUser(res.user);
             setActiveTab('company');
+            safeSetItem('kofe_active_tab', 'company');
             try {
-              localStorage.setItem('kofe_active_tab', 'company');
               window.history.replaceState({}, '', window.location.pathname.replace(/\/demo\/enter\/?$/, '') || '/');
             } catch {}
           }
@@ -101,14 +101,14 @@ export function App() {
   const handleSetActiveTab = (tab: TabType) => {
     const valid = getValidTabForRole(currentUser?.role, tab);
     setActiveTab(valid);
-    localStorage.setItem('kofe_active_tab', valid);
+    safeSetItem('kofe_active_tab', valid);
   };
 
   useEffect(() => {
     if (currentUser) {
       setActiveTab((prev) => {
         const valid = getValidTabForRole(currentUser.role, prev);
-        localStorage.setItem('kofe_active_tab', valid);
+        safeSetItem('kofe_active_tab', valid);
         return valid;
       });
     }
@@ -197,7 +197,7 @@ export function App() {
     setCurrentUser(user);
     const valid = getValidTabForRole(user.role);
     setActiveTab(valid);
-    localStorage.setItem('kofe_active_tab', valid);
+    safeSetItem('kofe_active_tab', valid);
   };
 
   const handleLogout = () => {
@@ -211,14 +211,14 @@ export function App() {
       setCurrentUser(res.user);
       const valid = getValidTabForRole(res.user.role);
       setActiveTab(valid);
-      localStorage.setItem('kofe_active_tab', valid);
+      safeSetItem('kofe_active_tab', valid);
       await loadGlobalData();
     } catch (err) {
       console.error('Failed to switch user token:', err);
       setCurrentUser(user);
       const valid = getValidTabForRole(user.role);
       setActiveTab(valid);
-      localStorage.setItem('kofe_active_tab', valid);
+      safeSetItem('kofe_active_tab', valid);
     }
   };
 

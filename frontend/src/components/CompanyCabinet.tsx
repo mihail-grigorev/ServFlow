@@ -106,7 +106,8 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
   const prevThreadIdRef = useRef<number | null>(null);
   const prevMsgCountRef = useRef<number>(0);
 
-  const cleanComp = currentUser.full_name
+  const fullName = currentUser?.full_name || '';
+  const cleanComp = fullName
     .toLowerCase()
     .replace('кафе', '')
     .replace('ооо', '')
@@ -119,8 +120,8 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
   const compWords = cleanComp.split(/\s+/).filter((w) => w.length > 2);
 
   // Filter equipment belonging to this company
-  const companyEquipment = allEquipment.filter((eq) => {
-    const eqClient = eq.client_name.toLowerCase();
+  const companyEquipment = (allEquipment || []).filter((eq) => {
+    const eqClient = (eq?.client_name || '').toLowerCase();
     if (compWords.some((w) => eqClient.includes(w))) return true;
     return cleanComp.includes(eqClient) || eqClient.includes(cleanComp);
   });
