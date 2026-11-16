@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User } from '../types';
+import { getSafeAvatarUrl } from '../api';
 import logoImg from '../assets/logo.png';
 import {
   RotateCcw,
@@ -31,7 +32,6 @@ interface NavbarProps {
   onLogout: () => void;
   onOpenLogin?: () => void;
   demoMode?: boolean;
-  onOpenDemoQrModal?: () => void;
   onResetDemoData?: () => void;
 }
 
@@ -50,7 +50,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onLogout,
   onOpenLogin,
   demoMode = true,
-  onOpenDemoQrModal,
   onResetDemoData,
 }) => {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -245,7 +244,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 className="flex items-center space-x-1.5 p-1 sm:p-1.5 sm:pr-2.5 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] transition-all cursor-pointer"
               >
                 <img
-                  src={currentUser.avatar_url || 'https://api.dicebear.com/7.x/notionists/svg?seed=Anna'}
+                  src={getSafeAvatarUrl(currentUser.avatar_url, currentUser.full_name)}
                   alt={currentUser.full_name}
                   className="w-7 h-7 rounded-lg object-cover bg-white/10"
                 />
@@ -270,7 +269,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                     {/* User Info Header */}
                     <div className="p-2.5 border-b border-white/[0.06] flex items-center space-x-3">
                       <img
-                        src={currentUser.avatar_url || 'https://api.dicebear.com/7.x/notionists/svg?seed=Anna'}
+                        src={getSafeAvatarUrl(currentUser.avatar_url, currentUser.full_name)}
                         alt={currentUser.full_name}
                         className="w-10 h-10 rounded-xl object-cover bg-white/10"
                       />

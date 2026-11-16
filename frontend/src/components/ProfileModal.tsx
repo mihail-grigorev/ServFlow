@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '../api';
+import { api, getSafeAvatarUrl } from '../api';
 import { User } from '../types';
 import {
   X,
@@ -28,15 +28,20 @@ interface ProfileModalProps {
   onLogout?: () => void;
 }
 
+const makeAvatarUri = (label: string, bg: string = '#2A2B32') => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" rx="20" fill="${bg}"/><text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="26" font-weight="700">${label}</text></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+};
+
 const AVATAR_PRESETS = [
-  'https://api.dicebear.com/7.x/notionists/svg?seed=Anna',
-  'https://api.dicebear.com/7.x/notionists/svg?seed=Alex',
-  'https://api.dicebear.com/7.x/notionists/svg?seed=Dmitry',
-  'https://api.dicebear.com/7.x/notionists/svg?seed=Sergey',
-  'https://api.dicebear.com/7.x/notionists/svg?seed=Pavel',
-  'https://api.dicebear.com/7.x/notionists/svg?seed=Elena',
-  'https://api.dicebear.com/7.x/notionists/svg?seed=Mikhail',
-  'https://api.dicebear.com/7.x/notionists/svg?seed=Olga',
+  makeAvatarUri('АС', '#3B3D47'),
+  makeAvatarUri('АИ', '#2D323F'),
+  makeAvatarUri('ДС', '#37323F'),
+  makeAvatarUri('СС', '#2A3A35'),
+  makeAvatarUri('ПИ', '#3F352E'),
+  makeAvatarUri('ЕЛ', '#362E3F'),
+  makeAvatarUri('МГ', '#2E393F'),
+  makeAvatarUri('ОС', '#3D2E35'),
 ];
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({
@@ -53,7 +58,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [email, setEmail] = useState(currentUser.email);
   const [city, setCity] = useState(currentUser.city || 'Москва');
   const [qualifications, setQualifications] = useState<string[]>(currentUser.qualifications || []);
-  const [avatarUrl, setAvatarUrl] = useState(currentUser.avatar_url || AVATAR_PRESETS[0]);
+  const [avatarUrl, setAvatarUrl] = useState(getSafeAvatarUrl(currentUser.avatar_url, currentUser.full_name));
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);

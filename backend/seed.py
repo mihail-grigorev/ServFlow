@@ -1,9 +1,8 @@
 from datetime import datetime, timedelta
 import hashlib
 import openpyxl
-import segno
 from sqlalchemy.orm import Session
-from backend.models import User, Equipment, SparePart, ClientThread, Message, ServiceOrder, DemoQrToken
+from backend.models import User, Equipment, SparePart, ClientThread, Message, ServiceOrder
 from backend.auth import get_password_hash
 from backend.rules_engine import RulesEngine
 from backend.config import settings
@@ -616,51 +615,11 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
     # Seed active demo orders for engineers so chats are immediately testable
     seed_demo_orders(db, eq_objs)
 
-    # Seed offline scannable QR code for company account
-    generate_and_seed_company_qr(db)
-
     db.commit()
     return {
         "status": "success",
         "message": "База данных успешно заполнена исходными данными: 5 пользователей, 12 единиц оборудования, 10 запчастей, 13 веток обращений (23 утренних сообщения)."
     }
-
-
-def generate_and_seed_company_qr(db: Session):
-    comp_kedr = db.query(User).filter(User.company_id == "comp_kedr").first()
-    if not comp_kedr:
-        return
-    token_str = "kedr_company_direct_access_token_2026"
-    thash = hashlib.sha256(token_str.encode()).hexdigest()
-    existing = db.query(DemoQrToken).filter(DemoQrToken.token_hash == thash).first()
-    if not existing:
-        tok = DemoQrToken(
-            company_id="comp_kedr",
-            token=token_str,
-            token_hash=thash,
-            created_at=datetime.utcnow(),
-            expires_at=datetime.utcnow() + timedelta(days=3650),
-            revoked=False,
-            uses=0,
-            max_uses=999999
-        )
-        db.add(tok)
-    else:
-        existing.revoked = False
-        existing.expires_at = datetime.utcnow() + timedelta(days=3650)
-    db.commit()
-
-    try:
-        import os
-        url = f"{settings.PUBLIC_BASE_URL}/demo/enter?t={token_str}"
-        qr = segno.make_qr(url)
-        qr.save("company_qr.png", scale=10, border=3)
-        qr.save("company_qr.svg", scale=10, border=3)
-        os.makedirs("frontend/public", exist_ok=True)
-        qr.save("frontend/public/company_qr.png", scale=10, border=3)
-        qr.save("frontend/public/company_qr.svg", scale=10, border=3)
-    except Exception as e:
-        print(f"Error generating company QR files: {e}")
 
 
 def seed_demo_orders(db: Session, eq_objs: dict):
@@ -900,9 +859,6 @@ def reset_demo_data(db: Session):
 
     # Seed active demo orders for engineers so chats are immediately testable
     seed_demo_orders(db, eq_objs)
-
-    # Seed offline scannable QR code for company account
-    generate_and_seed_company_qr(db)
 
     db.commit()
     return {"status": "success", "message": "Демо-данные успешно сброшены к начальному состоянию"}

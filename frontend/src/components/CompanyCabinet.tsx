@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { api } from '../api';
+import { api, getSafeAvatarUrl } from '../api';
 import { User, ClientThread, Message, Equipment, ServiceOrder } from '../types';
 import {
   MessageSquare,
@@ -392,7 +392,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
           <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-white overflow-hidden flex-shrink-0 shadow-inner">
             {currentUser.avatar_url ? (
               <img
-                src={currentUser.avatar_url}
+                src={getSafeAvatarUrl(currentUser.avatar_url, currentUser.full_name)}
                 alt={currentUser.full_name}
                 className="w-full h-full object-cover"
                 onError={(e) => {

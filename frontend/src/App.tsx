@@ -11,7 +11,6 @@ import { OrdersListView } from './components/OrdersListView';
 import { ProfileModal } from './components/ProfileModal';
 import { SparePartsInventoryView } from './components/SparePartsInventoryView';
 import { CompanyCabinet } from './components/CompanyCabinet';
-import { DemoQrModal } from './components/DemoQrModal';
 import { AnalyticsDashboard } from './components/AnalyticsDashboard';
 import { Footer } from './components/Footer';
 
@@ -63,7 +62,6 @@ export function App() {
   const [modalAiData, setModalAiData] = useState<AIAnalysisResult | null>(null);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [isDemoQrModalOpen, setIsDemoQrModalOpen] = useState(false);
   const [demoMode, setDemoMode] = useState(true);
 
   // Load demo config on start
@@ -71,31 +69,6 @@ export function App() {
     api.getDemoConfig()
       .then((cfg) => setDemoMode(cfg.demo_mode))
       .catch(() => setDemoMode(false));
-  }, []);
-
-  // Handle direct QR URL entry: /demo/enter?t=<token> or ?t=<token>
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('t');
-    if (token) {
-      api.exchangeDemoQr(token)
-        .then((res) => {
-          if (res && res.user) {
-            setCurrentUser(res.user);
-            setActiveTab('company');
-            safeSetItem('kofe_active_tab', 'company');
-            try {
-              window.history.replaceState({}, '', window.location.pathname.replace(/\/demo\/enter\/?$/, '') || '/');
-            } catch {}
-          }
-        })
-        .catch((err) => {
-          alert('Ошибка входа по QR-коду: ' + (err.message || 'Срок действия истёк'));
-          try {
-            window.history.replaceState({}, '', '/');
-          } catch {}
-        });
-    }
   }, []);
 
   const handleSetActiveTab = (tab: TabType) => {
@@ -281,7 +254,6 @@ export function App() {
           onLogout={handleLogout}
           onOpenLogin={handleLogout}
           demoMode={demoMode}
-          onOpenDemoQrModal={() => setIsDemoQrModalOpen(true)}
           onResetDemoData={handleResetDemoData}
         />
 
@@ -372,11 +344,6 @@ export function App() {
           onProfileDeleted={handleLogout}
         />
       )}
-      {/* Demo QR Modal for Dispatcher */}
-      <DemoQrModal
-        isOpen={isDemoQrModalOpen}
-        onClose={() => setIsDemoQrModalOpen(false)}
-      />
     </div>
   );
 }

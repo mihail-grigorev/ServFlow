@@ -15,8 +15,37 @@ import {
 const API_BASE = '/api';
 
 const memoryStorage: Record<string, string> = {};
+const sessionMemoryStorage: Record<string, string> = {};
+
+// Probe storage availability once to avoid triggering repetitive WebKit SecurityError in Safari
+const isLocalStorageAvailable: boolean = (() => {
+  try {
+    if (typeof window === 'undefined' || !window.localStorage) return false;
+    const testKey = '__sf_test__';
+    window.localStorage.setItem(testKey, '1');
+    window.localStorage.removeItem(testKey);
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
+const isSessionStorageAvailable: boolean = (() => {
+  try {
+    if (typeof window === 'undefined' || !window.sessionStorage) return false;
+    const testKey = '__sf_test__';
+    window.sessionStorage.setItem(testKey, '1');
+    window.sessionStorage.removeItem(testKey);
+    return true;
+  } catch {
+    return false;
+  }
+})();
 
 function safeStorageGet(key: string): string | null {
+  if (!isLocalStorageAvailable) {
+    return memoryStorage[key] || null;
+  }
   try {
     return window.localStorage.getItem(key);
   } catch {
@@ -25,19 +54,19 @@ function safeStorageGet(key: string): string | null {
 }
 
 function safeStorageSet(key: string, value: string) {
+  memoryStorage[key] = value;
+  if (!isLocalStorageAvailable) return;
   try {
     window.localStorage.setItem(key, value);
-  } catch {
-    memoryStorage[key] = value;
-  }
+  } catch {}
 }
 
 function safeStorageRemove(key: string) {
+  delete memoryStorage[key];
+  if (!isLocalStorageAvailable) return;
   try {
     window.localStorage.removeItem(key);
-  } catch {
-    delete memoryStorage[key];
-  }
+  } catch {}
 }
 
 export function safeGetItem(key: string): string | null {
@@ -50,6 +79,39 @@ export function safeSetItem(key: string, value: string): void {
 
 export function safeRemoveItem(key: string): void {
   safeStorageRemove(key);
+}
+
+export function safeSessionGet(key: string): string | null {
+  if (!isSessionStorageAvailable) {
+    return sessionMemoryStorage[key] || null;
+  }
+  try {
+    return window.sessionStorage.getItem(key);
+  } catch {
+    return sessionMemoryStorage[key] || null;
+  }
+}
+
+export function safeSessionSet(key: string, value: string): void {
+  sessionMemoryStorage[key] = value;
+  if (!isSessionStorageAvailable) return;
+  try {
+    window.sessionStorage.setItem(key, value);
+  } catch {}
+}
+
+/**
+ * Returns a safe avatar URL. If external URL is from dicebear (which can trigger
+ * Safari tracker blocker or hang on slow mobile networks), generates an instant
+ * SVG data URI with initials instead.
+ */
+export function getSafeAvatarUrl(avatarUrl?: string | null, name: string = 'User'): string {
+  if (avatarUrl && !avatarUrl.includes('dicebear.com')) {
+    return avatarUrl;
+  }
+  const initials = (name.trim().slice(0, 2) || 'SF').toUpperCase();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><defs><linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#2D2F36"/><stop offset="100%" stop-color="#16171B"/></linearGradient></defs><rect width="80" height="80" rx="20" fill="url(#g)"/><text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="28" font-weight="700" letter-spacing="-0.02em">${initials}</text></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 }
 
 export function getToken(): string | null {

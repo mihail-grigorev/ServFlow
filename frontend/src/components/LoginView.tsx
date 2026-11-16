@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { api } from '../api';
+import { api, getSafeAvatarUrl, safeSessionGet, safeSessionSet } from '../api';
 import { User } from '../types';
 import logoImg from '../assets/logo.png';
 import {
@@ -24,15 +24,20 @@ interface LoginViewProps {
   demoMode?: boolean;
 }
 
+const makeAvatarUri = (label: string, bg: string = '#2A2B32') => {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 80 80"><rect width="80" height="80" rx="20" fill="${bg}"/><text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" fill="#FFFFFF" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="26" font-weight="700">${label}</text></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+};
+
 const AVATAR_PRESETS = [
-  'https://api.dicebear.com/7.x/notionists/svg?seed=Anna',
-  'https://api.dicebear.com/7.x/notionists/svg?seed=Alex',
-  'https://api.dicebear.com/7.x/notionists/svg?seed=Dmitry',
-  'https://api.dicebear.com/7.x/notionists/svg?seed=Sergey',
-  'https://api.dicebear.com/7.x/notionists/svg?seed=Pavel',
-  'https://api.dicebear.com/7.x/notionists/svg?seed=Kedr',
-  'https://api.dicebear.com/7.x/notionists/svg?seed=Bereg',
-  'https://api.dicebear.com/7.x/notionists/svg?seed=Zerno',
+  makeAvatarUri('АС', '#3B3D47'),
+  makeAvatarUri('АИ', '#2D323F'),
+  makeAvatarUri('ДС', '#37323F'),
+  makeAvatarUri('СС', '#2A3A35'),
+  makeAvatarUri('ПИ', '#3F352E'),
+  makeAvatarUri('КД', '#2C3539'),
+  makeAvatarUri('БР', '#323639'),
+  makeAvatarUri('ЗР', '#38342E'),
 ];
 
 export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers, demoMode = true }) => {
@@ -194,10 +199,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers,
   const handleQuickLogin = async (demoUser: User) => {
     setError(null);
     if (demoUser.role === 'dispatcher' || demoUser.role === 'engineer') {
-      let isVerified = false;
-      try {
-        isVerified = sessionStorage.getItem('demo_staff_pin_verified') === 'true';
-      } catch {}
+      const isVerified = safeSessionGet('demo_staff_pin_verified') === 'true';
       if (!isVerified) {
         setPinModalUser(demoUser);
         setStaffPinInput('');
@@ -224,9 +226,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers,
     setPinLoading(true);
     try {
       await api.verifyStaffPin(staffPinInput.trim());
-      try {
-        sessionStorage.setItem('demo_staff_pin_verified', 'true');
-      } catch {}
+      safeSessionSet('demo_staff_pin_verified', 'true');
       const targetUser = pinModalUser;
       setPinModalUser(null);
       setLoading(true);
@@ -693,7 +693,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers,
                     >
                       <div className="flex items-center space-x-3 min-w-0">
                         <img
-                          src={u.avatar_url || 'https://api.dicebear.com/7.x/notionists/svg?seed=Kedr'}
+                          src={getSafeAvatarUrl(u.avatar_url, u.full_name)}
                           alt={u.full_name}
                           className="w-8 h-8 rounded-lg object-cover bg-white/10 flex-shrink-0"
                         />
@@ -748,7 +748,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers,
                     >
                       <div className="flex items-center space-x-3 min-w-0">
                         <img
-                          src={u.avatar_url || 'https://api.dicebear.com/7.x/notionists/svg?seed=Admin1997'}
+                          src={getSafeAvatarUrl(u.avatar_url, u.full_name)}
                           alt={u.full_name}
                           className="w-8 h-8 rounded-lg object-cover bg-white/10 flex-shrink-0"
                         />
