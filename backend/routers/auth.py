@@ -362,13 +362,8 @@ def update_profile(
     if not user:
         raise HTTPException(status_code=404, detail="Пользователь не найден")
 
-    # Dispatcher can change is_senior; dispatcher and engineer can update qualifications
+    # All engineers and dispatchers are equal; no senior status restriction
     if profile_data.is_senior is not None:
-        if current_user.role != "dispatcher":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Изменение статуса старшего специалиста доступно только диспетчеру"
-            )
         user.is_senior = profile_data.is_senior
 
     if profile_data.qualifications is not None:
@@ -637,5 +632,5 @@ def get_demo_users(
         if current_user.role != "dispatcher":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Список пользователей доступен только диспетчеру")
 
-    users = db.query(User).order_by(User.role, User.city, User.is_senior.desc()).all()
+    users = db.query(User).order_by(User.role, User.city, User.full_name).all()
     return [UserResponse.model_validate(u) for u in users]

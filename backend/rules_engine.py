@@ -109,7 +109,7 @@ class RulesEngine:
             if 0 <= days_since_install <= 40:
                 return (
                     True,
-                    f"Гарантийный случай: машина установлена {days_since_install} дн. назад (норматив до 40 дней, ввод в эксплуатацию {installation_date.strftime('%d.%m.%Y')}). Работы выполняются по гарантии без оплаты, требуется согласование старшего инженера."
+                    f"Гарантийный случай: машина установлена {days_since_install} дн. назад (норматив до 40 дней, ввод в эксплуатацию {installation_date.strftime('%d.%m.%Y')}). Работы выполняются по гарантии без оплаты."
                 )
 
         if last_visit_date:
@@ -829,7 +829,7 @@ class RulesEngine:
         # Standard resolution when everything is known:
         model_str = f"модель {eq.model}" if eq else "кофемашина"
         serial_str = f" (№{eq.serial_number})" if eq and eq.serial_number else ""
-        warranty_str = " Случай гарантийный — согласование передано старшему инженеру." if is_warranty else ""
+        warranty_str = " Случай гарантийный — работы производятся бесплатно." if is_warranty else ""
 
         return (
             f"{ack}Обращение принято и зарегистрировано: {model_str}{serial_str}.{warranty_str} "
@@ -893,7 +893,7 @@ class RulesEngine:
         # Standard confirmation
         warranty_note = ""
         if is_warranty:
-            warranty_note = " Данный случай классифицирован как гарантийный и передан на приоритетное согласование старшему инженеру."
+            warranty_note = " Данный случай классифицирован как гарантийный (работы бесплатны)."
 
         return (
             f"Здравствуйте! Спасибо за предоставленную информацию. Обращение принято в обработку.{warranty_note} "

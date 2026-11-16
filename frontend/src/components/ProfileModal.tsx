@@ -170,7 +170,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         full_name: fullName.trim(),
         email: email.trim(),
         city: currentUser.role !== 'dispatcher' ? city : undefined,
-        is_senior: false,
         qualifications: currentUser.role === 'engineer' ? qualifications : [],
         avatar_url: avatarUrl,
         password: newPassword.trim() ? newPassword.trim() : undefined,

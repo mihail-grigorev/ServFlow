@@ -731,7 +731,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers,
                       role: 'dispatcher',
                       city: 'Москва',
                       avatar_url: 'https://api.dicebear.com/7.x/notionists/svg?seed=Admin1997',
-                      is_senior: true,
+                      is_senior: false,
                     },
                     engineerUser || {
                       id: 150,
@@ -740,7 +740,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, demoUsers,
                       role: 'engineer',
                       city: 'Москва',
                       avatar_url: 'https://api.dicebear.com/7.x/notionists/svg?seed=Engineer1997',
-                      is_senior: true,
+                      is_senior: false,
                     },
                   ].map((u) => (
                     <button

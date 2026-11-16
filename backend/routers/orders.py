@@ -406,8 +406,6 @@ def create_order(
         if not eng or eng.role != "engineer":
             raise HTTPException(status_code=400, detail="Указанный пользователь не является инженером")
         if not settings.DEMO_MODE:
-            if order_is_warranty and not eng.is_senior:
-                raise HTTPException(status_code=400, detail="На гарантийный заказ может быть назначен только старший инженер")
             if order_in.model not in (eng.qualifications or []):
                 raise HTTPException(status_code=400, detail=f"Инженер {eng.full_name} не имеет допуска к модели {order_in.model}")
 
@@ -537,8 +535,6 @@ def update_order(
             if not eng or eng.role != "engineer":
                 raise HTTPException(status_code=400, detail="Указанный пользователь не является инженером")
             if not settings.DEMO_MODE:
-                if order.is_warranty and not eng.is_senior:
-                    raise HTTPException(status_code=400, detail="На гарантийный заказ может быть назначен только старший инженер")
                 if order.model not in (eng.qualifications or []):
                     raise HTTPException(status_code=400, detail=f"Инженер {eng.full_name} не имеет допуска к модели {order.model}")
         order.engineer_id = new_eng_id
