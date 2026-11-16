@@ -607,11 +607,170 @@ def seed_database(db: Session, excel_path: str = "Данные_к_кейсу_06.
                 )
                 db.add(msg)
 
+    # Seed active demo orders for engineers so chats are immediately testable
+    seed_demo_orders(db, eq_objs)
+
     db.commit()
     return {
         "status": "success",
         "message": "База данных успешно заполнена исходными данными: 5 пользователей, 12 единиц оборудования, 10 запчастей, 13 веток обращений (23 утренних сообщения)."
     }
+
+
+def seed_demo_orders(db: Session, eq_objs: dict):
+    smirnov = db.query(User).filter(User.email == "smirnov@kofeservice.ru").first()
+    ivanov = db.query(User).filter(User.email == "ivanov@kofeservice.ru").first()
+    dezhurniy = db.query(User).filter(User.email == "engineer@kofeservice.ru").first()
+
+    # 1. Order for Sergey Smirnov (Tula) on Thread 2 (Гостиница «Берег»)
+    th_bereg = db.query(ClientThread).filter(ClientThread.thread_number == 2).first()
+    if th_bereg and smirnov:
+        eq3 = eq_objs.get("EQ03")
+        ord_bereg = ServiceOrder(
+            order_number="ORD-20261116-002",
+            thread_id=th_bereg.id,
+            client_name=th_bereg.client_name,
+            company_id=th_bereg.company_id,
+            equipment_id=eq3.id if eq3 else None,
+            equipment_code="EQ03",
+            address=eq3.address if eq3 else "Тула, ул. Ленина, 5",
+            model=eq3.model if eq3 else "C300",
+            serial_number=eq3.serial_number if eq3 else "301",
+            symptom="Сотрудник прочитал код на экране: E07. Ошибка нагрева термоблока.",
+            client_assumption="Гости отеля жалуются на холодный кофе",
+            is_warranty=th_bereg.is_warranty,
+            warranty_reason=th_bereg.warranty_reason,
+            status="В пути",
+            engineer_id=smirnov.id,
+            reserved_parts=[{"code": "P-04", "name": "Термоблок C300", "quantity": 1, "source_city": "Тула", "transfer_required": False}],
+            created_at=datetime(2026, 11, 16, 9, 30)
+        )
+        db.add(ord_bereg)
+        th_bereg.status = "order_created"
+
+        db.add_all([
+            Message(
+                thread_id=th_bereg.id,
+                channel="Мессенджер",
+                chat_type="dispatcher_engineer",
+                sender_type="dispatcher",
+                sender_name="Анна Соколова (Диспетчер)",
+                content="Сергей, по заявке гостиницы «Берег» выбивает ошибку E07. Термоблок зарезервирован на складе в Туле.",
+                created_at=datetime(2026, 11, 16, 9, 35)
+            ),
+            Message(
+                thread_id=th_bereg.id,
+                channel="Мессенджер",
+                chat_type="dispatcher_engineer",
+                sender_type="engineer",
+                sender_name="Инженер Сергей Смирнов",
+                content="Принял, запчасть со склада забрал, выехал по адресу. Буду на месте через 20 минут.",
+                created_at=datetime(2026, 11, 16, 9, 45)
+            ),
+            Message(
+                thread_id=th_bereg.id,
+                channel="Мессенджер",
+                chat_type="client_engineer",
+                sender_type="client",
+                sender_name="Гостиница «Берег»",
+                content="Сергей, добрый день! Главный вход на ремонте, заходите через служебный вход со двора, код домофона 42B.",
+                created_at=datetime(2026, 11, 16, 9, 50)
+            )
+        ])
+
+    # 2. Order for Alexey Ivanov (Moscow) on Thread 1 (Кафе «Кедр»)
+    th_kedr = db.query(ClientThread).filter(ClientThread.thread_number == 1).first()
+    if th_kedr and ivanov:
+        eq2 = eq_objs.get("EQ02")
+        ord_kedr = ServiceOrder(
+            order_number="ORD-20261116-003",
+            thread_id=th_kedr.id,
+            client_name=th_kedr.client_name,
+            company_id=th_kedr.company_id,
+            equipment_id=eq2.id if eq2 else None,
+            equipment_code="EQ02",
+            address=eq2.address if eq2 else "Москва, ул. Тверская, 12",
+            model=eq2.model if eq2 else "C200",
+            serial_number=eq2.serial_number if eq2 else "205",
+            symptom="Слабый пар, молоко не греется при взбивании.",
+            client_assumption="Бариста предполагает засор или неисправность парового клапана",
+            is_warranty=th_kedr.is_warranty,
+            warranty_reason=th_kedr.warranty_reason,
+            status="Назначен",
+            engineer_id=ivanov.id,
+            reserved_parts=[{"code": "P-02", "name": "Клапан пара C200", "quantity": 1, "source_city": "Москва", "transfer_required": False}],
+            created_at=datetime(2026, 11, 16, 8, 45)
+        )
+        db.add(ord_kedr)
+        th_kedr.status = "order_created"
+
+        db.add_all([
+            Message(
+                thread_id=th_kedr.id,
+                channel="Мессенджер",
+                chat_type="dispatcher_engineer",
+                sender_type="dispatcher",
+                sender_name="Анна Соколова (Диспетчер)",
+                content="Алексей, заявка по Кафе «Кедр». Не греется молоко, клапан пара зарезервирован на складе в Москве.",
+                created_at=datetime(2026, 11, 16, 8, 50)
+            ),
+            Message(
+                thread_id=th_kedr.id,
+                channel="Мессенджер",
+                chat_type="dispatcher_engineer",
+                sender_type="engineer",
+                sender_name="Инженер Алексей Иванов",
+                content="Принял вызов. Заеду на склад на Пресне за клапаном и направлюсь на Тверскую.",
+                created_at=datetime(2026, 11, 16, 9, 0)
+            )
+        ])
+
+    # 3. Order for Duty Engineer (engineer@kofeservice.ru) on Thread 8 (Кафе «Маяк»)
+    th_mayak = db.query(ClientThread).filter(ClientThread.thread_number == 8).first()
+    if th_mayak and dezhurniy:
+        eq10 = eq_objs.get("EQ10")
+        ord_mayak = ServiceOrder(
+            order_number="ORD-20261116-004",
+            thread_id=th_mayak.id,
+            client_name=th_mayak.client_name,
+            company_id=th_mayak.company_id,
+            equipment_id=eq10.id if eq10 else None,
+            equipment_code="EQ10",
+            address=eq10.address if eq10 else "Москва, ул. Таганская, 9",
+            model=eq10.model if eq10 else "C300",
+            serial_number=eq10.serial_number if eq10 else "305",
+            symptom="Кофемашина не включается после скачка напряжения.",
+            client_assumption="Возможно сгорел предохранитель или блок питания",
+            is_warranty=th_mayak.is_warranty,
+            warranty_reason=th_mayak.warranty_reason,
+            status="На месте",
+            engineer_id=dezhurniy.id,
+            reserved_parts=[{"code": "P-05", "name": "Блок питания C300", "quantity": 1, "source_city": "Москва", "transfer_required": False}],
+            created_at=datetime(2026, 11, 16, 10, 0)
+        )
+        db.add(ord_mayak)
+        th_mayak.status = "order_created"
+
+        db.add_all([
+            Message(
+                thread_id=th_mayak.id,
+                channel="Мессенджер",
+                chat_type="dispatcher_engineer",
+                sender_type="dispatcher",
+                sender_name="Анна Соколова (Диспетчер)",
+                content="Дежурный инженер, срочный выезд в Кафе «Маяк». Аппарат полностью обесточен.",
+                created_at=datetime(2026, 11, 16, 10, 5)
+            ),
+            Message(
+                thread_id=th_mayak.id,
+                channel="Мессенджер",
+                chat_type="dispatcher_engineer",
+                sender_type="engineer",
+                sender_name="Дежурный инженер",
+                content="Прибыл на Таганскую. Провожу первичную диагностику цепи питания.",
+                created_at=datetime(2026, 11, 16, 10, 20)
+            )
+        ])
 
 
 def reset_demo_data(db: Session):
@@ -692,6 +851,9 @@ def reset_demo_data(db: Session):
                     created_at=msg_time
                 )
                 db.add(msg)
+
+    # Seed active demo orders for engineers so chats are immediately testable
+    seed_demo_orders(db, eq_objs)
 
     db.commit()
     return {"status": "success", "message": "Демо-данные успешно сброшены к начальному состоянию"}

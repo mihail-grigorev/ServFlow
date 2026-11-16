@@ -386,11 +386,10 @@ def get_thread(
             raise HTTPException(status_code=404, detail="Обращение не найдено")
     elif current_user.role == "engineer":
         ord_assigned = db.query(ServiceOrder).filter(
-            ServiceOrder.thread_id == thread.id,
-            ServiceOrder.engineer_id == current_user.id
+            ServiceOrder.thread_id == thread.id
         ).first()
-        if not ord_assigned:
-            raise HTTPException(status_code=404, detail="Обращение не найдено")
+        if ord_assigned and ord_assigned.engineer_id and ord_assigned.engineer_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Вы не назначены на этот выезд")
 
     resp = ClientThreadResponse.model_validate(thread)
     ord_obj = db.query(ServiceOrder).filter(ServiceOrder.thread_id == thread.id).first()
@@ -403,8 +402,6 @@ def get_thread(
                 resp.assigned_engineer_name = eng_user.full_name
     if current_user.role == "company":
         resp.messages = [m for m in resp.messages if getattr(m, 'chat_type', 'client_dispatcher') != 'dispatcher_engineer']
-    elif current_user.role == "engineer":
-        resp.messages = [m for m in resp.messages if getattr(m, 'chat_type', 'dispatcher_engineer') != 'client_dispatcher']
     return resp
 
 @router.post("/{thread_id}/messages", response_model=MessageResponse)
@@ -441,11 +438,10 @@ async def add_message(
             )
     elif current_user.role == "engineer":
         ord_assigned = db.query(ServiceOrder).filter(
-            ServiceOrder.thread_id == thread.id,
-            ServiceOrder.engineer_id == current_user.id
+            ServiceOrder.thread_id == thread.id
         ).first()
-        if not ord_assigned:
-            raise HTTPException(status_code=404, detail="Обращение не найдено")
+        if ord_assigned and ord_assigned.engineer_id and ord_assigned.engineer_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Вы не назначены на этот выезд")
 
     if current_user.role == "company":
         sender_type = "client"

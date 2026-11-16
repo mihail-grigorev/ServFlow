@@ -16,13 +16,42 @@ import {
   MessageSquare,
   Send,
   Building,
-  RefreshCw
+  RefreshCw,
+  Bell,
+  BellOff
 } from 'lucide-react';
 
 interface EngineerCabinetProps {
   currentUser: User;
   allEquipment: Equipment[];
 }
+
+const playNotificationSound = () => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const now = ctx.currentTime;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, now);
+    osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.35);
+  } catch (e) {
+    console.debug('Audio chime skipped:', e);
+  }
+};
 
 export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
   currentUser,
@@ -35,58 +64,78 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
   const [submittingReport, setSubmittingReport] = useState<boolean>(false);
   const [activeStatusFilter, setActiveStatusFilter] = useState<string>('all');
   const [activeView, setActiveView] = useState<'details' | 'chat'>('details');
-  const [engineerChatTab, setEngineerChatTab] = useState<'dispatcher' | 'client'>('dispatcher');
+  const [engineerChatTab, setEngineerChatTab] = useState<'dispatcher' | 'client' | 'all'>('dispatcher');
   const [orderThread, setOrderThread] = useState<ClientThread | null>(null);
   const [threadLoading, setThreadLoading] = useState<boolean>(false);
   const [chatMessage, setChatMessage] = useState<string>('');
   const [sendingMessage, setSendingMessage] = useState<boolean>(false);
+  const [isSoundEnabled, setIsSoundEnabled] = useState<boolean>(true);
+  const [unreadOrderIds, setUnreadOrderIds] = useState<Set<number>>(new Set());
   const chatScrollContainerRef = useRef<HTMLDivElement>(null);
   const prevOrderIdRef = useRef<number | null>(null);
-  const prevMsgCountRef = useRef<number>(0);
+  const lastKnownCountsRef = useRef<Record<number, number>>({});
+  const initialLoadRef = useRef<boolean>(true);
 
-  const loadOrderThread = async (orderId: number) => {
+  const loadOrderThread = async (orderId: number, silent: boolean = false) => {
     try {
+      if (!silent) setThreadLoading(true);
       const th = await api.getOrderThread(orderId);
       setOrderThread(th);
+
+      const msgCount = th.messages?.length || 0;
+      const prevCount = lastKnownCountsRef.current[orderId];
+
+      if (prevCount !== undefined && msgCount > prevCount) {
+        const newMsgs = (th.messages || []).slice(prevCount);
+        const hasIncoming = newMsgs.some((m) => m.sender_type !== 'engineer');
+        if (hasIncoming) {
+          if (isSoundEnabled) {
+            playNotificationSound();
+          }
+          if (activeView !== 'chat') {
+            setUnreadOrderIds((prev) => new Set([...prev, orderId]));
+          }
+        }
+      }
+      lastKnownCountsRef.current[orderId] = msgCount;
     } catch (err) {
       console.error('Failed to load order thread:', err);
     } finally {
-      setThreadLoading(false);
+      if (!silent) setThreadLoading(false);
     }
   };
 
   useEffect(() => {
     if (selectedOrder) {
-      setThreadLoading(true);
       loadOrderThread(selectedOrder.id);
       const interval = setInterval(() => {
-        loadOrderThread(selectedOrder.id);
-      }, 3000);
+        loadOrderThread(selectedOrder.id, true);
+      }, 2000);
       return () => clearInterval(interval);
     } else {
       setOrderThread(null);
     }
-  }, [selectedOrder?.id]);
+  }, [selectedOrder?.id, activeView, isSoundEnabled]);
 
   useEffect(() => {
-    const msgCount = orderThread?.messages?.length || 0;
-
-    if (selectedOrder?.id !== prevOrderIdRef.current) {
-      prevOrderIdRef.current = selectedOrder?.id ?? null;
-      prevMsgCountRef.current = msgCount;
-      if (chatScrollContainerRef.current) {
-        chatScrollContainerRef.current.scrollTop = chatScrollContainerRef.current.scrollHeight;
-      }
-    } else if (msgCount > prevMsgCountRef.current) {
-      prevMsgCountRef.current = msgCount;
-      if (chatScrollContainerRef.current) {
-        chatScrollContainerRef.current.scrollTo({
-          top: chatScrollContainerRef.current.scrollHeight,
-          behavior: 'smooth'
-        });
-      }
+    if (selectedOrder?.id && activeView === 'chat') {
+      setUnreadOrderIds((prev) => {
+        if (!prev.has(selectedOrder.id)) return prev;
+        const next = new Set(prev);
+        next.delete(selectedOrder.id);
+        return next;
+      });
     }
-  }, [orderThread?.messages, activeView, engineerChatTab, selectedOrder?.id]);
+  }, [selectedOrder?.id, activeView]);
+
+  useEffect(() => {
+    if (chatScrollContainerRef.current) {
+      chatScrollContainerRef.current.scrollTo({
+        top: chatScrollContainerRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  }, [orderThread?.messages?.length, activeView, engineerChatTab]);
 
   const handleSendEngineerMessage = async (textToSend?: string) => {
     const text = (textToSend || chatMessage).trim();
@@ -96,9 +145,17 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
       setChatMessage('');
     }
     setSendingMessage(true);
-    const targetChatType = engineerChatTab === 'dispatcher' ? 'dispatcher_engineer' : 'client_engineer';
 
-    // Optimistic message append
+    let targetChatType = 'dispatcher_engineer';
+    if (engineerChatTab === 'client') {
+      targetChatType = 'client_engineer';
+    } else if (engineerChatTab === 'dispatcher') {
+      targetChatType = 'dispatcher_engineer';
+    } else {
+      const lastMsg = orderThread.messages?.[orderThread.messages.length - 1];
+      targetChatType = lastMsg?.sender_type === 'client' ? 'client_engineer' : 'dispatcher_engineer';
+    }
+
     const tempId = Date.now();
     const tempMessage = {
       id: tempId,
@@ -126,7 +183,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
         sender_name: `Инженер ${currentUser.full_name}`,
         chat_type: targetChatType,
       });
-      await loadOrderThread(selectedOrder!.id);
+      await loadOrderThread(selectedOrder!.id, true);
     } catch (err: any) {
       orderThread.messages = orderThread.messages.filter((m) => m.id !== tempId);
       alert(err.message || 'Ошибка отправки сообщения');
@@ -152,6 +209,12 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
 
   useEffect(() => {
     loadOrders();
+    const interval = setInterval(() => {
+      api.getOrders({ engineer_id: currentUser.id }).then((res) => {
+        setOrders(res);
+      }).catch(() => {});
+    }, 4000);
+    return () => clearInterval(interval);
   }, [currentUser]);
 
   const handleStatusChange = async (orderId: number, newStatus: string) => {
@@ -189,13 +252,24 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
     return o.status === activeStatusFilter;
   });
 
-  const dispatcherMsgCount = (orderThread?.messages || []).filter(
-    (m) => m.chat_type === 'dispatcher_engineer'
-  ).length;
+  const allMessages = orderThread?.messages || [];
+  const allMessagesCount = allMessages.length;
 
-  const clientMsgCount = (orderThread?.messages || []).filter(
-    (m) => m.chat_type === 'client_engineer'
-  ).length;
+  const dispatcherMessages = allMessages.filter(
+    (m) => m.chat_type === 'dispatcher_engineer' || (m.sender_type === 'engineer' && m.chat_type !== 'client_engineer')
+  );
+  const dispatcherMsgCount = dispatcherMessages.length;
+
+  const clientMessages = allMessages.filter(
+    (m) => m.chat_type === 'client_engineer' || m.chat_type === 'client_dispatcher' || m.sender_type === 'client'
+  );
+  const clientMsgCount = clientMessages.length;
+
+  const visibleMessages = (() => {
+    if (engineerChatTab === 'all') return allMessages;
+    if (engineerChatTab === 'client') return clientMessages;
+    return dispatcherMessages;
+  })();
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6 text-[#F3F4F6]">
@@ -299,7 +373,15 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                     }`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-bold text-xs text-white">{o.client_name}</span>
+                    <div className="flex items-center space-x-1.5 min-w-0">
+                      <span className="font-bold text-xs text-white truncate">{o.client_name}</span>
+                      {unreadOrderIds.has(o.id) && (
+                        <span className="flex items-center space-x-1 px-1.5 py-0.2 rounded-full bg-white text-black text-[9px] font-extrabold animate-pulse shadow-sm flex-shrink-0">
+                          <span>●</span>
+                          <span>Новое</span>
+                        </span>
+                      )}
+                    </div>
                     <span
                       className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${o.status === 'Выполнен'
                         ? 'bg-white/15 text-white border-white/20'
@@ -357,16 +439,24 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                   </button>
                   <button
                     onClick={() => setActiveView('chat')}
-                    className={`px-3.5 py-1.5 text-xs font-semibold rounded-xl flex items-center space-x-2 transition-all relative ${activeView === 'chat'
+                    className={`px-3.5 py-1.5 text-xs font-semibold rounded-xl flex items-center space-x-2 transition-all relative cursor-pointer ${activeView === 'chat'
                       ? 'bg-white text-black shadow-sm font-semibold'
                       : 'text-[#9CA3AF] hover:text-white hover:bg-white/[0.04]'
                       }`}
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
                     <span>Чат по заявке</span>
-                    {orderThread && orderThread.messages.length > 0 && (
-                      <span className="ml-1 px-1.5 py-0.2 text-[10px] bg-black/20 text-black rounded-full font-bold">
-                        {orderThread.messages.length}
+                    {allMessagesCount > 0 && (
+                      <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-bold ${
+                        activeView === 'chat' ? 'bg-black/20 text-black' : 'bg-white/10 text-white'
+                      }`}>
+                        {allMessagesCount}
+                      </span>
+                    )}
+                    {unreadOrderIds.has(selectedOrder.id) && activeView !== 'chat' && (
+                      <span className="flex items-center space-x-1 px-1.5 py-0.5 rounded-full bg-white text-black text-[10px] font-extrabold animate-pulse shadow-sm">
+                        <span>●</span>
+                        <span>Новое</span>
                       </span>
                     )}
                   </button>
@@ -547,16 +637,16 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                   </form>
                 </div>
               ) : (
-                /* Chat View: Completely isolated between Dispatcher & Client */
+                /* Chat View */
                 <div className="bg-[#16171B] rounded-2xl border border-white/[0.08] shadow-apple flex flex-col h-[650px] overflow-hidden">
                   {/* Internal Tabs for Engineer Chat */}
                   <div className="p-3 border-b border-white/[0.08] bg-[#121316] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center space-x-2">
-                      <div className="flex items-center space-x-1 bg-black/30 p-1 rounded-xl border border-white/[0.06]">
+                    <div className="flex items-center space-x-2 overflow-x-auto no-scrollbar">
+                      <div className="flex items-center space-x-1 bg-black/30 p-1 rounded-xl border border-white/[0.06] flex-nowrap whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => setEngineerChatTab('dispatcher')}
-                          className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${engineerChatTab === 'dispatcher'
+                          className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer whitespace-nowrap ${engineerChatTab === 'dispatcher'
                             ? 'bg-white text-black shadow-sm font-semibold'
                             : 'text-[#9CA3AF] hover:text-white'
                             }`}
@@ -574,7 +664,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                         <button
                           type="button"
                           onClick={() => setEngineerChatTab('client')}
-                          className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${engineerChatTab === 'client'
+                          className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer whitespace-nowrap ${engineerChatTab === 'client'
                             ? 'bg-white text-black shadow-sm font-semibold'
                             : 'text-[#9CA3AF] hover:text-white'
                             }`}
@@ -588,18 +678,46 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                             </span>
                           )}
                         </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setEngineerChatTab('all')}
+                          className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer whitespace-nowrap ${engineerChatTab === 'all'
+                            ? 'bg-white text-black shadow-sm font-semibold'
+                            : 'text-[#9CA3AF] hover:text-white'
+                            }`}
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>Все ({allMessagesCount})</span>
+                        </button>
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => loadOrderThread(selectedOrder.id)}
-                      disabled={threadLoading}
-                      className="px-3 py-1.5 text-xs text-[#9CA3AF] hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg transition-all flex items-center space-x-1.5 disabled:opacity-50 cursor-pointer self-start sm:self-auto"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 ${threadLoading ? 'animate-spin' : ''}`} />
-                      <span>Обновить</span>
-                    </button>
+                    <div className="flex items-center space-x-2 self-end sm:self-auto flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setIsSoundEnabled((prev) => !prev)}
+                        title={isSoundEnabled ? 'Звуковые оповещения включены' : 'Звук выключен'}
+                        className={`px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition-all flex items-center space-x-1.5 cursor-pointer ${
+                          isSoundEnabled
+                            ? 'bg-white/10 text-white border-white/20 hover:bg-white/15'
+                            : 'bg-white/[0.04] text-neutral-400 border-white/[0.08] hover:text-white'
+                        }`}
+                      >
+                        {isSoundEnabled ? <Bell className="w-3.5 h-3.5" /> : <BellOff className="w-3.5 h-3.5" />}
+                        <span className="hidden sm:inline">{isSoundEnabled ? 'Звук ВКЛ' : 'Звук ВЫКЛ'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => loadOrderThread(selectedOrder.id)}
+                        disabled={threadLoading}
+                        className="px-3 py-1.5 text-xs text-[#9CA3AF] hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] rounded-lg transition-all flex items-center space-x-1.5 disabled:opacity-50 cursor-pointer"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${threadLoading ? 'animate-spin' : ''}`} />
+                        <span>Обновить</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Messages Feed */}
@@ -611,23 +729,26 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                     )}
 
                     {(() => {
-                      const currentMessages = (orderThread?.messages || []).filter((m) => {
-                        if (engineerChatTab === 'dispatcher') {
-                          return m.chat_type === 'dispatcher_engineer';
-                        } else {
-                          return m.chat_type === 'client_engineer';
-                        }
-                      });
-
-                      if (orderThread && currentMessages.length === 0) {
+                      if (orderThread && visibleMessages.length === 0) {
                         return (
-                          <div className="h-full flex flex-col items-center justify-center text-xs text-[#9CA3AF] space-y-2">
+                          <div className="h-full flex flex-col items-center justify-center text-xs text-[#9CA3AF] space-y-2 py-10">
                             <MessageSquare className="w-8 h-8 text-white/20" />
                             <p>
                               {engineerChatTab === 'dispatcher'
                                 ? 'В чате с диспетчером пока нет сообщений.'
-                                : 'В чате с клиентом пока нет сообщений.'}
+                                : engineerChatTab === 'client'
+                                ? 'В чате с клиентом пока нет сообщений.'
+                                : 'В этой заявке пока нет сообщений.'}
                             </p>
+                            {allMessagesCount > 0 && engineerChatTab !== 'all' && (
+                              <button
+                                type="button"
+                                onClick={() => setEngineerChatTab('all')}
+                                className="px-3 py-1.5 rounded-xl bg-white text-black text-xs font-semibold shadow-sm hover:bg-neutral-200 transition-all cursor-pointer"
+                              >
+                                Показать все сообщения заявки ({allMessagesCount})
+                              </button>
+                            )}
                             <p className="text-[11px] text-neutral-400">
                               {engineerChatTab === 'dispatcher'
                                 ? 'Задайте служебный вопрос диспетчеру (по доступу, запчастям или согласованию).'
@@ -637,7 +758,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                         );
                       }
 
-                      return currentMessages.map((m) => {
+                      return visibleMessages.map((m) => {
                         const isEngineer = m.sender_type === 'engineer';
                         const isClient = m.sender_type === 'client';
                         const isDispatcher = m.sender_type === 'dispatcher';
@@ -708,24 +829,28 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                     })()}
                   </div>
 
-                  {/* Fast Prompts & Input Area - NO EMOJIS */}
+                  {/* Fast Prompts & Input Area */}
                   <div className="p-3 border-t border-white/[0.08] bg-[#16171B] space-y-2">
                     <div className="text-[10px] text-[#9CA3AF] uppercase tracking-wider font-semibold">
-                      {engineerChatTab === 'dispatcher' ? 'Быстрые сообщения диспетчеру:' : 'Быстрые сообщения клиенту:'}
+                      {engineerChatTab === 'dispatcher'
+                        ? 'Быстрые сообщения диспетчеру:'
+                        : engineerChatTab === 'client'
+                        ? 'Быстрые сообщения клиенту:'
+                        : 'Быстрые сообщения по заявке:'}
                     </div>
                     <div className="flex flex-wrap gap-1.5">
-                      {(engineerChatTab === 'dispatcher'
+                      {(engineerChatTab === 'client'
                         ? [
-                          'Диспетчер, уточните код домофона или контакт администратора на месте',
-                          'Обнаружена скрытая поломка помпы, согласуйте замену детали',
-                          'Клиент не открывает дверь и не берет трубку, свяжитесь с управляющим',
-                          'Запчасть установлена успешно, прошу зафиксировать списание'
-                        ]
-                        : [
                           'Выехал по адресу заявки, расчетное время прибытия ~20 минут',
                           'Прибыл на место в заведение, начинаю визуальный осмотр',
                           'Уточните, пожалуйста, код домофона или номер управляющего',
                           'Работы завершены, выполнен тест пролива и пара, всё в норме'
+                        ]
+                        : [
+                          'Диспетчер, уточните код домофона или контакт администратора на месте',
+                          'Обнаружена скрытая поломка помпы, согласуйте замену детали',
+                          'Клиент не открывает дверь и не берет трубку, свяжитесь с управляющим',
+                          'Запчасть установлена успешно, прошу зафиксировать списание'
                         ]
                       ).map((prompt, idx) => (
                         <button
@@ -757,7 +882,9 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                         placeholder={
                           engineerChatTab === 'dispatcher'
                             ? 'Служебный вопрос или комментарий диспетчеру...'
-                            : 'Прямое сообщение представителю клиента...'
+                            : engineerChatTab === 'client'
+                            ? 'Прямое сообщение представителю клиента...'
+                            : 'Сообщение по заявке...'
                         }
                         disabled={sendingMessage}
                         className="flex-1 px-3.5 py-2 text-xs rounded-xl border border-white/[0.12] bg-[#1F2026] text-white placeholder-[#9CA3AF] outline-none focus:border-white/20 transition-colors"

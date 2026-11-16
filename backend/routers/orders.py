@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import JSONResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, func
 from sqlalchemy.exc import IntegrityError
 from backend.config import settings
@@ -178,6 +178,87 @@ def get_order_by_id(
     return ServiceOrderResponse.model_validate(order)
 
 
+@router.get("/{order_id}/thread", response_model=ClientThreadResponse)
+def get_order_thread(
+    order_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Returns the linked ClientThread with messages for the specified order.
+    If the order does not have a linked thread, automatically creates or links one.
+    """
+    order = db.query(ServiceOrder).filter(ServiceOrder.id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Заявка не найдена")
+
+    # Security check K5 & K6
+    if current_user.role == "company":
+        matches_comp = (order.company_id and order.company_id == current_user.company_id)
+        matches_name = (order.client_name == current_user.full_name.strip())
+        if not (matches_comp or matches_name):
+            raise HTTPException(status_code=404, detail="Заявка не найдена")
+    elif current_user.role == "engineer":
+        if order.engineer_id and order.engineer_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Вы не назначены на этот выезд")
+
+    thread = None
+    if order.thread_id:
+        thread = db.query(ClientThread).options(joinedload(ClientThread.messages)).filter(ClientThread.id == order.thread_id).first()
+
+    if not thread:
+        thread = db.query(ClientThread).options(joinedload(ClientThread.messages)).filter(
+            ClientThread.client_name == order.client_name
+        ).order_by(ClientThread.id.desc()).first()
+
+    if not thread:
+        max_num = db.query(func.max(ClientThread.thread_number)).scalar() or 0
+        thread = ClientThread(
+            thread_number=max_num + 1,
+            client_name=order.client_name,
+            company_id=order.company_id,
+            equipment_id=order.equipment_id,
+            equipment_code=order.equipment_code,
+            status="order_created",
+            channel="Мессенджер",
+            is_warranty=order.is_warranty,
+            warranty_reason=order.warranty_reason,
+            created_at=order.created_at or datetime.utcnow(),
+            last_activity=datetime.utcnow()
+        )
+        db.add(thread)
+        db.flush()
+
+        info_msg = Message(
+            thread_id=thread.id,
+            channel="Мессенджер",
+            chat_type="dispatcher_engineer",
+            sender_type="dispatcher",
+            sender_name="Диспетчер ServFlow",
+            content=f"Заявка {order.order_number} оформлена. Неисправность: {order.symptom}",
+            created_at=datetime.utcnow()
+        )
+        db.add(info_msg)
+
+    if order.thread_id != thread.id:
+        order.thread_id = thread.id
+        db.commit()
+        db.refresh(thread)
+
+    resp = ClientThreadResponse.model_validate(thread)
+    resp.linked_order_number = order.order_number
+    resp.assigned_engineer_id = order.engineer_id
+    if order.engineer_id:
+        eng_user = db.query(User).filter(User.id == order.engineer_id).first()
+        if eng_user:
+            resp.assigned_engineer_name = eng_user.full_name
+
+    if current_user.role == "company":
+        resp.messages = [m for m in resp.messages if getattr(m, 'chat_type', 'client_dispatcher') != 'dispatcher_engineer']
+
+    return resp
+
+
 @router.post("", response_model=ServiceOrderResponse)
 def create_order(
     order_in: ServiceOrderCreate,
@@ -298,8 +379,11 @@ def create_order(
     order_created_at = datetime.utcnow()
 
     today_str = datetime.utcnow().strftime("%Y%m%d")
-    count = db.query(ServiceOrder).count() + 1
-    order_number = f"ORD-{today_str}-{count:03d}"
+    max_id = db.query(func.max(ServiceOrder.id)).scalar() or 0
+    order_number = f"ORD-{today_str}-{max_id + 1:03d}"
+    while db.query(ServiceOrder).filter(ServiceOrder.order_number == order_number).first():
+        max_id += 1
+        order_number = f"ORD-{today_str}-{max_id + 1:03d}"
 
     order = ServiceOrder(
         order_number=order_number,
