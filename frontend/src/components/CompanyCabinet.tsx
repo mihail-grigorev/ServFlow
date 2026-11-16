@@ -316,36 +316,45 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6 text-[#F3F4F6]">
       {/* Top Banner: Company Info & Action */}
-      <div className="bg-[#16171B] p-5 rounded-2xl border border-white/[0.08] shadow-apple flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center space-x-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-white">
-            <Building className="w-6 h-6" />
+      <div className="bg-[#16171B] p-4 sm:p-5 rounded-2xl border border-white/[0.08] shadow-apple flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center space-x-3.5 min-w-0">
+          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-white overflow-hidden flex-shrink-0 shadow-inner">
+            {currentUser.avatar_url ? (
+              <img
+                src={currentUser.avatar_url}
+                alt={currentUser.full_name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLElement).style.display = 'none';
+                }}
+              />
+            ) : (
+              <Building className="w-6 h-6 text-white" />
+            )}
           </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <h1 className="text-xl font-bold tracking-tight text-white">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <h1 className="text-base sm:text-xl font-bold tracking-tight text-white leading-snug">
                 {currentUser.full_name}
               </h1>
-              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white border border-white/20">
+              <span className="text-[10px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-full bg-white/10 text-white border border-white/20 whitespace-nowrap">
                 Кабинет партнёра
               </span>
             </div>
-            <p className="text-xs text-[#9CA3AF] mt-0.5 flex items-center space-x-2">
-              <span className="flex items-center space-x-1">
-                <MapPin className="w-3.5 h-3.5 text-neutral-400" />
-                <span>{currentUser.city || 'Москва'}</span>
-              </span>
+            <p className="text-xs text-[#9CA3AF] mt-1 flex items-center space-x-1.5 truncate">
+              <MapPin className="w-3.5 h-3.5 text-neutral-400 flex-shrink-0" />
+              <span className="text-neutral-300 font-medium">{currentUser.city || 'Москва'}</span>
               <span>•</span>
-              <span>Прямой канал связи с диспетчерской службой ServFlow</span>
+              <span className="truncate">Прямой канал связи с диспетчерской</span>
             </p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 w-full md:w-auto">
+        <div className="flex items-center space-x-2.5 w-full md:w-auto">
           <button
             onClick={() => loadCompanyData()}
             title="Обновить переписку"
-            className="p-2 sm:p-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-[#9CA3AF] hover:text-white transition-all cursor-pointer flex-shrink-0"
+            className="p-3 sm:p-3.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.08] text-[#9CA3AF] hover:text-white transition-all cursor-pointer flex-shrink-0 active:scale-95"
           >
             <RotateCcw className={`w-4 h-4 ${loading ? 'animate-spin text-white' : ''}`} />
           </button>
@@ -355,10 +364,10 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
               setCreateError(null);
               setIsNewTicketOpen(true);
             }}
-            className="flex-1 md:flex-initial px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-white hover:bg-neutral-200 text-black text-xs font-bold shadow-sm transition-all flex items-center justify-center space-x-1.5 cursor-pointer active:scale-95"
+            className="flex-1 md:flex-initial px-5 sm:px-7 py-3 sm:py-3.5 rounded-xl bg-white hover:bg-neutral-100 text-black text-xs sm:text-sm font-extrabold shadow-lg hover:shadow-xl transition-all flex items-center justify-center space-x-2 cursor-pointer active:scale-95 border-2 border-white ring-2 ring-white/20"
           >
-            <Plus className="w-4 h-4 text-black flex-shrink-0" />
-            <span>Новое обращение / вызов мастера</span>
+            <Plus className="w-4.5 h-4.5 text-black stroke-[3] flex-shrink-0" />
+            <span className="tracking-wide">Новое обращение / вызов мастера</span>
           </button>
         </div>
       </div>

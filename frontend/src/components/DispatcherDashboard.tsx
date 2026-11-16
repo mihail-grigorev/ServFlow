@@ -32,7 +32,9 @@ import {
   ChevronRight,
   ArrowUpDown,
   SlidersHorizontal,
-  UserCheck
+  UserCheck,
+  Bell,
+  BellOff
 } from 'lucide-react';
 
 interface DispatcherDashboardProps {
@@ -45,6 +47,34 @@ interface DispatcherDashboardProps {
   onNavigateToOrders?: (orderId?: number) => void;
 }
 
+const playNotificationSound = () => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const now = ctx.currentTime;
+
+    // Pleasant two-tone chime (D5 587.33Hz -> A5 880Hz)
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, now);
+    osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.35);
+  } catch (e) {
+    console.debug('Audio chime skipped:', e);
+  }
+};
+
 export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
   onOpenOrderModal,
   threads,
@@ -54,9 +84,9 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
   onNavigateToOrders,
 }) => {
   const [selectedThreadId, setSelectedThreadId] = useState<number | null>(null);
-  const [dispatcherChatTab, setDispatcherChatTab] = useState<'client' | 'engineer'>('client');
+  const [dispatcherChatTab, setDispatcherChatTab] = useState<'client' | 'engineer' | 'all'>('client');
   const [mobileTab, setMobileTab] = useState<'threads' | 'chat' | 'ai'>('threads');
-  const [sortOrder, setSortOrder] = useState<'num_asc' | 'num_desc' | 'activity'>('num_asc');
+  const [sortOrder, setSortOrder] = useState<'activity' | 'num_asc' | 'num_desc'>('activity');
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [aiAnalysis, setAiAnalysis] = useState<AIAnalysisResult | null>(null);
@@ -64,8 +94,10 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
   const [inputText, setInputText] = useState<string>('');
   const [sendingMsg, setSendingMsg] = useState<boolean>(false);
   const [isAiSuggestionCollapsed, setIsAiSuggestionCollapsed] = useState<boolean>(true);
-  const [newThreadIds, setNewThreadIds] = useState<Set<number>>(new Set());
+  const [unreadThreadIds, setUnreadThreadIds] = useState<Set<number>>(new Set());
+  const [isSoundEnabled, setIsSoundEnabled] = useState<boolean>(true);
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
+  const lastKnownCountsRef = useRef<Record<number, number>>({});
   const initialThreadIdsRef = useRef<Set<number> | null>(null);
   const chatScrollContainerRef = useRef<HTMLDivElement>(null);
   const prevThreadIdRef = useRef<number | null>(null);
@@ -84,28 +116,83 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
     loadOrders();
   }, [threads]);
 
-  // Track newly arrived threads during live demo
+  // Track newly arrived threads and incoming messages in real-time
   useEffect(() => {
-    if (threads.length === 0) return;
+    if (!threads || threads.length === 0) return;
+
+    // First load: initialize known thread IDs and message counts
     if (!initialThreadIdsRef.current) {
       initialThreadIdsRef.current = new Set(threads.map((t) => t.id));
+      threads.forEach((t) => {
+        lastKnownCountsRef.current[t.id] = t.messages?.length || 0;
+      });
       return;
     }
 
-    const brandNew = threads.filter((t) => !initialThreadIdsRef.current!.has(t.id)).map((t) => t.id);
+    let hasIncoming = false;
+    const newIncomingIds: number[] = [];
+
+    // Check for brand new threads
+    const brandNew = threads.filter((t) => !initialThreadIdsRef.current!.has(t.id));
     if (brandNew.length > 0) {
-      setNewThreadIds((prev) => new Set([...prev, ...brandNew]));
-      brandNew.forEach((id) => initialThreadIdsRef.current!.add(id));
+      brandNew.forEach((t) => {
+        initialThreadIdsRef.current!.add(t.id);
+        lastKnownCountsRef.current[t.id] = t.messages?.length || 0;
+        newIncomingIds.push(t.id);
+        hasIncoming = true;
+      });
+    }
+
+    // Check for new messages in existing threads
+    threads.forEach((t) => {
+      const prevCount = lastKnownCountsRef.current[t.id];
+      const currentCount = t.messages?.length || 0;
+
+      if (prevCount !== undefined && currentCount > prevCount) {
+        lastKnownCountsRef.current[t.id] = currentCount;
+        
+        // Check if latest message is from an outside sender (client or engineer)
+        const lastMsg = t.messages?.[t.messages.length - 1];
+        if (!lastMsg || lastMsg.sender_type === 'client' || lastMsg.sender_type === 'engineer') {
+          hasIncoming = true;
+          newIncomingIds.push(t.id);
+        }
+      } else if (prevCount === undefined) {
+        lastKnownCountsRef.current[t.id] = currentCount;
+      }
+    });
+
+    if (hasIncoming) {
+      if (isSoundEnabled) {
+        playNotificationSound();
+      }
+      setUnreadThreadIds((prev) => {
+        const next = new Set(prev);
+        newIncomingIds.forEach((id) => next.add(id));
+        return next;
+      });
+
+      // If the currently selected thread got a new message, refresh AI analysis
+      if (selectedThreadId && newIncomingIds.includes(selectedThreadId)) {
+        loadAiAnalysis(selectedThreadId);
+      }
+    }
+  }, [threads, isSoundEnabled, selectedThreadId]);
+
+  // Auto-clear unread badge if dispatcher is viewing this thread
+  useEffect(() => {
+    if (selectedThreadId && unreadThreadIds.has(selectedThreadId)) {
       const timer = setTimeout(() => {
-        setNewThreadIds((prev) => {
+        setUnreadThreadIds((prev) => {
+          if (!prev.has(selectedThreadId)) return prev;
           const next = new Set(prev);
-          brandNew.forEach((id) => next.delete(id));
+          next.delete(selectedThreadId);
           return next;
         });
-      }, 5000);
+      }, 2000);
       return () => clearTimeout(timer);
     }
-  }, [threads]);
+  }, [selectedThreadId, unreadThreadIds, threads]);
 
   // Auto-scroll chat to bottom ONLY inside the internal chat feed (NEVER touching window scroll)
   useEffect(() => {
@@ -129,13 +216,13 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
     }
   }, [selectedThreadId, threads, dispatcherChatTab]);
 
-  // Periodic polling to receive new client messages in real-time
+  // Periodic polling every 2 seconds to receive new messages in real-time
   useEffect(() => {
     const interval = setInterval(() => {
       onRefreshThreads();
-    }, 3000);
+    }, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [onRefreshThreads]);
 
   // Auto-select first thread if none selected
   useEffect(() => {
@@ -143,6 +230,17 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
       setSelectedThreadId(threads[0].id);
     }
   }, [threads, selectedThreadId]);
+
+  const handleSelectThread = (threadId: number) => {
+    setSelectedThreadId(threadId);
+    setMobileTab('chat');
+    setUnreadThreadIds((prev) => {
+      if (!prev.has(threadId)) return prev;
+      const next = new Set(prev);
+      next.delete(threadId);
+      return next;
+    });
+  };
 
   const selectedThread = threads.find((t) => t.id === selectedThreadId);
 
@@ -343,6 +441,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
 
   // Filter threads
   const filteredThreads = threads.filter((t) => {
+    if (activeFilter === 'unread' && !unreadThreadIds.has(t.id)) return false;
     if (activeFilter === 'needs_clarification' && t.status !== 'needs_clarification') return false;
     if (activeFilter === 'ready_for_order' && t.status !== 'ready_for_order') return false;
     if (activeFilter === 'warranty' && !t.is_warranty) return false;
@@ -360,16 +459,23 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
   });
 
   const sortedThreads = [...filteredThreads].sort((a, b) => {
+    // Threads with unread/new messages ALWAYS on top
+    const aUnread = unreadThreadIds.has(a.id);
+    const bUnread = unreadThreadIds.has(b.id);
+    if (aUnread && !bUnread) return -1;
+    if (!aUnread && bUnread) return 1;
+
     if (sortOrder === 'num_asc') {
       return a.thread_number - b.thread_number;
     }
     if (sortOrder === 'num_desc') {
       return b.thread_number - a.thread_number;
     }
+    // Default 'activity': latest activity on top
     const timeA = new Date(a.last_activity || a.created_at).getTime();
     const timeB = new Date(b.last_activity || b.created_at).getTime();
     if (timeB !== timeA) return timeB - timeA;
-    return a.thread_number - b.thread_number;
+    return b.thread_number - a.thread_number;
   });
 
   const getChannelIcon = (ch: string) => {
@@ -383,16 +489,16 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
     }
   };
 
-  // Strict isolated message filters
-  const clientMessagesCount = (selectedThread?.messages || []).filter(
-    (m) => (m.chat_type === 'client_dispatcher' || (!m.chat_type && m.sender_type !== 'engineer')) &&
-           m.chat_type !== 'dispatcher_engineer' &&
-           m.chat_type !== 'client_engineer'
-  ).length;
+  // Robust transparent message filters
+  const allMessages = selectedThread?.messages || [];
+  const clientMessages = allMessages.filter((m) => m.chat_type !== 'dispatcher_engineer');
+  const engineerMessages = allMessages.filter(
+    (m) => m.chat_type === 'dispatcher_engineer' || m.chat_type === 'client_engineer' || m.sender_type === 'engineer'
+  );
 
-  const engineerMessagesCount = (selectedThread?.messages || []).filter(
-    (m) => m.chat_type === 'dispatcher_engineer'
-  ).length;
+  const clientMessagesCount = clientMessages.length;
+  const engineerMessagesCount = engineerMessages.length;
+  const allMessagesCount = allMessages.length;
 
   return (
     <div className="min-h-[calc(100vh-4rem)] lg:h-[calc(100vh-4rem)] flex flex-col p-3 sm:p-6 max-w-[1700px] mx-auto w-full text-[#F3F4F6]">
@@ -434,10 +540,10 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => onOpenOrderModal()}
-                className="w-full py-2.5 px-3 rounded-xl bg-white hover:bg-neutral-200 text-black border border-white/20 text-xs font-semibold flex items-center justify-center space-x-1.5 shadow-sm transition-all cursor-pointer active:scale-95"
+                className="w-full py-3 px-4 rounded-xl bg-white hover:bg-neutral-100 text-black text-xs sm:text-sm font-extrabold shadow-md border-2 border-white flex items-center justify-center space-x-2 cursor-pointer active:scale-95 transition-all ring-2 ring-white/10"
               >
-                <Plus className="w-4 h-4 text-black" />
-                <span>Новая заявка в 1 клик</span>
+                <Plus className="w-4.5 h-4.5 text-black stroke-[3] flex-shrink-0" />
+                <span className="tracking-wide">Создать заявку в 1 клик</span>
               </button>
             </div>
 
@@ -455,22 +561,38 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
 
             {/* Sort order toggle and filters */}
             <div className="flex items-center justify-between pt-0.5">
-              <div className="flex items-center space-x-1 text-[11px] text-[#8E9E94]">
-                <SlidersHorizontal className="w-3 h-3 text-[#9CA3AF]" />
-                <span>Порядок:</span>
+              <div className="flex items-center space-x-1.5 text-[11px] text-[#8E9E94]">
+                <button
+                  type="button"
+                  onClick={() => setIsSoundEnabled(!isSoundEnabled)}
+                  className={`flex items-center space-x-1 px-1.5 py-0.5 rounded-lg border transition-all cursor-pointer ${
+                    isSoundEnabled
+                      ? 'bg-white/10 text-white border-white/20'
+                      : 'bg-transparent text-neutral-500 border-transparent hover:text-white'
+                  }`}
+                  title={isSoundEnabled ? 'Звуковое оповещение включено' : 'Звук выключен'}
+                >
+                  {isSoundEnabled ? (
+                    <Bell className="w-3 h-3 text-white" />
+                  ) : (
+                    <BellOff className="w-3 h-3 text-neutral-500" />
+                  )}
+                  <span className="text-[10px]">{isSoundEnabled ? 'Звук' : 'Без звука'}</span>
+                </button>
               </div>
+
               <button
                 type="button"
                 onClick={() => {
-                  setSortOrder((prev) => (prev === 'num_asc' ? 'num_desc' : prev === 'num_desc' ? 'activity' : 'num_asc'));
+                  setSortOrder((prev) => (prev === 'activity' ? 'num_asc' : prev === 'num_asc' ? 'num_desc' : 'activity'));
                 }}
                 className="flex items-center space-x-1.5 text-[11px] font-medium px-2 py-0.5 rounded-lg bg-white/[0.06] hover:bg-white/10 text-white border border-white/[0.08] transition-all cursor-pointer active:scale-95"
                 title="Переключить порядок отображения обращений"
               >
                 <ArrowUpDown className="w-3 h-3 text-neutral-300" />
-                {sortOrder === 'num_asc' && <span>№ 1 → 13 (Возр.)</span>}
-                {sortOrder === 'num_desc' && <span>№ 13 → 1 (Убыв.)</span>}
-                {sortOrder === 'activity' && <span>По активности</span>}
+                {sortOrder === 'activity' && <span>Свежие сверху</span>}
+                {sortOrder === 'num_asc' && <span>№ 1 → 14 (Возр.)</span>}
+                {sortOrder === 'num_desc' && <span>№ 14 → 1 (Убыв.)</span>}
               </button>
             </div>
 
@@ -478,6 +600,7 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
             <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar pb-0.5 flex-nowrap whitespace-nowrap">
               {[
                 { id: 'all', label: 'Все' },
+                ...(unreadThreadIds.size > 0 ? [{ id: 'unread', label: `Новые (${unreadThreadIds.size})` }] : []),
                 { id: 'needs_clarification', label: 'Уточнить' },
                 { id: 'ready_for_order', label: 'Готовы' },
                 { id: 'warranty', label: 'Гарантия' },
@@ -488,18 +611,17 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                   onClick={() => setActiveFilter(f.id)}
                   className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap flex-shrink-0 cursor-pointer ${
                     activeFilter === f.id
-                      ? 'bg-white text-black font-semibold shadow-sm'
+                      ? f.id === 'unread'
+                        ? 'bg-white text-black font-extrabold shadow-sm ring-1 ring-white'
+                        : 'bg-white text-black font-semibold shadow-sm'
+                      : f.id === 'unread'
+                      ? 'bg-white/15 text-white font-bold border border-white/30 animate-pulse'
                       : 'bg-white/[0.05] text-[#9CA3AF] hover:text-white hover:bg-white/[0.08]'
                   }`}
                 >
                   {f.label}
                 </button>
               ))}
-              {newThreadIds.size > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-black whitespace-nowrap animate-pulse flex-shrink-0">
-                  +{newThreadIds.size} нов.
-                </span>
-              )}
             </div>
           </div>
 
@@ -507,19 +629,16 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
           <div className="flex-1 overflow-y-auto divide-y divide-white/[0.04]">
             {sortedThreads.map((t) => {
               const isSelected = t.id === selectedThreadId;
-              const isBrandNew = newThreadIds.has(t.id);
+              const hasNew = unreadThreadIds.has(t.id);
               const lastMsg = t.messages[t.messages.length - 1];
 
               return (
                 <div
                   key={t.id}
-                  onClick={() => {
-                    setSelectedThreadId(t.id);
-                    setMobileTab('chat');
-                  }}
+                  onClick={() => handleSelectThread(t.id)}
                   className={`p-3.5 cursor-pointer transition-all active:scale-[0.99] select-none ${
-                    isBrandNew
-                      ? 'bg-white/10 ring-1 ring-white/30 border-l-4 border-white'
+                    hasNew
+                      ? 'bg-white/[0.12] ring-1 ring-white/40 border-l-4 border-white'
                       : isSelected
                       ? 'bg-white/[0.08] border-l-4 border-white'
                       : 'hover:bg-white/[0.03]'
@@ -532,10 +651,11 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                         {t.client_name}
                       </span>
                     </div>
-                    <div className="flex items-center space-x-1 flex-shrink-0">
-                      {isBrandNew && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-white text-black">
-                          Новое
+                    <div className="flex items-center space-x-1.5 flex-shrink-0">
+                      {hasNew && (
+                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-white text-black flex items-center space-x-1 shadow-sm animate-pulse">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-ping"></span>
+                          <span>Новая</span>
                         </span>
                       )}
                       <span className="text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-white/10 text-white border border-white/20">
@@ -660,13 +780,13 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                 </div>
               </div>
 
-              {/* Sub-tabs: Client chat vs Engineer internal chat */}
+              {/* Sub-tabs: Client chat vs Engineer internal chat vs All */}
               <div className="flex items-center justify-between px-4 py-2 border-b border-white/[0.06] bg-[#121316]">
-                <div className="flex items-center space-x-1.5">
+                <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar">
                   <button
                     type="button"
                     onClick={() => setDispatcherChatTab('client')}
-                    className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
+                    className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer whitespace-nowrap ${
                       dispatcherChatTab === 'client'
                         ? 'bg-white text-black shadow-sm font-semibold'
                         : 'text-[#9CA3AF] hover:text-white'
@@ -682,10 +802,11 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                       </span>
                     )}
                   </button>
+
                   <button
                     type="button"
                     onClick={() => setDispatcherChatTab('engineer')}
-                    className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
+                    className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer whitespace-nowrap ${
                       dispatcherChatTab === 'engineer'
                         ? 'bg-white text-black shadow-sm font-semibold'
                         : 'text-[#9CA3AF] hover:text-white'
@@ -701,33 +822,51 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
                       </span>
                     )}
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDispatcherChatTab('all')}
+                    className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                      dispatcherChatTab === 'all'
+                        ? 'bg-white text-black shadow-sm font-semibold'
+                        : 'text-[#9CA3AF] hover:text-white'
+                    }`}
+                  >
+                    <MessageSquare className="w-3.5 h-3.5" />
+                    <span>Все ({allMessagesCount})</span>
+                  </button>
                 </div>
               </div>
 
-              {/* Messages feed - Strictly isolated */}
+              {/* Messages feed */}
               <div ref={chatScrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-[#111215]">
                 {(() => {
-                  const visibleMessages = (selectedThread.messages || []).filter((m) => {
-                    if (dispatcherChatTab === 'client') {
-                      return (
-                        (m.chat_type === 'client_dispatcher' || (!m.chat_type && m.sender_type !== 'engineer')) &&
-                        m.chat_type !== 'dispatcher_engineer' &&
-                        m.chat_type !== 'client_engineer'
-                      );
-                    } else {
-                      return m.chat_type === 'dispatcher_engineer';
-                    }
-                  });
+                  const visibleMessages = (() => {
+                    if (dispatcherChatTab === 'all') return allMessages;
+                    if (dispatcherChatTab === 'engineer') return engineerMessages;
+                    return clientMessages;
+                  })();
 
                   if (visibleMessages.length === 0) {
                     return (
-                      <div className="h-full flex flex-col items-center justify-center text-xs text-[#9CA3AF] space-y-1 py-12">
+                      <div className="h-full flex flex-col items-center justify-center text-xs text-[#9CA3AF] space-y-2 py-12">
                         <MessageSquare className="w-8 h-8 opacity-25 mb-1" />
                         <p>
                           {dispatcherChatTab === 'client'
-                            ? 'В диалоге с клиентом нет сообщений'
-                            : 'В чате с инженером пока нет сообщений'}
+                            ? 'В диалоге с клиентом пока нет сообщений'
+                            : dispatcherChatTab === 'engineer'
+                            ? 'В чате с инженером пока нет сообщений'
+                            : 'В этом обращении пока нет сообщений'}
                         </p>
+                        {allMessagesCount > 0 && dispatcherChatTab !== 'all' && (
+                          <button
+                            type="button"
+                            onClick={() => setDispatcherChatTab('all')}
+                            className="px-3 py-1.5 rounded-xl bg-white text-black text-xs font-semibold shadow-sm hover:bg-neutral-200 transition-all cursor-pointer"
+                          >
+                            Показать все сообщения обращения ({allMessagesCount})
+                          </button>
+                        )}
                         <p className="text-[11px] text-neutral-400">
                           {dispatcherChatTab === 'client'
                             ? 'Напишите клиенту или дождитесь входящего обращения.'

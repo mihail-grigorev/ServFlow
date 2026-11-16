@@ -293,22 +293,20 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                 <div
                   key={o.id}
                   onClick={() => setSelectedOrder(o)}
-                  className={`p-3.5 cursor-pointer transition-all ${
-                    isSelected
-                      ? 'bg-white/[0.08] border-l-4 border-white'
-                      : 'hover:bg-white/[0.02]'
-                  }`}
+                  className={`p-3.5 cursor-pointer transition-all ${isSelected
+                    ? 'bg-white/[0.08] border-l-4 border-white'
+                    : 'hover:bg-white/[0.02]'
+                    }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-bold text-xs text-white">{o.client_name}</span>
                     <span
-                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                        o.status === 'Выполнен'
-                          ? 'bg-white/15 text-white border-white/20'
-                          : o.status === 'На месте'
+                      className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${o.status === 'Выполнен'
+                        ? 'bg-white/15 text-white border-white/20'
+                        : o.status === 'На месте'
                           ? 'bg-white/10 text-white border-white/20'
                           : 'bg-white/10 text-neutral-300 border-white/15'
-                      }`}
+                        }`}
                     >
                       {o.status}
                     </span>
@@ -349,22 +347,20 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                 <div className="flex items-center space-x-2">
                   <button
                     onClick={() => setActiveView('details')}
-                    className={`px-3.5 py-1.5 text-xs font-semibold rounded-xl flex items-center space-x-2 transition-all ${
-                      activeView === 'details'
-                        ? 'bg-white text-black shadow-sm font-semibold'
-                        : 'text-[#9CA3AF] hover:text-white hover:bg-white/[0.04]'
-                    }`}
+                    className={`px-3.5 py-1.5 text-xs font-semibold rounded-xl flex items-center space-x-2 transition-all ${activeView === 'details'
+                      ? 'bg-white text-black shadow-sm font-semibold'
+                      : 'text-[#9CA3AF] hover:text-white hover:bg-white/[0.04]'
+                      }`}
                   >
                     <Wrench className="w-3.5 h-3.5" />
                     <span>Подготовка и диагностика</span>
                   </button>
                   <button
                     onClick={() => setActiveView('chat')}
-                    className={`px-3.5 py-1.5 text-xs font-semibold rounded-xl flex items-center space-x-2 transition-all relative ${
-                      activeView === 'chat'
-                        ? 'bg-white text-black shadow-sm font-semibold'
-                        : 'text-[#9CA3AF] hover:text-white hover:bg-white/[0.04]'
-                    }`}
+                    className={`px-3.5 py-1.5 text-xs font-semibold rounded-xl flex items-center space-x-2 transition-all relative ${activeView === 'chat'
+                      ? 'bg-white text-black shadow-sm font-semibold'
+                      : 'text-[#9CA3AF] hover:text-white hover:bg-white/[0.04]'
+                      }`}
                   >
                     <MessageSquare className="w-3.5 h-3.5" />
                     <span>Чат по заявке</span>
@@ -410,11 +406,10 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                         <button
                           key={st}
                           onClick={() => handleStatusChange(selectedOrder.id, st)}
-                          className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${
-                            selectedOrder.status === st
-                              ? 'bg-white text-black shadow-sm font-semibold'
-                              : 'text-[#9CA3AF] hover:text-white hover:bg-white/[0.05]'
-                          }`}
+                          className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all ${selectedOrder.status === st
+                            ? 'bg-white text-black shadow-sm font-semibold'
+                            : 'text-[#9CA3AF] hover:text-white hover:bg-white/[0.05]'
+                            }`}
                         >
                           {st}
                         </button>
@@ -561,18 +556,16 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                         <button
                           type="button"
                           onClick={() => setEngineerChatTab('dispatcher')}
-                          className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
-                            engineerChatTab === 'dispatcher'
-                              ? 'bg-white text-black shadow-sm font-semibold'
-                              : 'text-[#9CA3AF] hover:text-white'
-                          }`}
+                          className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${engineerChatTab === 'dispatcher'
+                            ? 'bg-white text-black shadow-sm font-semibold'
+                            : 'text-[#9CA3AF] hover:text-white'
+                            }`}
                         >
                           <UserCheck className="w-3.5 h-3.5" />
                           <span>Чат с диспетчером</span>
                           {dispatcherMsgCount > 0 && (
-                            <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-bold ${
-                              engineerChatTab === 'dispatcher' ? 'bg-black/15 text-black' : 'bg-white/10 text-[#9CA3AF]'
-                            }`}>
+                            <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-bold ${engineerChatTab === 'dispatcher' ? 'bg-black/15 text-black' : 'bg-white/10 text-[#9CA3AF]'
+                              }`}>
                               {dispatcherMsgCount}
                             </span>
                           )}
@@ -581,18 +574,16 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                         <button
                           type="button"
                           onClick={() => setEngineerChatTab('client')}
-                          className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${
-                            engineerChatTab === 'client'
-                              ? 'bg-white text-black shadow-sm font-semibold'
-                              : 'text-[#9CA3AF] hover:text-white'
-                          }`}
+                          className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer ${engineerChatTab === 'client'
+                            ? 'bg-white text-black shadow-sm font-semibold'
+                            : 'text-[#9CA3AF] hover:text-white'
+                            }`}
                         >
                           <Building className="w-3.5 h-3.5" />
                           <span>Чат с клиентом</span>
                           {clientMsgCount > 0 && (
-                            <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-bold ${
-                              engineerChatTab === 'client' ? 'bg-black/15 text-black' : 'bg-white/10 text-[#9CA3AF]'
-                            }`}>
+                            <span className={`px-1.5 py-0.2 text-[10px] rounded-full font-bold ${engineerChatTab === 'client' ? 'bg-black/15 text-black' : 'bg-white/10 text-[#9CA3AF]'
+                              }`}>
                               {clientMsgCount}
                             </span>
                           )}
@@ -702,13 +693,12 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                             </div>
 
                             <div
-                              className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed shadow-sm ${
-                                isEngineer
-                                  ? 'bg-white/15 text-white border border-white/20 rounded-tr-sm'
-                                  : isClient
+                              className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed shadow-sm ${isEngineer
+                                ? 'bg-white/15 text-white border border-white/20 rounded-tr-sm'
+                                : isClient
                                   ? 'bg-[#1F2026] text-white border border-white/[0.08] rounded-tl-sm'
                                   : 'bg-white/10 text-white border border-white/10 rounded-tl-sm'
-                              }`}
+                                }`}
                             >
                               {m.content}
                             </div>
@@ -726,17 +716,17 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                     <div className="flex flex-wrap gap-1.5">
                       {(engineerChatTab === 'dispatcher'
                         ? [
-                            'Диспетчер, уточните код домофона или контакт администратора на месте',
-                            'Обнаружена скрытая поломка помпы, согласуйте замену детали',
-                            'Клиент не открывает дверь и не берет трубку, свяжитесь с управляющим',
-                            'Запчасть установлена успешно, прошу зафиксировать списание'
-                          ]
+                          'Диспетчер, уточните код домофона или контакт администратора на месте',
+                          'Обнаружена скрытая поломка помпы, согласуйте замену детали',
+                          'Клиент не открывает дверь и не берет трубку, свяжитесь с управляющим',
+                          'Запчасть установлена успешно, прошу зафиксировать списание'
+                        ]
                         : [
-                            'Выехал по адресу заявки, расчетное время прибытия ~20 минут',
-                            'Прибыл на место в заведение, начинаю визуальный осмотр',
-                            'Уточните, пожалуйста, код домофона или номер управляющего',
-                            'Работы завершены, выполнен тест пролива и пара, всё в норме'
-                          ]
+                          'Выехал по адресу заявки, расчетное время прибытия ~20 минут',
+                          'Прибыл на место в заведение, начинаю визуальный осмотр',
+                          'Уточните, пожалуйста, код домофона или номер управляющего',
+                          'Работы завершены, выполнен тест пролива и пара, всё в норме'
+                        ]
                       ).map((prompt, idx) => (
                         <button
                           key={idx}

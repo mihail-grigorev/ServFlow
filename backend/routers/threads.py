@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, func
 from backend.config import settings
 from backend.database import get_db
@@ -217,7 +217,7 @@ def get_threads(
             )
         )
 
-    threads = query.order_by(ClientThread.thread_number.asc()).all()
+    threads = query.options(joinedload(ClientThread.messages)).order_by(ClientThread.thread_number.asc()).all()
     orders = db.query(ServiceOrder).filter(ServiceOrder.thread_id.isnot(None)).all()
     orders_by_thread = {o.thread_id: o for o in orders}
     users_by_id = {u.id: u for u in db.query(User).all()}
@@ -371,7 +371,7 @@ def get_thread(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    thread = db.query(ClientThread).filter(ClientThread.id == thread_id).first()
+    thread = db.query(ClientThread).options(joinedload(ClientThread.messages)).filter(ClientThread.id == thread_id).first()
     if not thread:
         raise HTTPException(status_code=404, detail="Обращение не найдено")
 
@@ -414,7 +414,7 @@ async def add_message(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    thread = db.query(ClientThread).filter(ClientThread.id == thread_id).first()
+    thread = db.query(ClientThread).options(joinedload(ClientThread.messages)).filter(ClientThread.id == thread_id).first()
     if not thread:
         raise HTTPException(status_code=404, detail="Обращение не найдено")
 
