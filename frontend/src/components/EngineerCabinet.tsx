@@ -64,7 +64,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
   const [submittingReport, setSubmittingReport] = useState<boolean>(false);
   const [activeStatusFilter, setActiveStatusFilter] = useState<string>('all');
   const [activeView, setActiveView] = useState<'details' | 'chat'>('details');
-  const [engineerChatTab, setEngineerChatTab] = useState<'dispatcher' | 'client' | 'all'>('dispatcher');
+  const [engineerChatTab, setEngineerChatTab] = useState<'dispatcher' | 'client'>('dispatcher');
   const [orderThread, setOrderThread] = useState<ClientThread | null>(null);
   const [threadLoading, setThreadLoading] = useState<boolean>(false);
   const [chatMessage, setChatMessage] = useState<string>('');
@@ -146,15 +146,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
     }
     setSendingMessage(true);
 
-    let targetChatType = 'dispatcher_engineer';
-    if (engineerChatTab === 'client') {
-      targetChatType = 'client_engineer';
-    } else if (engineerChatTab === 'dispatcher') {
-      targetChatType = 'dispatcher_engineer';
-    } else {
-      const lastMsg = orderThread.messages?.[orderThread.messages.length - 1];
-      targetChatType = lastMsg?.sender_type === 'client' ? 'client_engineer' : 'dispatcher_engineer';
-    }
+    const targetChatType = engineerChatTab === 'client' ? 'client_engineer' : 'dispatcher_engineer';
 
     const tempId = Date.now();
     const tempMessage = {
@@ -265,11 +257,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
   );
   const clientMsgCount = clientMessages.length;
 
-  const visibleMessages = (() => {
-    if (engineerChatTab === 'all') return allMessages;
-    if (engineerChatTab === 'client') return clientMessages;
-    return dispatcherMessages;
-  })();
+  const visibleMessages = engineerChatTab === 'client' ? clientMessages : dispatcherMessages;
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6 text-[#F3F4F6]">
@@ -347,11 +335,10 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                 <button
                   key={f.id}
                   onClick={() => setActiveStatusFilter(f.id)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap flex-shrink-0 cursor-pointer ${
-                    activeStatusFilter === f.id
-                      ? 'bg-white text-black shadow-sm font-semibold'
-                      : 'text-[#9CA3AF] hover:text-white'
-                  }`}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all whitespace-nowrap flex-shrink-0 cursor-pointer ${activeStatusFilter === f.id
+                    ? 'bg-white text-black shadow-sm font-semibold'
+                    : 'text-[#9CA3AF] hover:text-white'
+                    }`}
                 >
                   {f.label}
                 </button>
@@ -678,18 +665,6 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                             </span>
                           )}
                         </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setEngineerChatTab('all')}
-                          className={`px-3 py-1 text-xs font-semibold rounded-lg flex items-center space-x-1.5 transition-all cursor-pointer whitespace-nowrap ${engineerChatTab === 'all'
-                            ? 'bg-white text-black shadow-sm font-semibold'
-                            : 'text-[#9CA3AF] hover:text-white'
-                            }`}
-                        >
-                          <MessageSquare className="w-3.5 h-3.5" />
-                          <span>Все ({allMessagesCount})</span>
-                        </button>
                       </div>
                     </div>
 
@@ -736,19 +711,8 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                             <p>
                               {engineerChatTab === 'dispatcher'
                                 ? 'В чате с диспетчером пока нет сообщений.'
-                                : engineerChatTab === 'client'
-                                ? 'В чате с клиентом пока нет сообщений.'
-                                : 'В этой заявке пока нет сообщений.'}
+                                : 'В чате с клиентом пока нет сообщений.'}
                             </p>
-                            {allMessagesCount > 0 && engineerChatTab !== 'all' && (
-                              <button
-                                type="button"
-                                onClick={() => setEngineerChatTab('all')}
-                                className="px-3 py-1.5 rounded-xl bg-white text-black text-xs font-semibold shadow-sm hover:bg-neutral-200 transition-all cursor-pointer"
-                              >
-                                Показать все сообщения заявки ({allMessagesCount})
-                              </button>
-                            )}
                             <p className="text-[11px] text-neutral-400">
                               {engineerChatTab === 'dispatcher'
                                 ? 'Задайте служебный вопрос диспетчеру (по доступу, запчастям или согласованию).'
@@ -882,9 +846,7 @@ export const EngineerCabinet: React.FC<EngineerCabinetProps> = ({
                         placeholder={
                           engineerChatTab === 'dispatcher'
                             ? 'Служебный вопрос или комментарий диспетчеру...'
-                            : engineerChatTab === 'client'
-                            ? 'Прямое сообщение представителю клиента...'
-                            : 'Сообщение по заявке...'
+                            : 'Прямое сообщение представителю клиента...'
                         }
                         disabled={sendingMessage}
                         className="flex-1 px-3.5 py-2 text-xs rounded-xl border border-white/[0.12] bg-[#1F2026] text-white placeholder-[#9CA3AF] outline-none focus:border-white/20 transition-colors"

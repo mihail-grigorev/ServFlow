@@ -52,6 +52,9 @@ const playNotificationSound = () => {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextClass) return;
     const ctx = new AudioContextClass();
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
     const now = ctx.currentTime;
 
     // Pleasant two-tone chime (D5 587.33Hz -> A5 880Hz)
@@ -151,9 +154,9 @@ export const DispatcherDashboard: React.FC<DispatcherDashboardProps> = ({
       if (prevCount !== undefined && currentCount > prevCount) {
         lastKnownCountsRef.current[t.id] = currentCount;
         
-        // Check if latest message is from an outside sender (client or engineer)
+        // Check if latest message is from an outside sender (client, engineer, or system)
         const lastMsg = t.messages?.[t.messages.length - 1];
-        if (!lastMsg || lastMsg.sender_type === 'client' || lastMsg.sender_type === 'engineer') {
+        if (!lastMsg || lastMsg.sender_type !== 'dispatcher') {
           hasIncoming = true;
           newIncomingIds.push(t.id);
         }

@@ -22,8 +22,41 @@ import {
   Mail,
   Truck,
   Trash2,
-  X
+  X,
+  Bell,
+  BellOff
 } from 'lucide-react';
+
+const playNotificationSound = () => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    if (ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+    const now = ctx.currentTime;
+
+    // Pleasant two-tone chime (D5 587.33Hz -> A5 880Hz)
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, now);
+    osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.35);
+  } catch (e) {
+    console.debug('Audio chime skipped:', e);
+  }
+};
 
 interface CompanyCabinetProps {
   currentUser: User;
@@ -44,6 +77,9 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
   const [sendingMsg, setSendingMsg] = useState(false);
   const [orders, setOrders] = useState<ServiceOrder[]>([]);
   const [isNewTicketOpen, setIsNewTicketOpen] = useState(false);
+  const [isSoundEnabled, setIsSoundEnabled] = useState(true);
+  const lastKnownCountsRef = useRef<Record<number, number>>({});
+  const initialThreadsLoadedRef = useRef<boolean>(false);
 
   // New Ticket Form State
   const [newEqCode, setNewEqCode] = useState<string>('');
@@ -89,8 +125,8 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
     return cleanComp.includes(eqClient) || eqClient.includes(cleanComp);
   });
 
-  const loadCompanyData = async (targetThreadId?: number) => {
-    setLoading(true);
+  const loadCompanyData = async (targetThreadId?: number, silent: boolean = false) => {
+    if (!silent) setLoading(true);
     try {
       const [allTh, allOrd] = await Promise.all([
         api.getThreads('all', undefined, currentUser.full_name),
@@ -118,7 +154,7 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
     } catch (err) {
       console.error('Failed to load company cabinet data:', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -128,10 +164,44 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
 
   useEffect(() => {
     const interval = setInterval(() => {
-      loadCompanyData();
-    }, 3000);
+      loadCompanyData(undefined, true);
+    }, 2000);
     return () => clearInterval(interval);
   }, [currentUser, selectedThreadId]);
+
+  // Track incoming messages in real-time and trigger audio chime
+  useEffect(() => {
+    if (!threads || threads.length === 0) return;
+
+    if (!initialThreadsLoadedRef.current) {
+      initialThreadsLoadedRef.current = true;
+      threads.forEach((t) => {
+        lastKnownCountsRef.current[t.id] = t.messages?.length || 0;
+      });
+      return;
+    }
+
+    let hasIncoming = false;
+    threads.forEach((t) => {
+      const prevCount = lastKnownCountsRef.current[t.id];
+      const currentCount = t.messages?.length || 0;
+
+      if (prevCount !== undefined && currentCount > prevCount) {
+        lastKnownCountsRef.current[t.id] = currentCount;
+        const newMsgs = (t.messages || []).slice(prevCount);
+        const hasIncomingFromOthers = newMsgs.some((m) => m.sender_type !== 'client');
+        if (hasIncomingFromOthers) {
+          hasIncoming = true;
+        }
+      } else if (prevCount === undefined) {
+        lastKnownCountsRef.current[t.id] = currentCount;
+      }
+    });
+
+    if (hasIncoming && isSoundEnabled) {
+      playNotificationSound();
+    }
+  }, [threads, isSoundEnabled]);
 
   useEffect(() => {
     const thread = threads.find((t) => t.id === selectedThreadId);
@@ -351,6 +421,20 @@ export const CompanyCabinet: React.FC<CompanyCabinetProps> = ({
         </div>
 
         <div className="flex items-center space-x-2.5 w-full md:w-auto">
+          <button
+            type="button"
+            onClick={() => setIsSoundEnabled((prev) => !prev)}
+            title={isSoundEnabled ? 'Звуковые оповещения включены' : 'Звук выключен'}
+            className={`p-3 sm:p-3.5 rounded-xl border transition-all cursor-pointer flex-shrink-0 active:scale-95 flex items-center space-x-1.5 ${
+              isSoundEnabled
+                ? 'bg-white/10 text-white border-white/20 hover:bg-white/15'
+                : 'bg-white/[0.04] text-neutral-400 border-white/[0.08] hover:text-white'
+            }`}
+          >
+            {isSoundEnabled ? <Bell className="w-4 h-4 text-white" /> : <BellOff className="w-4 h-4 text-neutral-400" />}
+            <span className="hidden sm:inline text-xs font-semibold">{isSoundEnabled ? 'Звук ВКЛ' : 'Звук ВЫКЛ'}</span>
+          </button>
+
           <button
             onClick={() => loadCompanyData()}
             title="Обновить переписку"
